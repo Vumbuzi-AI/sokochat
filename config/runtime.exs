@@ -20,6 +20,29 @@ if System.get_env("PHX_SERVER") do
   config :whatsappbot, WhatsappbotWeb.Endpoint, server: true
 end
 
+encryption_key =
+  case System.get_env("ENCRYPTION_KEY") do
+    key when is_binary(key) and byte_size(key) > 0 ->
+      key
+
+    _ ->
+      if config_env() == :prod do
+        raise """
+        environment variable ENCRYPTION_KEY is missing.
+        Generate one with: mix cloak.gen.key AES.GCM 256
+        """
+      else
+        Base.encode64(:binary.copy(<<0>>, 32))
+      end
+  end
+
+config :whatsappbot, Whatsappbot.Vault,
+  ciphers: [
+    default: {Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1",
+      key: Base.decode64!(encryption_key)}
+  ]
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

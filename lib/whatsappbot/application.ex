@@ -9,7 +9,9 @@ defmodule Whatsappbot.Application do
   def start(_type, _args) do
     children = [
       WhatsappbotWeb.Telemetry,
+      Whatsappbot.Vault,
       Whatsappbot.Repo,
+      {Oban, Application.fetch_env!(:whatsappbot, Oban)},
       {DNSCluster, query: Application.get_env(:whatsappbot, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Whatsappbot.PubSub},
       # Start the Finch HTTP client for sending emails

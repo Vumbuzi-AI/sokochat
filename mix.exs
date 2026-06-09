@@ -56,6 +56,11 @@ defmodule Whatsappbot.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
+      {:req, "~> 0.5"},
+      {:oban, "~> 2.17"},
+      {:cloak_ecto, "~> 1.3"},
+      {:plug_cowboy, "~> 2.7"},
+      {:ex_rated, "~> 2.1"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"}
     ]

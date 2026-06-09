@@ -11,6 +11,11 @@ config :whatsappbot,
   ecto_repos: [Whatsappbot.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :whatsappbot, Oban,
+  repo: Whatsappbot.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [default: 10, endpoint_refresh: 5, meta_send: 10]
+
 # Configures the endpoint
 config :whatsappbot, WhatsappbotWeb.Endpoint,
   url: [host: "localhost"],

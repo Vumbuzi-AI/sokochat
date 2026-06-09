@@ -2,10 +2,10 @@ import Config
 
 # Configure your database
 config :whatsappbot, Whatsappbot.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "whatsappbot_dev",
+  username: System.get_env("DB_USERNAME") || "postgres",
+  password: System.get_env("DB_PASSWORD") || "postgres",
+  hostname: System.get_env("DB_HOST") || "localhost",
+  database: System.get_env("DB_NAME") || "whatsappbot_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
