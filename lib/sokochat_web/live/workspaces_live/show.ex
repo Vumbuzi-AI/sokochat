@@ -3,6 +3,7 @@ defmodule SokochatWeb.WorkspacesLive.Show do
 
   alias Sokochat.CTARules
   alias Sokochat.Endpoints
+  alias Sokochat.Meta
   alias Sokochat.Workspaces
 
   @impl true
@@ -16,12 +17,14 @@ defmodule SokochatWeb.WorkspacesLive.Show do
       {:ok, workspace} ->
         endpoint = Endpoints.get_endpoint(workspace.id)
         cta_rules = CTARules.list_cta_rules(workspace.id)
+        connection = Meta.get_connection(workspace.id)
 
         {:noreply,
          socket
          |> assign(:workspace, workspace)
          |> assign(:endpoint_configured, configured?(endpoint, :endpoint))
-         |> assign(:cta_rules_configured, configured?(cta_rules, :cta_rules))}
+         |> assign(:cta_rules_configured, configured?(cta_rules, :cta_rules))
+         |> assign(:meta_configured, configured?(connection, :meta))}
 
       :error ->
         {:noreply,
@@ -40,6 +43,7 @@ defmodule SokochatWeb.WorkspacesLive.Show do
   defp configured?(%{url: url}, :endpoint), do: not is_nil_or_blank?(url)
   defp configured?(cta_rules, :cta_rules) when is_list(cta_rules), do: cta_rules != []
   defp configured?(workspace, :playground), do: not is_nil_or_blank?(workspace.ai_instructions)
+  defp configured?(%{status: "active"}, :meta), do: true
   defp configured?(_resource, _section), do: false
 
   defp status_classes(true), do: "border-[#B7EBCF] bg-[#E8FFF3] text-brand-mid"
@@ -95,7 +99,7 @@ defmodule SokochatWeb.WorkspacesLive.Show do
             assigns[:endpoint_configured],
             assigns[:cta_rules_configured],
             configured?(assigns[:workspace], :playground),
-            false
+            assigns[:meta_configured]
           ],
           & &1
         )
@@ -170,7 +174,7 @@ defmodule SokochatWeb.WorkspacesLive.Show do
           description="Connect Meta credentials and webhook settings when you are ready to go live."
           href={~p"/workspaces/#{@workspace.id}/meta"}
           cta="Open Meta Connection"
-          configured={false}
+          configured={@meta_configured}
         />
       </div>
     </section>

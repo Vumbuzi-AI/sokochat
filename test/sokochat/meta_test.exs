@@ -26,6 +26,21 @@ defmodule Sokochat.MetaTest do
     assert connection.access_token == "secret-token"
   end
 
+  test "upsert_connection/2 trims and unquotes credentials before storing them", %{
+    workspace: workspace
+  } do
+    assert {:ok, connection} =
+             Meta.upsert_connection(workspace.id, %{
+               "phone_number_id" => "  \"111\"  ",
+               "waba_id" => " '222' ",
+               "access_token" => "  'secret-token'  "
+             })
+
+    assert connection.phone_number_id == "111"
+    assert connection.waba_id == "222"
+    assert connection.access_token == "secret-token"
+  end
+
   test "the access token is stored encrypted, not as plaintext", %{workspace: workspace} do
     {:ok, connection} =
       Meta.upsert_connection(workspace.id, %{

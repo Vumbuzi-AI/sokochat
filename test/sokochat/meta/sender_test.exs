@@ -201,5 +201,23 @@ defmodule Sokochat.Meta.SenderTest do
       assert {:error, reason} = Sender.send_reply(connection, "254700111222", "Hi", nil)
       assert reason =~ "Invalid token"
     end
+
+    test "adds a credential hint to authentication failures" do
+      workspace = workspace_fixture(user_fixture())
+      connection = connection_fixture(workspace)
+
+      Req.Test.expect(__MODULE__.AuthStub, fn conn ->
+        conn
+        |> Plug.Conn.put_status(401)
+        |> Req.Test.json(%{"error" => %{"message" => "Authentication Error"}})
+      end)
+
+      Process.put(:meta_req_options, plug: {Req.Test, __MODULE__.AuthStub})
+
+      assert {:error, reason} = Sender.send_reply(connection, "254700111222", "Hi", nil)
+      assert reason =~ "Authentication Error"
+      assert reason =~ "workspace Meta credentials"
+      assert reason =~ "WA_* values in .env"
+    end
   end
 end

@@ -108,7 +108,7 @@ defmodule Sokochat.Meta.Sender do
         {:ok, extract_message_id(response_body)}
 
       {:ok, %Req.Response{status: status, body: response_body}} ->
-        reason = "Meta API error (HTTP #{status}): #{error_message(response_body)}"
+        reason = format_api_error(status, response_body)
         maybe_retry_without_media(connection, to, message, reason, retry_media?)
 
       {:error, reason} ->
@@ -355,6 +355,17 @@ defmodule Sokochat.Meta.Sender do
 
   defp error_message(body) when is_binary(body), do: body
   defp error_message(_), do: "request failed"
+
+  defp format_api_error(status, body) do
+    base = "Meta API error (HTTP #{status}): #{error_message(body)}"
+
+    if status == 401 do
+      base <>
+        ". Check the workspace Meta credentials saved in the app; WA_* values in .env only apply after syncing them into the workspace connection."
+    else
+      base
+    end
+  end
 
   defp base_url do
     config = Application.get_env(:sokochat, :meta, [])

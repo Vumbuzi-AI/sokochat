@@ -3,9 +3,27 @@ defmodule SokochatWeb.MetaLiveTest do
 
   import Phoenix.LiveViewTest
   import Sokochat.AccountsFixtures
+  import Sokochat.CTARulesFixtures
+  import Sokochat.EndpointsFixtures
+  import Sokochat.MetaFixtures
   import Sokochat.WorkspacesFixtures
 
   alias Sokochat.Meta
+
+  test "shows setup alerts before credentials are saved", %{conn: conn} do
+    user = user_fixture()
+    workspace = workspace_fixture(user)
+
+    {:ok, _view, html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}/meta")
+
+    assert html =~ "Start in Meta"
+    assert html =~ "Phone Number ID"
+    assert html =~ "Finish the workspace before going live"
+    assert html =~ "Data Endpoint and CTA Rules"
+  end
 
   test "saving credentials creates a connection and reveals the webhook panel", %{conn: conn} do
     user = user_fixture()
@@ -33,11 +51,29 @@ defmodule SokochatWeb.MetaLiveTest do
     assert html =~ "Meta credentials saved"
     assert html =~ "Callback URL"
     assert html =~ "/webhooks/whatsapp/#{workspace.slug}"
+    assert html =~ "Webhook still needs verification"
 
     connection = Meta.get_connection(workspace.id)
     assert connection.phone_number_id == "123456789012345"
     assert connection.access_token == "EAAG-secret"
     assert html =~ connection.verify_token
+  end
+
+  test "workspace dashboard shows Meta configured when the connection is active", %{conn: conn} do
+    user = user_fixture()
+    workspace = workspace_fixture(user)
+    endpoint_fixture(workspace)
+    cta_rule_fixture(workspace)
+    connection = connection_fixture(workspace)
+    {:ok, _} = Meta.mark_verified(connection)
+
+    {:ok, _view, html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}")
+
+    assert html =~ "Meta Connection"
+    assert html =~ "4 of 4 steps complete"
   end
 
   test "redirects when the workspace belongs to someone else", %{conn: conn} do

@@ -2,6 +2,8 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   use SokochatWeb, :live_view
 
   alias Ecto.Changeset
+  alias Sokochat.CTARules
+  alias Sokochat.Endpoints
   alias Sokochat.Meta
   alias Sokochat.Workspaces
 
@@ -11,7 +13,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
      socket
      |> assign(:page_title, "Meta Connection")
      |> assign(:workspace, nil)
-     |> assign(:connection, nil)}
+     |> assign(:connection, nil)
+     |> assign(:endpoint_configured, false)
+     |> assign(:cta_rules_configured, false)}
   end
 
   @impl true
@@ -19,11 +23,15 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
     case fetch_workspace(id, socket) do
       {:ok, workspace} ->
         connection = Meta.get_connection_or_new(workspace.id)
+        endpoint = Endpoints.get_endpoint(workspace.id)
+        cta_rules = CTARules.list_cta_rules(workspace.id)
 
         {:noreply,
          socket
          |> assign(:workspace, workspace)
          |> assign(:connection, connection)
+         |> assign(:endpoint_configured, endpoint_configured?(endpoint))
+         |> assign(:cta_rules_configured, cta_rules != [])
          |> assign_form(Meta.change_connection(connection))}
 
       :error ->
@@ -73,6 +81,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
   defp webhook_url(socket, slug), do: url(socket, ~p"/webhooks/whatsapp/#{slug}")
 
+  defp endpoint_configured?(%{url: url}) when is_binary(url), do: String.trim(url) != ""
+  defp endpoint_configured?(_), do: false
+
   defp status_badge_class("active"), do: "border-[#B7EBCF] bg-[#E8FFF3] text-brand-mid"
   defp status_badge_class("error"), do: "border-[#FFCDD2] bg-danger-bg text-danger"
   defp status_badge_class(_), do: "border-line bg-surface-alt text-ink-muted"
@@ -83,6 +94,78 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
   defp verified_label(nil), do: "Not verified yet"
   defp verified_label(%DateTime{} = at), do: Calendar.strftime(at, "%d %b %Y, %H:%M UTC")
+
+  defp meta_alerts(connection, endpoint_configured, cta_rules_configured) do
+    []
+    |> maybe_add_credentials_alert(connection)
+    |> maybe_add_webhook_alert(connection)
+    |> maybe_add_workspace_alert(endpoint_configured, cta_rules_configured)
+    |> Enum.reverse()
+  end
+
+  defp maybe_add_credentials_alert(alerts, %{id: id}) when not is_nil(id), do: alerts
+
+  defp maybe_add_credentials_alert(alerts, _connection) do
+    [
+      %{
+        tone: :warning,
+        title: "Start in Meta → WhatsApp → API Setup",
+        body:
+          "Copy your Phone Number ID, WhatsApp Business Account ID, and a long-lived access token into this form first. Saving them unlocks the webhook values below."
+      }
+      | alerts
+    ]
+  end
+
+  defp maybe_add_webhook_alert(alerts, %{id: id, webhook_verified_at: nil}) when not is_nil(id) do
+    [
+      %{
+        tone: :warning,
+        title: "Webhook still needs verification",
+        body:
+          "Use the Callback URL and Verify token below in Meta → WhatsApp → Configuration, then subscribe to the messages field so inbound messages reach this workspace."
+      }
+      | alerts
+    ]
+  end
+
+  defp maybe_add_webhook_alert(alerts, _connection), do: alerts
+
+  defp maybe_add_workspace_alert(alerts, true, true), do: alerts
+
+  defp maybe_add_workspace_alert(alerts, endpoint_configured, cta_rules_configured) do
+    missing =
+      []
+      |> maybe_add_missing("Data Endpoint", endpoint_configured)
+      |> maybe_add_missing("CTA Rules", cta_rules_configured)
+      |> Enum.join(" and ")
+
+    [
+      %{
+        tone: :info,
+        title: "Finish the workspace before going live",
+        body:
+          "#{missing} #{if String.ends_with?(missing, "Rules"), do: "are", else: "is"} still missing. Configure them so WhatsApp replies can use real business data and rich actions."
+      }
+      | alerts
+    ]
+  end
+
+  defp maybe_add_missing(items, _label, true), do: items
+  defp maybe_add_missing(items, label, false), do: items ++ [label]
+
+  defp alert_classes(:warning),
+    do: "border-[#FFD9A0] border-l-[#C77700] bg-[#FFF8ED] text-[#7A4A00]"
+
+  defp alert_classes(:info),
+    do: "border-[#BFD7FF] border-l-[#2F6FED] bg-[#F4F8FF] text-[#23448E]"
+
+  defp alert_classes(:success),
+    do: "border-[#B7EBCF] border-l-brand-mid bg-[#E8FFF3] text-brand-mid"
+
+  defp alert_icon(:warning), do: "hero-exclamation-triangle-mini"
+  defp alert_icon(:info), do: "hero-information-circle-mini"
+  defp alert_icon(:success), do: "hero-check-circle-mini"
 
   @impl true
   def render(assigns) do
@@ -108,6 +191,21 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
         </div>
 
         <div class="space-y-6 px-8 py-6">
+          <div
+            :for={alert <- meta_alerts(@connection, @endpoint_configured, @cta_rules_configured)}
+            role="alert"
+            class={[
+              "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
+              alert_classes(alert.tone)
+            ]}
+          >
+            <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
+            <div class="space-y-1">
+              <p class="font-semibold">{alert.title}</p>
+              <p>{alert.body}</p>
+            </div>
+          </div>
+
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-ink-muted">Status</span>
             <span class={[
@@ -139,8 +237,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
             />
             <p class="-mt-3 text-[13px] text-ink-muted">
               The access token is encrypted at rest. Saving new credentials resets the
-              connection to <span class="font-medium">pending</span>
-              until the webhook is re-verified.
+              connection to <span class="font-medium">pending</span> until the webhook is re-verified.
             </p>
 
             <:actions>
@@ -238,16 +335,8 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   defp checklist_item(assigns) do
     ~H"""
     <div class="flex items-center gap-2.5">
-      <.icon
-        :if={@done}
-        name="hero-check-circle-mini"
-        class="h-5 w-5 flex-none text-brand-mid"
-      />
-      <.icon
-        :if={not @done}
-        name="hero-minus-circle-mini"
-        class="h-5 w-5 flex-none text-ink-faint"
-      />
+      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-brand-mid" />
+      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-ink-faint" />
       <span class={if @done, do: "text-ink", else: "text-ink-muted"}>{@label}</span>
     </div>
     """

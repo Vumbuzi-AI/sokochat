@@ -22,7 +22,16 @@ dotenv =
 
         with false <- trimmed == "" or String.starts_with?(trimmed, "#"),
              [key, value] <- String.split(String.trim_leading(trimmed, "export "), "=", parts: 2) do
-          Map.put(acc, String.trim(key), String.trim(value))
+          value =
+            value
+            |> String.trim()
+            |> then(fn
+              "\"" <> rest -> String.trim_trailing(rest, "\"")
+              "'" <> rest -> String.trim_trailing(rest, "'")
+              other -> other
+            end)
+
+          Map.put(acc, String.trim(key), value)
         else
           _ -> acc
         end

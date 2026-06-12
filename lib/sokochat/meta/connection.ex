@@ -27,6 +27,7 @@ defmodule Sokochat.Meta.Connection do
   def credentials_changeset(connection, attrs) do
     connection
     |> cast(attrs, [:workspace_id, :phone_number_id, :waba_id, :access_token])
+    |> normalize_credential_fields()
     |> put_default_verify_token()
     |> put_change(:status, "pending")
     |> put_change(:last_error, nil)
@@ -48,6 +49,24 @@ defmodule Sokochat.Meta.Connection do
   end
 
   def statuses, do: @statuses
+
+  defp normalize_credential_fields(changeset) do
+    Enum.reduce([:phone_number_id, :waba_id, :access_token], changeset, fn field, acc ->
+      update_change(acc, field, &normalize_string/1)
+    end)
+  end
+
+  defp normalize_string(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> strip_wrapping_quotes()
+  end
+
+  defp normalize_string(value), do: value
+
+  defp strip_wrapping_quotes("\"" <> rest), do: String.trim_trailing(rest, "\"")
+  defp strip_wrapping_quotes("'" <> rest), do: String.trim_trailing(rest, "'")
+  defp strip_wrapping_quotes(value), do: value
 
   defp put_default_verify_token(changeset) do
     case get_field(changeset, :verify_token) do
