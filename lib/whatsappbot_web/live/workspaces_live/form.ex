@@ -97,44 +97,53 @@ defmodule WhatsappbotWeb.WorkspacesLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="mx-auto max-w-3xl rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
-      <div class="space-y-2">
-        <p class="text-sm font-medium text-zinc-500">Workspace details</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">{@page_title}</h1>
-        <p class="text-sm leading-6 text-zinc-600">
-          Set the business name, the AI's baseline instructions, and the languages the bot should support.
-        </p>
+    <section class="mx-auto max-w-3xl space-y-6">
+      <nav class="flex items-center gap-1.5 text-[13px] text-ink-faint">
+        <.link navigate={~p"/workspaces"} class="transition hover:text-ink-muted">Workspaces</.link>
+        <span>/</span>
+        <span class="text-ink-muted">{@page_title}</span>
+      </nav>
+
+      <div class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <div class="space-y-1.5 border-b border-line px-8 py-6">
+          <h1 class="text-[22px] font-bold tracking-tight text-ink">{@page_title}</h1>
+          <p class="text-sm leading-6 text-ink-muted">
+            Set the business name, the AI's baseline instructions, and the languages the bot should support.
+          </p>
+        </div>
+
+        <div class="px-8 py-6">
+          <.simple_form for={@form} phx-change="validate" phx-submit="save">
+            <.input field={@form[:name]} label="Name" required />
+            <.input
+              field={@form[:ai_instructions]}
+              type="textarea"
+              label="AI Instructions"
+              placeholder="You are a helpful sales assistant for..."
+            />
+            <.input
+              field={@form[:language]}
+              type="select"
+              label="Language"
+              options={[
+                {"English only", "en"},
+                {"Swahili only", "sw"},
+                {"Both", "both"}
+              ]}
+            />
+
+            <:actions>
+              <.link
+                navigate={~p"/workspaces"}
+                class="mr-auto text-sm font-medium text-ink-muted transition hover:text-ink"
+              >
+                Cancel
+              </.link>
+              <.button>{if @live_action == :new, do: "Create workspace", else: "Save changes"}</.button>
+            </:actions>
+          </.simple_form>
+        </div>
       </div>
-
-      <.simple_form for={@form} phx-change="validate" phx-submit="save">
-        <.input field={@form[:name]} label="Name" required />
-        <.input
-          field={@form[:ai_instructions]}
-          type="textarea"
-          label="AI Instructions"
-          placeholder="You are a helpful sales assistant for..."
-        />
-        <.input
-          field={@form[:language]}
-          type="select"
-          label="Language"
-          options={[
-            {"English only", "en"},
-            {"Swahili only", "sw"},
-            {"Both", "both"}
-          ]}
-        />
-
-        <:actions>
-          <.link
-            navigate={~p"/workspaces"}
-            class="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
-          >
-            Cancel
-          </.link>
-          <.button>{if @live_action == :new, do: "Create workspace", else: "Save changes"}</.button>
-        </:actions>
-      </.simple_form>
     </section>
     """
   end

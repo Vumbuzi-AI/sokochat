@@ -202,9 +202,12 @@ defmodule WhatsappbotWeb.CoreComponents do
   def simple_form(assigns) do
     ~H"""
     <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="mt-10 space-y-8 bg-white">
+      <div class="space-y-6">
         {render_slot(@inner_block, f)}
-        <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
+        <div
+          :for={action <- @actions}
+          class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6"
+        >
           {render_slot(action, f)}
         </div>
       </div>
@@ -231,8 +234,10 @@ defmodule WhatsappbotWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
+        "phx-submit-loading:opacity-75 inline-flex items-center justify-center rounded-full",
+        "bg-brand-dark px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition",
+        "hover:bg-brand-mid hover:shadow-[0_4px_12px_rgba(7,94,84,0.25)] active:scale-[0.98]",
+        "disabled:cursor-not-allowed disabled:opacity-45",
         @class
       ]}
       {@rest}
@@ -310,7 +315,7 @@ defmodule WhatsappbotWeb.CoreComponents do
 
     ~H"""
     <div>
-      <label class="flex items-center gap-4 text-sm leading-6 text-zinc-600">
+      <label class="flex items-center gap-3 text-sm leading-6 text-ink-muted">
         <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
         <input
           type="checkbox"
@@ -318,7 +323,7 @@ defmodule WhatsappbotWeb.CoreComponents do
           name={@name}
           value="true"
           checked={@checked}
-          class="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+          class="h-4 w-4 rounded border-line text-brand-dark focus:ring-brand-mid"
           {@rest}
         />
         {@label}
@@ -335,7 +340,7 @@ defmodule WhatsappbotWeb.CoreComponents do
       <select
         id={@id}
         name={@name}
-        class="mt-2 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-zinc-400 focus:ring-0 sm:text-sm"
+        class="mt-1.5 block w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition focus:border-brand-mid focus:ring-2 focus:ring-brand-mid/15"
         multiple={@multiple}
         {@rest}
       >
@@ -355,9 +360,9 @@ defmodule WhatsappbotWeb.CoreComponents do
         id={@id}
         name={@name}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
+          "mt-1.5 block w-full min-h-[6rem] rounded-lg bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition placeholder:text-ink-faint focus:ring-2",
+          @errors == [] && "border-line focus:border-brand-mid focus:ring-brand-mid/15",
+          @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
         ]}
         {@rest}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -377,9 +382,9 @@ defmodule WhatsappbotWeb.CoreComponents do
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
+          "mt-1.5 block w-full rounded-lg bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition placeholder:text-ink-faint focus:ring-2",
+          @errors == [] && "border-line focus:border-brand-mid focus:ring-brand-mid/15",
+          @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
         ]}
         {@rest}
       />
@@ -396,7 +401,7 @@ defmodule WhatsappbotWeb.CoreComponents do
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-sm font-semibold leading-6 text-zinc-800">
+    <label for={@for} class="block text-[13px] font-semibold leading-6 text-ink">
       {render_slot(@inner_block)}
     </label>
     """
@@ -409,8 +414,8 @@ defmodule WhatsappbotWeb.CoreComponents do
 
   def error(assigns) do
     ~H"""
-    <p class="mt-3 flex gap-3 text-sm leading-6 text-rose-600">
-      <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none" />
+    <p class="mt-1.5 flex gap-1.5 text-[13px] leading-6 text-danger">
+      <.icon name="hero-exclamation-circle-mini" class="mt-1 h-4 w-4 flex-none" />
       {render_slot(@inner_block)}
     </p>
     """
@@ -429,10 +434,10 @@ defmodule WhatsappbotWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8 text-zinc-800">
+        <h1 class="text-[22px] font-bold leading-8 tracking-tight text-ink">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-zinc-600">
+        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-ink-muted">
           {render_slot(@subtitle)}
         </p>
       </div>

@@ -46,7 +46,7 @@ defmodule Whatsappbot.Conversations.Dispatcher do
       ) do
     with {:ok, conversation} <-
            Conversations.get_or_create_conversation(workspace.id, phone_number, source),
-         {:ok, _user_message} <-
+         {:ok, saved_user_message} <-
            Conversations.add_message(conversation, :user, user_message,
              endpoint_snapshot: endpoint_data
            ),
@@ -58,6 +58,7 @@ defmodule Whatsappbot.Conversations.Dispatcher do
              cta: final_cta,
              tokens_used: reply.tokens
            ) do
+      maybe_broadcast_to_playground(workspace.id, source, saved_user_message)
       Conversations.broadcast_new_message(assistant_message)
       maybe_broadcast_to_playground(workspace.id, source, assistant_message)
       {:ok, assistant_message}

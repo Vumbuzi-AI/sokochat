@@ -1,5 +1,147 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* This file is for your main application CSS */
+/* ------------------------------------------------------------------ *
+ * Design tokens (mirror tailwind.config.js for raw CSS usage)
+ * ------------------------------------------------------------------ */
+:root {
+  --color-brand-dark: #075e54;
+  --color-brand-mid: #128c7e;
+  --color-brand-light: #25d366;
+  --color-brand-pale: #dcf8c6;
+  --color-chat-bg: #ece5dd;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f8fa;
+  --color-ink-primary: #111b21;
+  --color-ink-secondary: #54656f;
+  --color-ink-tertiary: #8696a0;
+  --color-border: #e9edef;
+  --color-error: #ff3b30;
+  --color-error-bg: #fff2f2;
+  --color-warning: #ff9500;
+  --color-code-bg: #1e2a32;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ------------------------------------------------------------------ *
+ * Accessibility — focus rings
+ * ------------------------------------------------------------------ */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-brand-light);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Code blocks — JSON syntax highlight + custom scrollbar
+ * ------------------------------------------------------------------ */
+.code-panel {
+  background: var(--color-code-bg);
+  color: #a8c4d0;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.code-panel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.code-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.code-panel::-webkit-scrollbar-thumb {
+  background: #3d5a6b;
+  border-radius: 3px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Animations
+ * ------------------------------------------------------------------ */
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes token-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.25);
+  }
+}
+
+.animate-bubble-in {
+  animation: bubble-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-progress {
+  animation: progress-fill 600ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------------------ *
+ * Respect reduced motion
+ * ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transform: none !important;
+  }
+}

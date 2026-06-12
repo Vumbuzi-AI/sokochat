@@ -152,98 +152,112 @@ defmodule WhatsappbotWeb.WorkspacesLive.Endpoint do
   @impl true
   def render(assigns) do
     ~H"""
-    <section
-      :if={@workspace}
-      class="mx-auto max-w-4xl space-y-6 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
-    >
-      <div class="space-y-2">
-        <p class="text-sm font-medium text-zinc-500">{@workspace.name}</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Data Endpoint</h1>
-        <p class="max-w-3xl text-sm leading-6 text-zinc-600">
-          Connect the JSON endpoint the bot should read from so responses stay current with the business data.
-        </p>
-      </div>
+    <section :if={@workspace} class="mx-auto max-w-3xl space-y-6">
+      <nav class="flex items-center gap-1.5 text-[13px] text-ink-faint">
+        <.link navigate={~p"/workspaces"} class="transition hover:text-ink-muted">Workspaces</.link>
+        <span>/</span>
+        <.link navigate={~p"/workspaces/#{@workspace.id}"} class="transition hover:text-ink-muted">
+          {@workspace.name}
+        </.link>
+        <span>/</span>
+        <span class="text-ink-muted">Data Endpoint</span>
+      </nav>
 
-      <div
-        :if={@endpoint.last_fetched_at}
-        class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-      >
-        Last fetched: {last_fetched_label(@endpoint.last_fetched_at)}
-      </div>
+      <div class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <div class="space-y-1.5 border-b border-line px-8 py-6">
+          <h1 class="text-[22px] font-bold tracking-tight text-ink">Data Endpoint</h1>
+          <p class="max-w-2xl text-sm leading-6 text-ink-muted">
+            Connect the JSON endpoint the bot should read from so responses stay current with the business data.
+          </p>
+        </div>
 
-      <div
-        :if={@test_error}
-        class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
-      >
-        {@test_error}
-      </div>
-
-      <.simple_form for={@form} phx-change="validate" phx-submit="submit">
-        <.input field={@form[:url]} label="URL" required />
-        <.input
-          field={@form[:method]}
-          type="select"
-          label="Method"
-          options={[{"GET", "GET"}, {"POST", "POST"}]}
-        />
-        <.input
-          field={@form[:headers_text]}
-          type="textarea"
-          label="Headers"
-          placeholder="Authorization: Bearer token\nAccept: application/json"
-        />
-
-        <.input
-          :if={@form[:method].value == "POST"}
-          field={@form[:body_template]}
-          type="textarea"
-          label="Body template"
-          placeholder={"{\"query\": \"{{query}}\"}"}
-        />
-        <p :if={@form[:method].value == "POST"} class="text-sm text-zinc-500">
-          Use <code>{"{{query}}"}</code>
-          anywhere in the JSON body where the buyer's query should be inserted.
-        </p>
-
-        <.input
-          field={@form[:refresh_strategy]}
-          type="select"
-          label="Refresh strategy"
-          options={[
-            {"On demand", "on_demand"},
-            {"Every 60s", "poll_60s"},
-            {"Every 5 min", "poll_300s"}
-          ]}
-        />
-
-        <:actions>
-          <.link
-            navigate={~p"/workspaces/#{@workspace.id}"}
-            class="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+        <div class="space-y-6 px-8 py-6">
+          <div
+            :if={@endpoint.last_fetched_at}
+            class="flex items-center gap-2 rounded-lg border border-[#B7EBCF] bg-[#E8FFF3] px-4 py-2.5 text-[13px] font-medium text-brand-mid"
           >
-            Back to dashboard
-          </.link>
-          <button
-            type="submit"
-            name="endpoint[action]"
-            value="test"
-            class="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            Test connection
-          </button>
-          <.button name="endpoint[action]" value="save">Save endpoint</.button>
-        </:actions>
-      </.simple_form>
+            <.icon name="hero-check-circle-mini" class="h-4 w-4" />
+            Last fetched: {last_fetched_label(@endpoint.last_fetched_at)}
+          </div>
 
-      <details
-        :if={@preview_json}
-        open
-        class="rounded-xl border border-zinc-200 bg-zinc-950 text-zinc-100"
-      >
-        <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">
-          {@preview_label || "JSON preview"}
+          <div
+            :if={@test_error}
+            role="alert"
+            class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-ink-muted"
+          >
+            <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-danger" />
+            <span>{@test_error}</span>
+          </div>
+
+          <.simple_form for={@form} phx-change="validate" phx-submit="submit">
+            <.input field={@form[:url]} label="URL" required />
+            <.input
+              field={@form[:method]}
+              type="select"
+              label="Method"
+              options={[{"GET", "GET"}, {"POST", "POST"}]}
+            />
+            <.input
+              field={@form[:headers_text]}
+              type="textarea"
+              label="Headers"
+              placeholder="Authorization: Bearer token\nAccept: application/json"
+            />
+
+            <.input
+              :if={@form[:method].value == "POST"}
+              field={@form[:body_template]}
+              type="textarea"
+              label="Body template"
+              placeholder={"{\"query\": \"{{query}}\"}"}
+            />
+            <p :if={@form[:method].value == "POST"} class="-mt-3 text-[13px] text-ink-muted">
+              Use
+              <code class="rounded bg-surface-alt px-1.5 py-0.5 font-mono text-xs text-ink">{"{{query}}"}</code>
+              anywhere in the JSON body where the buyer's query should be inserted.
+            </p>
+
+            <.input
+              field={@form[:refresh_strategy]}
+              type="select"
+              label="Refresh strategy"
+              options={[
+                {"On demand", "on_demand"},
+                {"Every 60s", "poll_60s"},
+                {"Every 5 min", "poll_300s"}
+              ]}
+            />
+
+            <:actions>
+              <.link
+                navigate={~p"/workspaces/#{@workspace.id}"}
+                class="mr-auto text-sm font-medium text-ink-muted transition hover:text-ink"
+              >
+                Back to dashboard
+              </.link>
+              <button
+                type="submit"
+                name="endpoint[action]"
+                value="test"
+                class="inline-flex items-center justify-center rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-alt"
+              >
+                Test connection
+              </button>
+              <.button name="endpoint[action]" value="save">Save endpoint</.button>
+            </:actions>
+          </.simple_form>
+        </div>
+      </div>
+
+      <details :if={@preview_json} open class="group overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <summary class="flex cursor-pointer list-none items-center justify-between px-5 py-4">
+          <span class="text-sm font-semibold text-ink">{@preview_label || "JSON preview"}</span>
+          <.icon
+            name="hero-chevron-down-mini"
+            class="h-4 w-4 text-ink-faint transition group-open:rotate-180"
+          />
         </summary>
-        <pre class="overflow-x-auto border-t border-zinc-800 px-4 py-4 text-xs leading-6"><%= @preview_json %></pre>
+        <pre class="code-panel overflow-x-auto px-5 py-4"><%= @preview_json %></pre>
       </details>
     </section>
     """

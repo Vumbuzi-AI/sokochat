@@ -10,6 +10,7 @@ defmodule Whatsappbot.Endpoints do
 
   @default_query "test"
   @pubsub Whatsappbot.PubSub
+  @max_retries 10
 
   def get_endpoint(workspace_id) do
     Repo.get_by(Endpoint, workspace_id: workspace_id)
@@ -106,7 +107,11 @@ defmodule Whatsappbot.Endpoints do
         Application.get_env(:whatsappbot, :endpoint_req_options, [])
 
     default_options
-    |> Keyword.merge(url: endpoint.url, headers: normalize_headers(endpoint.headers))
+    |> Keyword.merge(
+      url: endpoint.url,
+      max_retries: @max_retries,
+      headers: normalize_headers(endpoint.headers)
+    )
     |> Keyword.merge(extra)
   end
 

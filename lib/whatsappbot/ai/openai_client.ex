@@ -4,6 +4,8 @@ defmodule Whatsappbot.AI.OpenAIClient do
   """
 
   @api_url "https://api.openai.com/v1/responses"
+  @max_retries 10
+
   def chat(messages, system_prompt) when is_list(messages) and is_binary(system_prompt) do
     openai_config = Application.fetch_env!(:whatsappbot, :openai)
 
@@ -34,6 +36,7 @@ defmodule Whatsappbot.AI.OpenAIClient do
     default_options
     |> Keyword.merge(
       url: @api_url,
+      max_retries: @max_retries,
       headers: [
         {"authorization", "Bearer #{Keyword.fetch!(openai_config, :api_key)}"},
         {"content-type", "application/json"}
@@ -240,6 +243,8 @@ defmodule Whatsappbot.AI.OpenAIClient do
         payload:
           payload_schema(
             %{
+              title: %{type: "string"},
+              body: %{type: "string"},
               buttons: %{
                 type: "array",
                 items: %{type: "string"},
@@ -263,9 +268,12 @@ defmodule Whatsappbot.AI.OpenAIClient do
         payload:
           payload_schema(
             %{
+              title: %{type: "string"},
+              body: %{type: "string"},
               items: %{
                 type: "array",
                 minItems: 1,
+                maxItems: 6,
                 items: %{
                   type: "object",
                   additionalProperties: false,

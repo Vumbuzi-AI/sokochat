@@ -73,13 +73,32 @@ defmodule Whatsappbot.Conversations.ProductCTA do
   defp best_product(endpoint_data, texts) do
     products = collect_products(endpoint_data)
 
+    case scored_products(products, texts) do
+      [{_score, product}] ->
+        product
+
+      _multiple_or_none ->
+        nil
+    end
+  end
+
+  defp scored_products(products, texts) do
+    singleton? = length(products) == 1
+
     products
-    |> Enum.map(&{score_product(&1, texts, length(products) == 1), &1})
+    |> Enum.map(&{score_product(&1, texts, singleton?), &1})
     |> Enum.filter(fn {score, _product} -> score > 0 end)
-    |> Enum.max_by(fn {score, product} -> {score, preview_richness(product)} end, fn -> nil end)
     |> case do
-      nil -> nil
-      {_score, product} -> product
+      [] ->
+        []
+
+      scored ->
+        top_score =
+          scored
+          |> Enum.map(fn {score, _product} -> score end)
+          |> Enum.max()
+
+        Enum.filter(scored, fn {score, _product} -> score == top_score end)
     end
   end
 
@@ -120,7 +139,13 @@ defmodule Whatsappbot.Conversations.ProductCTA do
         do: 1,
         else: 0
 
-    base_score + token_score + fallback_score + preview_richness(product)
+    match_score = base_score + token_score + fallback_score
+
+    if match_score > 0 do
+      match_score + preview_richness(product)
+    else
+      0
+    end
   end
 
   defp singleton_product_hint?(product, texts) do

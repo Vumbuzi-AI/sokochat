@@ -39,29 +39,42 @@ defmodule WhatsappbotWeb.WorkspacesLive.Section do
   @impl true
   def render(assigns) do
     ~H"""
-    <section
-      :if={assigns[:workspace]}
-      class="mx-auto max-w-3xl rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
-    >
-      <div class="space-y-2">
-        <p class="text-sm font-medium text-zinc-500">{@workspace.name}</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">{@page_title}</h1>
-        <p class="text-sm leading-6 text-zinc-600">
-          This section is scaffolded so the dashboard flow is complete. The detailed configuration arrives in the next task group.
-        </p>
-      </div>
+    <section :if={assigns[:workspace]} class="mx-auto max-w-3xl space-y-6">
+      <nav class="flex items-center gap-1.5 text-[13px] text-ink-faint">
+        <.link navigate={~p"/workspaces"} class="transition hover:text-ink-muted">Workspaces</.link>
+        <span>/</span>
+        <.link navigate={~p"/workspaces/#{@workspace.id}"} class="transition hover:text-ink-muted">
+          {@workspace.name}
+        </.link>
+        <span>/</span>
+        <span class="text-ink-muted">{@page_title}</span>
+      </nav>
 
-      <div class="mt-8 rounded-xl bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
-        <p>The workspace route and ownership checks are in place.</p>
-        <p class="mt-2">Continue from the dashboard once the next setup step is implemented.</p>
-      </div>
+      <div class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <div class="space-y-1.5 border-b border-line px-8 py-6">
+          <h1 class="text-[22px] font-bold tracking-tight text-ink">{@page_title}</h1>
+          <p class="text-sm leading-6 text-ink-muted">
+            This section is scaffolded so the dashboard flow is complete. The detailed configuration arrives in the next task group.
+          </p>
+        </div>
 
-      <.link
-        navigate={~p"/workspaces/#{@workspace.id}"}
-        class="mt-6 inline-flex items-center text-sm font-semibold text-zinc-900 hover:text-zinc-700"
-      >
-        Back to dashboard
-      </.link>
+        <div class="px-8 py-6">
+          <div class="flex items-start gap-3 rounded-xl border border-line bg-surface-alt px-5 py-4 text-sm leading-6 text-ink-muted">
+            <.icon name="hero-wrench-screwdriver" class="mt-0.5 h-5 w-5 flex-none text-brand-mid" />
+            <div>
+              <p class="font-medium text-ink">Coming soon</p>
+              <p class="mt-1">The workspace route and ownership checks are in place. Continue from the dashboard once the next setup step is implemented.</p>
+            </div>
+          </div>
+
+          <.link
+            navigate={~p"/workspaces/#{@workspace.id}"}
+            class="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"
+          >
+            <.icon name="hero-arrow-left-mini" class="h-4 w-4" /> Back to dashboard
+          </.link>
+        </div>
+      </div>
     </section>
     """
   end

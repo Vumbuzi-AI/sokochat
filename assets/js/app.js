@@ -48,6 +48,48 @@ Hooks.ClipboardCopy = {
   }
 }
 
+Hooks.TokenCounter = {
+  updated() {
+    if (this.el.textContent === this.lastValue) return
+    this.lastValue = this.el.textContent
+    this.el.style.animation = "none"
+    // force reflow so the animation restarts
+    void this.el.offsetWidth
+    this.el.style.animation = "token-pop 300ms cubic-bezier(0.4, 0, 0.2, 1)"
+  },
+  mounted() {
+    this.lastValue = this.el.textContent
+  }
+}
+
+Hooks.PlaygroundScroll = {
+  mounted() {
+    this.lastSignature = this.signature()
+    this.handleEvent("playground:scroll-bottom", () => this.scrollToBottom())
+    window.requestAnimationFrame(() => this.scrollToBottom("auto"))
+  },
+  updated() {
+    let nextSignature = this.signature()
+
+    if (nextSignature === this.lastSignature) return
+
+    this.lastSignature = nextSignature
+    window.requestAnimationFrame(() => this.scrollToBottom())
+  },
+  signature() {
+    return `${this.el.dataset.messageCount || "0"}:${this.el.dataset.pending || "false"}`
+  },
+  scrollToBottom(behavior) {
+    this.el.scrollTo({
+      top: this.el.scrollHeight,
+      behavior: behavior || this.scrollBehavior()
+    })
+  },
+  scrollBehavior() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+  }
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,

@@ -14,8 +14,41 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: "#FD4F00",
-      }
+        brand: {
+          DEFAULT: "#075E54",
+          dark: "#075E54",
+          mid: "#128C7E",
+          light: "#25D366",
+          pale: "#DCF8C6",
+        },
+        chat: "#ECE5DD",
+        surface: {
+          DEFAULT: "#FFFFFF",
+          alt: "#F7F8FA",
+          2: "#F7F8FA",
+        },
+        ink: {
+          DEFAULT: "#111B21",
+          muted: "#54656F",
+          faint: "#8696A0",
+        },
+        line: "#E9EDEF",
+        danger: {
+          DEFAULT: "#FF3B30",
+          bg: "#FFF2F2",
+        },
+        warn: "#FF9500",
+        codebg: "#1E2A32",
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "ui-monospace", "monospace"],
+      },
+      boxShadow: {
+        card: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+        panel: "0 4px 16px rgba(0,0,0,0.08)",
+        float: "0 8px 32px rgba(0,0,0,0.12)",
+      },
     },
   },
   plugins: [
