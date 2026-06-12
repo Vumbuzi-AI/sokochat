@@ -1,7 +1,7 @@
-defmodule WhatsappbotWeb.UserRegistrationControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.UserRegistrationControllerTest do
+  use SokochatWeb.ConnCase, async: true
 
-  import Whatsappbot.AccountsFixtures
+  import Sokochat.AccountsFixtures
 
   describe "GET /users/register" do
     test "renders registration page", %{conn: conn} do

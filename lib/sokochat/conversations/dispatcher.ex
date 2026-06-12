@@ -1,16 +1,16 @@
-defmodule Whatsappbot.Conversations.Dispatcher do
+defmodule Sokochat.Conversations.Dispatcher do
   @moduledoc """
   Orchestrates inbound conversation handling for playground and channel integrations.
   """
 
-  alias Whatsappbot.AI.ContextBuilder
-  alias Whatsappbot.AI.CtaInjector
-  alias Whatsappbot.AI.OpenAIClient
-  alias Whatsappbot.Conversations
-  alias Whatsappbot.Conversations.ProductCTA
-  alias Whatsappbot.Endpoints
-  alias Whatsappbot.Repo
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.AI.ContextBuilder
+  alias Sokochat.AI.CtaInjector
+  alias Sokochat.AI.OpenAIClient
+  alias Sokochat.Conversations
+  alias Sokochat.Conversations.ProductCTA
+  alias Sokochat.Endpoints
+  alias Sokochat.Repo
+  alias Sokochat.Workspaces.Workspace
 
   def dispatch(workspace_id, phone_number, user_message, source \\ :playground) do
     with {:ok, prepared} <- prepare_dispatch(workspace_id) do
@@ -83,7 +83,7 @@ defmodule Whatsappbot.Conversations.Dispatcher do
   end
 
   defp cta_rules_for(workspace_id) do
-    module = Whatsappbot.CTARules
+    module = Sokochat.CTARules
 
     if Code.ensure_loaded?(module) and function_exported?(module, :list_cta_rules, 1) do
       apply(module, :list_cta_rules, [workspace_id])

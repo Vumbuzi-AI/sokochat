@@ -1,12 +1,12 @@
-defmodule Whatsappbot.Meta do
+defmodule Sokochat.Meta do
   @moduledoc """
   The Meta context. Manages the single WhatsApp Cloud API connection per workspace.
   """
 
   import Ecto.Query, warn: false
 
-  alias Whatsappbot.Meta.Connection
-  alias Whatsappbot.Repo
+  alias Sokochat.Meta.Connection
+  alias Sokochat.Repo
 
   @doc "Returns the workspace's Meta connection, or nil."
   def get_connection(workspace_id) do

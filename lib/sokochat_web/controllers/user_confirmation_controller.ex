@@ -1,7 +1,7 @@
-defmodule WhatsappbotWeb.UserConfirmationController do
-  use WhatsappbotWeb, :controller
+defmodule SokochatWeb.UserConfirmationController do
+  use SokochatWeb, :controller
 
-  alias Whatsappbot.Accounts
+  alias Sokochat.Accounts
 
   def new(conn, _params) do
     render(conn, :new)

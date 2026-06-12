@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.CreateMetaConnections do
+defmodule Sokochat.Repo.Migrations.CreateMetaConnections do
   use Ecto.Migration
 
   def change do

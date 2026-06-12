@@ -1,13 +1,13 @@
-defmodule WhatsappbotWeb.Router do
-  use WhatsappbotWeb, :router
+defmodule SokochatWeb.Router do
+  use SokochatWeb, :router
 
-  import WhatsappbotWeb.UserAuth
+  import SokochatWeb.UserAuth
 
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
-    plug :put_root_layout, html: {WhatsappbotWeb.Layouts, :root}
+    plug :put_root_layout, html: {SokochatWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
@@ -17,19 +17,19 @@ defmodule WhatsappbotWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", WhatsappbotWeb do
+  scope "/", SokochatWeb do
     pipe_through :browser
 
     get "/", PageController, :home
   end
 
-  scope "/api", WhatsappbotWeb do
+  scope "/api", SokochatWeb do
     pipe_through :api
 
     get "/test/products", ProductController, :index
   end
 
-  scope "/webhooks", WhatsappbotWeb do
+  scope "/webhooks", SokochatWeb do
     pipe_through :api
 
     get "/whatsapp/:slug", WebhookController, :handle_verification
@@ -37,12 +37,12 @@ defmodule WhatsappbotWeb.Router do
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", WhatsappbotWeb do
+  # scope "/api", SokochatWeb do
   #   pipe_through :api
   # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
-  if Application.compile_env(:whatsappbot, :dev_routes) do
+  if Application.compile_env(:sokochat, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
     # If your application does not have an admins-only section yet,
@@ -53,14 +53,14 @@ defmodule WhatsappbotWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: WhatsappbotWeb.Telemetry
+      live_dashboard "/dashboard", metrics: SokochatWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
 
   ## Authentication routes
 
-  scope "/", WhatsappbotWeb do
+  scope "/", SokochatWeb do
     pipe_through [:browser, :redirect_if_user_is_authenticated]
 
     get "/users/register", UserRegistrationController, :new
@@ -73,7 +73,7 @@ defmodule WhatsappbotWeb.Router do
     put "/users/reset_password/:token", UserResetPasswordController, :update
   end
 
-  scope "/", WhatsappbotWeb do
+  scope "/", SokochatWeb do
     pipe_through [:browser, :require_authenticated_user]
 
     get "/users/settings", UserSettingsController, :edit
@@ -81,11 +81,11 @@ defmodule WhatsappbotWeb.Router do
     get "/users/settings/confirm_email/:token", UserSettingsController, :confirm_email
   end
 
-  scope "/", WhatsappbotWeb do
+  scope "/", SokochatWeb do
     pipe_through [:browser]
 
     live_session :require_authenticated_user,
-      on_mount: [{WhatsappbotWeb.UserAuth, :ensure_authenticated}] do
+      on_mount: [{SokochatWeb.UserAuth, :ensure_authenticated}] do
       live "/workspaces", WorkspacesLive.Index, :index
       live "/workspaces/new", WorkspacesLive.Form, :new
       live "/workspaces/:id", WorkspacesLive.Show, :show
@@ -97,7 +97,7 @@ defmodule WhatsappbotWeb.Router do
     end
   end
 
-  scope "/", WhatsappbotWeb do
+  scope "/", SokochatWeb do
     pipe_through [:browser]
 
     delete "/users/log_out", UserSessionController, :delete

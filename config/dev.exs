@@ -1,11 +1,11 @@
 import Config
 
 # Configure your database
-config :whatsappbot, Whatsappbot.Repo,
+config :sokochat, Sokochat.Repo,
   username: System.get_env("DB_USERNAME") || "postgres",
   password: System.get_env("DB_PASSWORD") || "postgres",
   hostname: System.get_env("DB_HOST") || "localhost",
-  database: System.get_env("DB_NAME") || "whatsappbot_dev",
+  database: System.get_env("DB_NAME") || "sokochat_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -17,7 +17,7 @@ config :whatsappbot, Whatsappbot.Repo,
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
 # Binding to loopback ipv4 address prevents access from other machines.
-config :whatsappbot, WhatsappbotWeb.Endpoint,
+config :sokochat, SokochatWeb.Endpoint,
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: 4000],
   check_origin: false,
@@ -25,8 +25,8 @@ config :whatsappbot, WhatsappbotWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "bIGBJ11jXEGrOXNeW+T53aj8B8UMmBgEtIrHYK3ABY+cZUM4chXE5IpZ52BTt9Mr",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:whatsappbot, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:whatsappbot, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:sokochat, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:sokochat, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -53,17 +53,17 @@ config :whatsappbot, WhatsappbotWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :whatsappbot, WhatsappbotWeb.Endpoint,
+config :sokochat, SokochatWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/whatsappbot_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/sokochat_web/(controllers|live|components)/.*(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :whatsappbot, dev_routes: true
+config :sokochat, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"

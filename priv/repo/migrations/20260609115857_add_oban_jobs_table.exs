@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.AddObanJobsTable do
+defmodule Sokochat.Repo.Migrations.AddObanJobsTable do
   use Ecto.Migration
 
   def up, do: Oban.Migrations.up()

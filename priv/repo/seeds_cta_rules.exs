@@ -8,9 +8,9 @@
 
 import Ecto.Query
 
-alias Whatsappbot.CTARules
-alias Whatsappbot.Repo
-alias Whatsappbot.Workspaces.Workspace
+alias Sokochat.CTARules
+alias Sokochat.Repo
+alias Sokochat.Workspaces.Workspace
 
 slug = System.get_env("WA_WORKSPACE_SLUG") || "sokopawa"
 

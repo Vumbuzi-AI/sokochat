@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Accounts.User do
+defmodule Sokochat.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -84,7 +84,7 @@ defmodule Whatsappbot.Accounts.User do
   defp maybe_validate_unique_email(changeset, opts) do
     if Keyword.get(opts, :validate_email, true) do
       changeset
-      |> unsafe_validate_unique(:email, Whatsappbot.Repo)
+      |> unsafe_validate_unique(:email, Sokochat.Repo)
       |> unique_constraint(:email)
     else
       changeset
@@ -139,7 +139,7 @@ defmodule Whatsappbot.Accounts.User do
   If there is no user or the user doesn't have a password, we call
   `Bcrypt.no_user_verify/0` to avoid timing attacks.
   """
-  def valid_password?(%Whatsappbot.Accounts.User{hashed_password: hashed_password}, password)
+  def valid_password?(%Sokochat.Accounts.User{hashed_password: hashed_password}, password)
       when is_binary(hashed_password) and byte_size(password) > 0 do
     Bcrypt.verify_pass(password, hashed_password)
   end

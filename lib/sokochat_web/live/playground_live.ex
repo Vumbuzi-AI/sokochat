@@ -1,11 +1,11 @@
-defmodule WhatsappbotWeb.PlaygroundLive do
-  use WhatsappbotWeb, :live_view
+defmodule SokochatWeb.PlaygroundLive do
+  use SokochatWeb, :live_view
 
-  alias Whatsappbot.Conversations
-  alias Whatsappbot.Conversations.Dispatcher
-  alias Whatsappbot.Conversations.Message
-  alias Whatsappbot.Endpoints
-  alias Whatsappbot.Workspaces
+  alias Sokochat.Conversations
+  alias Sokochat.Conversations.Dispatcher
+  alias Sokochat.Conversations.Message
+  alias Sokochat.Endpoints
+  alias Sokochat.Workspaces
 
   @impl true
   def mount(_params, _session, socket) do

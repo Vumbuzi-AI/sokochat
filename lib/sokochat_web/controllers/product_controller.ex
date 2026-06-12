@@ -1,5 +1,5 @@
-defmodule WhatsappbotWeb.ProductController do
-  use WhatsappbotWeb, :controller
+defmodule SokochatWeb.ProductController do
+  use SokochatWeb, :controller
 
   @products [
     %{

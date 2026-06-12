@@ -16,8 +16,8 @@ The actual **Meta / WhatsApp live integration is not finished yet**.
 
 As of now:
 
-- `/workspaces/:id/meta` exists, but it is still a placeholder screen in [lib/whatsappbot_web/live/workspaces_live/section.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot_web/live/workspaces_live/section.ex:36)
-- webhook routes are **not** in [lib/whatsappbot_web/router.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot_web/router.ex:1)
+- `/workspaces/:id/meta` exists, but it is still a placeholder screen in [lib/sokochat_web/live/workspaces_live/section.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat_web/live/workspaces_live/section.ex:36)
+- webhook routes are **not** in [lib/sokochat_web/router.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat_web/router.ex:1)
 - there is no Meta connection schema yet
 - there is no webhook controller yet
 - there is no worker yet for inbound WhatsApp messages
@@ -44,7 +44,7 @@ Checklist:
 Why this matters:
 
 - the live WhatsApp channel should reuse the same bot behavior the Playground already validated
-- your dispatcher already does that in [lib/whatsappbot/conversations/dispatcher.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot/conversations/dispatcher.ex:10)
+- your dispatcher already does that in [lib/sokochat/conversations/dispatcher.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat/conversations/dispatcher.ex:10)
 
 Do not start webhook work until the Playground replies look correct.
 
@@ -82,7 +82,7 @@ Also make sure your business/domain setup can support:
 
 Create a table to store one WhatsApp connection per workspace.
 
-Use the task plan in [tasks.md](/Users/michaelmunavu/Documents/projects/whatsappbot/tasks.md:432) as the base. The intended schema is:
+Use the task plan in [tasks.md](/Users/michaelmunavu/Documents/projects/sokochat/tasks.md:432) as the base. The intended schema is:
 
 ```bash
 mix phx.gen.schema Meta.Connection meta_connections \
@@ -105,7 +105,7 @@ Implementation notes:
 
 Files to add:
 
-- `lib/whatsappbot/meta/connection.ex`
+- `lib/sokochat/meta/connection.ex`
 - migration under `priv/repo/migrations/...`
 
 ---
@@ -116,12 +116,12 @@ Do not store the Meta access token as plain text.
 
 This repo already has encryption support through:
 
-- [lib/whatsappbot/vault.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot/vault.ex:1)
-- `ENCRYPTION_KEY` in [config/runtime.exs](/Users/michaelmunavu/Documents/projects/whatsappbot/config/runtime.exs:56)
+- [lib/sokochat/vault.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat/vault.ex:1)
+- `ENCRYPTION_KEY` in [config/runtime.exs](/Users/michaelmunavu/Documents/projects/sokochat/config/runtime.exs:56)
 
 What to add:
 
-- `lib/whatsappbot/encrypted/string.ex`
+- `lib/sokochat/encrypted/string.ex`
 
 Use the same pattern already used for encrypted endpoint-style fields in the project.
 
@@ -138,7 +138,7 @@ The route already exists:
 
 - `/workspaces/:id/meta`
 
-Right now it only shows a placeholder in [lib/whatsappbot_web/live/workspaces_live/section.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot_web/live/workspaces_live/section.ex:36).
+Right now it only shows a placeholder in [lib/sokochat_web/live/workspaces_live/section.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat_web/live/workspaces_live/section.ex:36).
 
 Replace that placeholder with a real setup screen.
 
@@ -172,7 +172,7 @@ Webhook URL format:
 https://your-domain.com/webhooks/whatsapp/<workspace.slug>
 ```
 
-The workspace already has a slug field in [lib/whatsappbot/workspaces/workspace.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot/workspaces/workspace.ex:8).
+The workspace already has a slug field in [lib/sokochat/workspaces/workspace.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat/workspaces/workspace.ex:8).
 
 ### Step 5.3 Status panel
 
@@ -187,7 +187,7 @@ Show:
 
 ## Step 6. Add webhook routes
 
-Add these routes to [lib/whatsappbot_web/router.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot_web/router.ex:1):
+Add these routes to [lib/sokochat_web/router.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat_web/router.ex:1):
 
 ```elixir
 get "/webhooks/whatsapp/:slug", WebhookController, :handle_verification
@@ -207,7 +207,7 @@ Why:
 
 Create:
 
-- `lib/whatsappbot_web/controllers/webhook_controller.ex`
+- `lib/sokochat_web/controllers/webhook_controller.ex`
 
 ### GET verification endpoint
 
@@ -255,7 +255,7 @@ Important:
 
 Create:
 
-- `lib/whatsappbot/workers/process_inbound_message.ex`
+- `lib/sokochat/workers/process_inbound_message.ex`
 
 Inputs:
 
@@ -276,7 +276,7 @@ This is the key reuse point:
 - the Playground already uses the same conversation engine
 - the live channel should only change the transport layer, not the AI logic
 
-Use [lib/whatsappbot/conversations/dispatcher.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot/conversations/dispatcher.ex:10) as the integration seam.
+Use [lib/sokochat/conversations/dispatcher.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat/conversations/dispatcher.ex:10) as the integration seam.
 
 Also add:
 
@@ -290,7 +290,7 @@ Also add:
 
 Create:
 
-- `lib/whatsappbot/meta/sender.ex`
+- `lib/sokochat/meta/sender.ex`
 
 Responsibility:
 
@@ -310,8 +310,8 @@ It needs to support:
 
 The CTA types already exist in the app, especially in:
 
-- [lib/whatsappbot/cta_rules/cta_rule.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot/cta_rules/cta_rule.ex:1)
-- [lib/whatsappbot_web/live/playground_live.ex](/Users/michaelmunavu/Documents/projects/whatsappbot/lib/whatsappbot_web/live/playground_live.ex:212)
+- [lib/sokochat/cta_rules/cta_rule.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat/cta_rules/cta_rule.ex:1)
+- [lib/sokochat_web/live/playground_live.ex](/Users/michaelmunavu/Documents/projects/sokochat/lib/sokochat_web/live/playground_live.ex:212)
 
 Important implementation note:
 
@@ -346,7 +346,7 @@ Production settings already expected by this repo include:
 - `ENCRYPTION_KEY`
 - `OPENAI_API_KEY`
 
-See [config/runtime.exs](/Users/michaelmunavu/Documents/projects/whatsappbot/config/runtime.exs:43) for the current runtime configuration.
+See [config/runtime.exs](/Users/michaelmunavu/Documents/projects/sokochat/config/runtime.exs:43) for the current runtime configuration.
 
 Before webhook setup, confirm this works:
 
@@ -418,7 +418,7 @@ Minimum tests:
 - Meta sender builds valid payloads for each CTA type
 - worker handles sender/API failures cleanly
 
-This matches the unfinished integration tasks already listed in [tasks.md](/Users/michaelmunavu/Documents/projects/whatsappbot/tasks.md:500).
+This matches the unfinished integration tasks already listed in [tasks.md](/Users/michaelmunavu/Documents/projects/sokochat/tasks.md:500).
 
 ---
 

@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.CreateWorkspaces do
+defmodule Sokochat.Repo.Migrations.CreateWorkspaces do
   use Ecto.Migration
 
   def change do

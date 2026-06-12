@@ -1,4 +1,4 @@
-defmodule Whatsappbot.AI.ContextBuilder do
+defmodule Sokochat.AI.ContextBuilder do
   @moduledoc """
   Builds the AI system prompt from workspace configuration and live business data.
   """

@@ -1,7 +1,7 @@
-defmodule WhatsappbotWeb.WorkspacesLive.Section do
-  use WhatsappbotWeb, :live_view
+defmodule SokochatWeb.WorkspacesLive.Section do
+  use SokochatWeb, :live_view
 
-  alias Whatsappbot.Workspaces
+  alias Sokochat.Workspaces
 
   @impl true
   def mount(_params, _session, socket) do

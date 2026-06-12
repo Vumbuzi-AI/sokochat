@@ -1,7 +1,7 @@
-defmodule Whatsappbot.AI.CtaInjectorTest do
+defmodule Sokochat.AI.CtaInjectorTest do
   use ExUnit.Case, async: true
 
-  alias Whatsappbot.AI.CtaInjector
+  alias Sokochat.AI.CtaInjector
 
   test "inject_cta_rules/2 appends numbered CTA rules" do
     prompt = "Base prompt"

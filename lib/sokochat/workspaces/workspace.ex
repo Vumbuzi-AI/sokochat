@@ -1,8 +1,8 @@
-defmodule Whatsappbot.Workspaces.Workspace do
+defmodule Sokochat.Workspaces.Workspace do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Accounts.User
+  alias Sokochat.Accounts.User
 
   schema "workspaces" do
     belongs_to :account, User, foreign_key: :account_id

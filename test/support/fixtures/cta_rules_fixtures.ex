@@ -1,4 +1,4 @@
-defmodule Whatsappbot.CTARulesFixtures do
+defmodule Sokochat.CTARulesFixtures do
   @moduledoc """
   Test helpers for CTA rules.
   """
@@ -16,7 +16,7 @@ defmodule Whatsappbot.CTARulesFixtures do
     cta_rule_attrs = valid_cta_rule_attributes(attrs)
 
     {:ok, rule} =
-      Whatsappbot.CTARules.create_cta_rule(workspace.id, cta_rule_attrs)
+      Sokochat.CTARules.create_cta_rule(workspace.id, cta_rule_attrs)
 
     rule
   end

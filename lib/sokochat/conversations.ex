@@ -1,15 +1,15 @@
-defmodule Whatsappbot.Conversations do
+defmodule Sokochat.Conversations do
   @moduledoc """
   The Conversations context.
   """
 
   import Ecto.Query, warn: false
 
-  alias Whatsappbot.Conversations.Conversation
-  alias Whatsappbot.Conversations.Message
-  alias Whatsappbot.Repo
+  alias Sokochat.Conversations.Conversation
+  alias Sokochat.Conversations.Message
+  alias Sokochat.Repo
 
-  @pubsub Whatsappbot.PubSub
+  @pubsub Sokochat.PubSub
 
   def get_conversation(workspace_id, phone_number, source) do
     Repo.get_by(Conversation,

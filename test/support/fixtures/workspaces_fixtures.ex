@@ -1,7 +1,7 @@
-defmodule Whatsappbot.WorkspacesFixtures do
+defmodule Sokochat.WorkspacesFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `Whatsappbot.Workspaces` context.
+  entities via the `Sokochat.Workspaces` context.
   """
 
   def valid_workspace_attributes(attrs \\ %{}) do
@@ -16,7 +16,7 @@ defmodule Whatsappbot.WorkspacesFixtures do
     {:ok, workspace} =
       attrs
       |> valid_workspace_attributes()
-      |> Whatsappbot.Workspaces.create_workspace(user.id)
+      |> Sokochat.Workspaces.create_workspace(user.id)
 
     workspace
   end

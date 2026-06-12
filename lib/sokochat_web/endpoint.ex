@@ -1,12 +1,12 @@
-defmodule WhatsappbotWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :whatsappbot
+defmodule SokochatWeb.Endpoint do
+  use Phoenix.Endpoint, otp_app: :sokochat
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
   @session_options [
     store: :cookie,
-    key: "_whatsappbot_key",
+    key: "_sokochat_key",
     signing_salt: "kWLT8BmP",
     same_site: "Lax"
   ]
@@ -21,9 +21,9 @@ defmodule WhatsappbotWeb.Endpoint do
   # when deploying your static files in production.
   plug Plug.Static,
     at: "/",
-    from: :whatsappbot,
+    from: :sokochat,
     gzip: false,
-    only: WhatsappbotWeb.static_paths()
+    only: SokochatWeb.static_paths()
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
@@ -31,7 +31,7 @@ defmodule WhatsappbotWeb.Endpoint do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :whatsappbot
+    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :sokochat
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,
@@ -49,5 +49,5 @@ defmodule WhatsappbotWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
-  plug WhatsappbotWeb.Router
+  plug SokochatWeb.Router
 end

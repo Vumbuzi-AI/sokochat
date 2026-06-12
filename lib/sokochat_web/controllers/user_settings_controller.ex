@@ -1,8 +1,8 @@
-defmodule WhatsappbotWeb.UserSettingsController do
-  use WhatsappbotWeb, :controller
+defmodule SokochatWeb.UserSettingsController do
+  use SokochatWeb, :controller
 
-  alias Whatsappbot.Accounts
-  alias WhatsappbotWeb.UserAuth
+  alias Sokochat.Accounts
+  alias SokochatWeb.UserAuth
 
   plug :assign_email_and_password_changesets
 

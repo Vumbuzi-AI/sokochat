@@ -1,9 +1,9 @@
-defmodule WhatsappbotWeb.CTARulesLiveTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.CTARulesLiveTest do
+  use SokochatWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.WorkspacesFixtures
 
   test "creating a rule makes it appear in the list", %{conn: conn} do
     user = user_fixture()

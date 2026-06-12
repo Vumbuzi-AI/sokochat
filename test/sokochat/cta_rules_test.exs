@@ -1,11 +1,11 @@
-defmodule Whatsappbot.CTARulesTest do
-  use Whatsappbot.DataCase, async: true
+defmodule Sokochat.CTARulesTest do
+  use Sokochat.DataCase, async: true
 
-  alias Whatsappbot.CTARules
+  alias Sokochat.CTARules
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.CTARulesFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.CTARulesFixtures
+  import Sokochat.WorkspacesFixtures
 
   describe "list_cta_rules/1" do
     test "returns rules ordered by ascending priority" do

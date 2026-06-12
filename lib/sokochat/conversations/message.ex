@@ -1,8 +1,8 @@
-defmodule Whatsappbot.Conversations.Message do
+defmodule Sokochat.Conversations.Message do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Conversations.Conversation
+  alias Sokochat.Conversations.Conversation
 
   @roles ~w(user assistant system)
 

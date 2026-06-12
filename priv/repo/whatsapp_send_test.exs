@@ -9,8 +9,8 @@
 # that as a free-form text reply instead (only works if the recipient has
 # messaged you in the last 24h).
 
-alias Whatsappbot.Meta
-alias Whatsappbot.Meta.Sender
+alias Sokochat.Meta
+alias Sokochat.Meta.Sender
 
 dotenv =
   case File.read(Path.expand("../../.env", __DIR__)) do

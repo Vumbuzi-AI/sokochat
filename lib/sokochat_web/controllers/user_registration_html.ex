@@ -1,5 +1,5 @@
-defmodule WhatsappbotWeb.UserRegistrationHTML do
-  use WhatsappbotWeb, :html
+defmodule SokochatWeb.UserRegistrationHTML do
+  use SokochatWeb, :html
 
   embed_templates "user_registration_html/*"
 end

@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.CreateCtaRules do
+defmodule Sokochat.Repo.Migrations.CreateCtaRules do
   use Ecto.Migration
 
   def change do

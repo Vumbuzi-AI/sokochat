@@ -1,5 +1,5 @@
-defmodule WhatsappbotWeb.UserConfirmationHTML do
-  use WhatsappbotWeb, :html
+defmodule SokochatWeb.UserConfirmationHTML do
+  use SokochatWeb, :html
 
   embed_templates "user_confirmation_html/*"
 end

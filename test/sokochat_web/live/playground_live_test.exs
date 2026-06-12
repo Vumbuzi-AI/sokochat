@@ -1,13 +1,13 @@
-defmodule WhatsappbotWeb.PlaygroundLiveTest do
-  use WhatsappbotWeb.ConnCase, async: false
+defmodule SokochatWeb.PlaygroundLiveTest do
+  use SokochatWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.CTARulesFixtures
-  import Whatsappbot.EndpointsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.CTARulesFixtures
+  import Sokochat.EndpointsFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Conversations
+  alias Sokochat.Conversations
 
   setup {Req.Test, :verify_on_exit!}
 
@@ -15,8 +15,8 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
     on_exit(fn ->
       Process.delete(:endpoint_req_options)
       Process.delete(:openai_req_options)
-      Application.delete_env(:whatsappbot, :endpoint_req_options)
-      Application.delete_env(:whatsappbot, :openai_req_options)
+      Application.delete_env(:sokochat, :endpoint_req_options)
+      Application.delete_env(:sokochat, :openai_req_options)
     end)
 
     :ok
@@ -269,7 +269,7 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
 
     stub_options = [plug: {Req.Test, __MODULE__.EndpointStub}]
     Process.put(:endpoint_req_options, stub_options)
-    Application.put_env(:whatsappbot, :endpoint_req_options, stub_options)
+    Application.put_env(:sokochat, :endpoint_req_options, stub_options)
   end
 
   defp stub_openai(response_text) do
@@ -297,7 +297,7 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
 
     stub_options = [plug: {Req.Test, __MODULE__.OpenAIStub}]
     Process.put(:openai_req_options, stub_options)
-    Application.put_env(:whatsappbot, :openai_req_options, stub_options)
+    Application.put_env(:sokochat, :openai_req_options, stub_options)
   end
 
   defp stub_openai_blocking(test_pid, response_text) do
@@ -333,6 +333,6 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
 
     stub_options = [plug: {Req.Test, __MODULE__.BlockingOpenAIStub}]
     Process.put(:openai_req_options, stub_options)
-    Application.put_env(:whatsappbot, :openai_req_options, stub_options)
+    Application.put_env(:sokochat, :openai_req_options, stub_options)
   end
 end

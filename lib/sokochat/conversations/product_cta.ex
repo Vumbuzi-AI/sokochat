@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Conversations.ProductCTA do
+defmodule Sokochat.Conversations.ProductCTA do
   @moduledoc """
   Builds or enriches product CTAs from endpoint data so channels can render
   a richer product card by default.

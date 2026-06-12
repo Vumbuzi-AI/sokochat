@@ -1,5 +1,5 @@
-defmodule WhatsappbotWeb.PageControllerTest do
-  use WhatsappbotWeb.ConnCase
+defmodule SokochatWeb.PageControllerTest do
+  use SokochatWeb.ConnCase
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")

@@ -1,7 +1,7 @@
-defmodule WhatsappbotWeb.UserSessionControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.UserSessionControllerTest do
+  use SokochatWeb.ConnCase, async: true
 
-  import Whatsappbot.AccountsFixtures
+  import Sokochat.AccountsFixtures
 
   setup do
     %{user: user_fixture()}
@@ -50,7 +50,7 @@ defmodule WhatsappbotWeb.UserSessionControllerTest do
           }
         })
 
-      assert conn.resp_cookies["_whatsappbot_web_user_remember_me"]
+      assert conn.resp_cookies["_sokochat_web_user_remember_me"]
       assert redirected_to(conn) == ~p"/"
     end
 

@@ -9,10 +9,10 @@
 
 import Ecto.Query
 
-alias Whatsappbot.Accounts.User
-alias Whatsappbot.Meta
-alias Whatsappbot.Repo
-alias Whatsappbot.Workspaces.Workspace
+alias Sokochat.Accounts.User
+alias Sokochat.Meta
+alias Sokochat.Repo
+alias Sokochat.Workspaces.Workspace
 
 # Load .env (the dotenv values aren't exported into System env, only into config),
 # so this script can read the WA_* credentials the same way you'd set them.
@@ -73,7 +73,7 @@ user = Repo.get!(User, workspace.account_id)
 # manual Meta webhook handshake first.
 {:ok, connection} = Meta.mark_verified(connection)
 
-host = Application.get_env(:whatsappbot, WhatsappbotWeb.Endpoint)[:url][:host] || "localhost"
+host = Application.get_env(:sokochat, SokochatWeb.Endpoint)[:url][:host] || "localhost"
 webhook_path = "/webhooks/whatsapp/#{workspace.slug}"
 
 IO.puts("""

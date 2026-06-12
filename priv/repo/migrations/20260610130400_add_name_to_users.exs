@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.AddNameToUsers do
+defmodule Sokochat.Repo.Migrations.AddNameToUsers do
   use Ecto.Migration
 
   def up do

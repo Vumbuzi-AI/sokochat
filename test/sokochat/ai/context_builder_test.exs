@@ -1,8 +1,8 @@
-defmodule Whatsappbot.AI.ContextBuilderTest do
+defmodule Sokochat.AI.ContextBuilderTest do
   use ExUnit.Case, async: true
 
-  alias Whatsappbot.AI.ContextBuilder
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.AI.ContextBuilder
+  alias Sokochat.Workspaces.Workspace
 
   test "build_system_prompt/2 includes workspace instructions and language mapping" do
     workspace = %Workspace{

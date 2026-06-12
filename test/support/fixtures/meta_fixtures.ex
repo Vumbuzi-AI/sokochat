@@ -1,9 +1,9 @@
-defmodule Whatsappbot.MetaFixtures do
+defmodule Sokochat.MetaFixtures do
   @moduledoc """
-  Test helpers for creating `Whatsappbot.Meta.Connection` records.
+  Test helpers for creating `Sokochat.Meta.Connection` records.
   """
 
-  alias Whatsappbot.Meta
+  alias Sokochat.Meta
 
   def valid_connection_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{

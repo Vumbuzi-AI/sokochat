@@ -1,9 +1,9 @@
-defmodule WhatsappbotWeb.UserResetPasswordControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.UserResetPasswordControllerTest do
+  use SokochatWeb.ConnCase, async: true
 
-  alias Whatsappbot.Accounts
-  alias Whatsappbot.Repo
-  import Whatsappbot.AccountsFixtures
+  alias Sokochat.Accounts
+  alias Sokochat.Repo
+  import Sokochat.AccountsFixtures
 
   setup do
     %{user: user_fixture()}

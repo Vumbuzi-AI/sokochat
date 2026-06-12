@@ -1,12 +1,12 @@
-defmodule Whatsappbot.Workspaces do
+defmodule Sokochat.Workspaces do
   @moduledoc """
   The Workspaces context.
   """
 
   import Ecto.Query, warn: false
 
-  alias Whatsappbot.Repo
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.Repo
+  alias Sokochat.Workspaces.Workspace
 
   def list_workspaces(user_id) do
     Workspace

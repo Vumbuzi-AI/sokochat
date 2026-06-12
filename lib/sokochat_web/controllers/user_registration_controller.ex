@@ -1,9 +1,9 @@
-defmodule WhatsappbotWeb.UserRegistrationController do
-  use WhatsappbotWeb, :controller
+defmodule SokochatWeb.UserRegistrationController do
+  use SokochatWeb, :controller
 
-  alias Whatsappbot.Accounts
-  alias Whatsappbot.Accounts.User
-  alias WhatsappbotWeb.UserAuth
+  alias Sokochat.Accounts
+  alias Sokochat.Accounts.User
+  alias SokochatWeb.UserAuth
 
   def new(conn, _params) do
     changeset = Accounts.change_user_registration(%User{})

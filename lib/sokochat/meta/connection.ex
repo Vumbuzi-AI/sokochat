@@ -1,8 +1,8 @@
-defmodule Whatsappbot.Meta.Connection do
+defmodule Sokochat.Meta.Connection do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.Workspaces.Workspace
 
   @statuses ~w(pending active error)
 
@@ -11,7 +11,7 @@ defmodule Whatsappbot.Meta.Connection do
 
     field :phone_number_id, :string
     field :waba_id, :string
-    field :access_token, Whatsappbot.Encrypted.String, source: :access_token_encrypted
+    field :access_token, Sokochat.Encrypted.String, source: :access_token_encrypted
     field :verify_token, :string
     field :webhook_verified_at, :utc_datetime
     field :status, :string, default: "pending"

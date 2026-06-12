@@ -1,11 +1,11 @@
-defmodule WhatsappbotWeb.MetaLiveTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.MetaLiveTest do
+  use SokochatWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Meta
+  alias Sokochat.Meta
 
   test "saving credentials creates a connection and reveals the webhook panel", %{conn: conn} do
     user = user_fixture()

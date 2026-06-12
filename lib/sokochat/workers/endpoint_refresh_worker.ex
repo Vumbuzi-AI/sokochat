@@ -1,7 +1,7 @@
-defmodule Whatsappbot.Workers.EndpointRefreshWorker do
+defmodule Sokochat.Workers.EndpointRefreshWorker do
   use Oban.Worker, queue: :endpoint_refresh, max_attempts: 3
 
-  alias Whatsappbot.Endpoints
+  alias Sokochat.Endpoints
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"strategy" => strategy}}) do

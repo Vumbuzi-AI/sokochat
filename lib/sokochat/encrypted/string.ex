@@ -1,3 +1,3 @@
-defmodule Whatsappbot.Encrypted.String do
-  use Cloak.Ecto.Binary, vault: Whatsappbot.Vault
+defmodule Sokochat.Encrypted.String do
+  use Cloak.Ecto.Binary, vault: Sokochat.Vault
 end

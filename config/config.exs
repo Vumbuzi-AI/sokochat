@@ -7,33 +7,33 @@
 # General application configuration
 import Config
 
-config :whatsappbot,
-  ecto_repos: [Whatsappbot.Repo],
+config :sokochat,
+  ecto_repos: [Sokochat.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :whatsappbot, Oban,
-  repo: Whatsappbot.Repo,
+config :sokochat, Oban,
+  repo: Sokochat.Repo,
   plugins: [
     Oban.Plugins.Pruner,
     {Oban.Plugins.Cron,
      crontab: [
-       {"* * * * *", Whatsappbot.Workers.EndpointRefreshWorker,
+       {"* * * * *", Sokochat.Workers.EndpointRefreshWorker,
         args: %{"strategy" => "poll_60s"}, queue: :endpoint_refresh},
-       {"*/5 * * * *", Whatsappbot.Workers.EndpointRefreshWorker,
+       {"*/5 * * * *", Sokochat.Workers.EndpointRefreshWorker,
         args: %{"strategy" => "poll_300s"}, queue: :endpoint_refresh}
      ]}
   ],
   queues: [default: 10, endpoint_refresh: 5, meta_send: 10]
 
 # Configures the endpoint
-config :whatsappbot, WhatsappbotWeb.Endpoint,
+config :sokochat, SokochatWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: WhatsappbotWeb.ErrorHTML, json: WhatsappbotWeb.ErrorJSON],
+    formats: [html: SokochatWeb.ErrorHTML, json: SokochatWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Whatsappbot.PubSub,
+  pubsub_server: Sokochat.PubSub,
   live_view: [signing_salt: "wLJMZoN2"]
 
 # Configures the mailer
@@ -43,12 +43,12 @@ config :whatsappbot, WhatsappbotWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :whatsappbot, Whatsappbot.Mailer, adapter: Swoosh.Adapters.Local
+config :sokochat, Sokochat.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",
-  whatsappbot: [
+  sokochat: [
     args:
       ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
     cd: Path.expand("../assets", __DIR__),
@@ -58,7 +58,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "3.4.3",
-  whatsappbot: [
+  sokochat: [
     args: ~w(
       --config=tailwind.config.js
       --input=css/app.css

@@ -1,7 +1,7 @@
-defmodule Whatsappbot.Conversations.ProductCTATest do
+defmodule Sokochat.Conversations.ProductCTATest do
   use ExUnit.Case, async: true
 
-  alias Whatsappbot.Conversations.ProductCTA
+  alias Sokochat.Conversations.ProductCTA
 
   test "does not attach a product CTA for a generic reply when multiple products exist" do
     endpoint_data = %{

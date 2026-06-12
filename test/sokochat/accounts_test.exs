@@ -1,10 +1,10 @@
-defmodule Whatsappbot.AccountsTest do
-  use Whatsappbot.DataCase
+defmodule Sokochat.AccountsTest do
+  use Sokochat.DataCase
 
-  alias Whatsappbot.Accounts
+  alias Sokochat.Accounts
 
-  import Whatsappbot.AccountsFixtures
-  alias Whatsappbot.Accounts.{User, UserToken}
+  import Sokochat.AccountsFixtures
+  alias Sokochat.Accounts.{User, UserToken}
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do

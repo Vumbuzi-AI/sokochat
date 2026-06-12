@@ -1,8 +1,8 @@
-defmodule WhatsappbotWeb.UserSettingsControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.UserSettingsControllerTest do
+  use SokochatWeb.ConnCase, async: true
 
-  alias Whatsappbot.Accounts
-  import Whatsappbot.AccountsFixtures
+  alias Sokochat.Accounts
+  import Sokochat.AccountsFixtures
 
   setup :register_and_log_in_user
 

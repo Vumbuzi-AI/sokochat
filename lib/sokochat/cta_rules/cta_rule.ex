@@ -1,8 +1,8 @@
-defmodule Whatsappbot.CTARules.CTARule do
+defmodule Sokochat.CTARules.CTARule do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.Workspaces.Workspace
 
   @cta_types ~w(website phone whatsapp reply_buttons list_message location catalog custom)
 

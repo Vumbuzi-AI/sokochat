@@ -1,11 +1,11 @@
-defmodule Whatsappbot.Meta.SenderTest do
-  use Whatsappbot.DataCase, async: true
+defmodule Sokochat.Meta.SenderTest do
+  use Sokochat.DataCase, async: true
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.MetaFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.MetaFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Meta.Sender
+  alias Sokochat.Meta.Sender
 
   setup {Req.Test, :verify_on_exit!}
 
@@ -129,7 +129,7 @@ defmodule Whatsappbot.Meta.SenderTest do
       connection = connection_fixture(workspace)
 
       Req.Test.expect(__MODULE__.SendStub, fn conn ->
-        version = Application.get_env(:whatsappbot, :meta)[:graph_api_version]
+        version = Application.get_env(:sokochat, :meta)[:graph_api_version]
         assert conn.method == "POST"
         assert conn.request_path == "/#{version}/#{connection.phone_number_id}/messages"
 

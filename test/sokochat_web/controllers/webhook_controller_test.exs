@@ -1,13 +1,13 @@
-defmodule WhatsappbotWeb.WebhookControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
-  use Oban.Testing, repo: Whatsappbot.Repo
+defmodule SokochatWeb.WebhookControllerTest do
+  use SokochatWeb.ConnCase, async: true
+  use Oban.Testing, repo: Sokochat.Repo
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.MetaFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.MetaFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Meta
-  alias Whatsappbot.Workers.ProcessInboundMessage
+  alias Sokochat.Meta
+  alias Sokochat.Workers.ProcessInboundMessage
 
   setup do
     workspace = workspace_fixture(user_fixture())

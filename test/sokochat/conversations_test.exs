@@ -1,11 +1,11 @@
-defmodule Whatsappbot.ConversationsTest do
-  use Whatsappbot.DataCase, async: true
+defmodule Sokochat.ConversationsTest do
+  use Sokochat.DataCase, async: true
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.ConversationsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.ConversationsFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Conversations
+  alias Sokochat.Conversations
 
   describe "get_or_create_conversation/3" do
     test "returns the existing conversation for the same workspace, number, and source" do

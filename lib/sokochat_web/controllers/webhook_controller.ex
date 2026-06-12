@@ -1,13 +1,13 @@
-defmodule WhatsappbotWeb.WebhookController do
+defmodule SokochatWeb.WebhookController do
   @moduledoc """
   WhatsApp Cloud API webhook endpoints. Meta calls these as plain HTTP requests,
   so they live on the `:api` pipeline (no session / CSRF).
   """
 
-  use WhatsappbotWeb, :controller
+  use SokochatWeb, :controller
 
-  alias Whatsappbot.Meta
-  alias Whatsappbot.Workers.ProcessInboundMessage
+  alias Sokochat.Meta
+  alias Sokochat.Workers.ProcessInboundMessage
 
   require Logger
 

@@ -1,12 +1,12 @@
-defmodule Whatsappbot.Accounts do
+defmodule Sokochat.Accounts do
   @moduledoc """
   The Accounts context.
   """
 
   import Ecto.Query, warn: false
-  alias Whatsappbot.Repo
+  alias Sokochat.Repo
 
-  alias Whatsappbot.Accounts.{User, UserToken, UserNotifier}
+  alias Sokochat.Accounts.{User, UserToken, UserNotifier}
 
   ## Database getters
 

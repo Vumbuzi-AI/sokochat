@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Meta.Sender do
+defmodule Sokochat.Meta.Sender do
   @moduledoc """
   Turns an internal assistant reply (text + optional CTA) into one or more
   WhatsApp Cloud API requests and sends them through Meta's Graph API.
@@ -7,7 +7,7 @@ defmodule Whatsappbot.Meta.Sender do
   `list_message`, `location`. Anything else falls back to a plain text reply.
   """
 
-  alias Whatsappbot.Meta.Connection
+  alias Sokochat.Meta.Connection
 
   require Logger
 
@@ -357,13 +357,13 @@ defmodule Whatsappbot.Meta.Sender do
   defp error_message(_), do: "request failed"
 
   defp base_url do
-    config = Application.get_env(:whatsappbot, :meta, [])
+    config = Application.get_env(:sokochat, :meta, [])
     version = Keyword.get(config, :graph_api_version, "v21.0")
     "https://graph.facebook.com/#{version}"
   end
 
   defp req_options do
     Process.get(:meta_req_options) ||
-      Application.get_env(:whatsappbot, :meta_req_options, [])
+      Application.get_env(:sokochat, :meta_req_options, [])
   end
 end

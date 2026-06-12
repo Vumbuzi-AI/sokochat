@@ -1,8 +1,8 @@
-defmodule Whatsappbot.Endpoints.Endpoint do
+defmodule Sokochat.Endpoints.Endpoint do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.Workspaces.Workspace
 
   @methods ~w(GET POST)
   @refresh_strategies ~w(on_demand poll_60s poll_300s)
@@ -12,7 +12,7 @@ defmodule Whatsappbot.Endpoints.Endpoint do
 
     field :url, :string
     field :method, :string, default: "GET"
-    field :headers, Whatsappbot.Encrypted.Map, source: :headers_encrypted
+    field :headers, Sokochat.Encrypted.Map, source: :headers_encrypted
     field :headers_text, :string, virtual: true
     field :body_template, :string
     field :refresh_strategy, :string, default: "on_demand"

@@ -1,4 +1,4 @@
-defmodule Whatsappbot.AI.OpenAIClient do
+defmodule Sokochat.AI.OpenAIClient do
   @moduledoc """
   Thin client for OpenAI's Responses API.
   """
@@ -7,7 +7,7 @@ defmodule Whatsappbot.AI.OpenAIClient do
   @max_retries 10
 
   def chat(messages, system_prompt) when is_list(messages) and is_binary(system_prompt) do
-    openai_config = Application.fetch_env!(:whatsappbot, :openai)
+    openai_config = Application.fetch_env!(:sokochat, :openai)
 
     request_options =
       request_options(openai_config, %{
@@ -31,7 +31,7 @@ defmodule Whatsappbot.AI.OpenAIClient do
   defp request_options(openai_config, payload) do
     default_options =
       Process.get(:openai_req_options) ||
-        Application.get_env(:whatsappbot, :openai_req_options, [])
+        Application.get_env(:sokochat, :openai_req_options, [])
 
     default_options
     |> Keyword.merge(

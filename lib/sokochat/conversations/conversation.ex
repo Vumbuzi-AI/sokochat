@@ -1,9 +1,9 @@
-defmodule Whatsappbot.Conversations.Conversation do
+defmodule Sokochat.Conversations.Conversation do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.Conversations.Message
-  alias Whatsappbot.Workspaces.Workspace
+  alias Sokochat.Conversations.Message
+  alias Sokochat.Workspaces.Workspace
 
   schema "conversations" do
     belongs_to :workspace, Workspace

@@ -1,9 +1,9 @@
-defmodule Whatsappbot.MixProject do
+defmodule Sokochat.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :whatsappbot,
+      app: :sokochat,
       version: "0.1.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -18,7 +18,7 @@ defmodule Whatsappbot.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Whatsappbot.Application, []},
+      mod: {Sokochat.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -80,10 +80,10 @@ defmodule Whatsappbot.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind whatsappbot", "esbuild whatsappbot"],
+      "assets.build": ["tailwind sokochat", "esbuild sokochat"],
       "assets.deploy": [
-        "tailwind whatsappbot --minify",
-        "esbuild whatsappbot --minify",
+        "tailwind sokochat --minify",
+        "esbuild sokochat --minify",
         "phx.digest"
       ]
     ]

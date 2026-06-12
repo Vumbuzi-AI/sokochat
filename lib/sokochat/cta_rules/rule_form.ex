@@ -1,8 +1,8 @@
-defmodule Whatsappbot.CTARules.RuleForm do
+defmodule Sokochat.CTARules.RuleForm do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Whatsappbot.CTARules.CTARule
+  alias Sokochat.CTARules.CTARule
 
   @cta_types CTARule.cta_types()
   @button_fields Enum.map(1..3, &String.to_atom("button_#{&1}"))

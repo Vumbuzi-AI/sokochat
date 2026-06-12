@@ -1,7 +1,7 @@
-defmodule WhatsappbotWeb.UserResetPasswordController do
-  use WhatsappbotWeb, :controller
+defmodule SokochatWeb.UserResetPasswordController do
+  use SokochatWeb, :controller
 
-  alias Whatsappbot.Accounts
+  alias Sokochat.Accounts
 
   plug :get_user_by_reset_password_token when action in [:edit, :update]
 

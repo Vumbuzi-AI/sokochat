@@ -1,4 +1,4 @@
-defmodule Whatsappbot.AI.CtaInjector do
+defmodule Sokochat.AI.CtaInjector do
   @moduledoc """
   Appends CTA rule guidance to the AI system prompt.
   """

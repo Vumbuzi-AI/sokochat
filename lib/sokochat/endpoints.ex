@@ -1,15 +1,15 @@
-defmodule Whatsappbot.Endpoints do
+defmodule Sokochat.Endpoints do
   @moduledoc """
   The Endpoints context.
   """
 
   import Ecto.Query, warn: false
 
-  alias Whatsappbot.Endpoints.Endpoint
-  alias Whatsappbot.Repo
+  alias Sokochat.Endpoints.Endpoint
+  alias Sokochat.Repo
 
   @default_query "test"
-  @pubsub Whatsappbot.PubSub
+  @pubsub Sokochat.PubSub
   @max_retries 10
 
   def get_endpoint(workspace_id) do
@@ -104,7 +104,7 @@ defmodule Whatsappbot.Endpoints do
   defp request_options(%Endpoint{} = endpoint, extra \\ []) do
     default_options =
       Process.get(:endpoint_req_options) ||
-        Application.get_env(:whatsappbot, :endpoint_req_options, [])
+        Application.get_env(:sokochat, :endpoint_req_options, [])
 
     default_options
     |> Keyword.merge(

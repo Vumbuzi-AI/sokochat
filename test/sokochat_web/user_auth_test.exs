@@ -1,17 +1,17 @@
-defmodule WhatsappbotWeb.UserAuthTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.UserAuthTest do
+  use SokochatWeb.ConnCase, async: true
 
   alias Phoenix.LiveView
-  alias Whatsappbot.Accounts
-  alias WhatsappbotWeb.UserAuth
-  import Whatsappbot.AccountsFixtures
+  alias Sokochat.Accounts
+  alias SokochatWeb.UserAuth
+  import Sokochat.AccountsFixtures
 
-  @remember_me_cookie "_whatsappbot_web_user_remember_me"
+  @remember_me_cookie "_sokochat_web_user_remember_me"
 
   setup %{conn: conn} do
     conn =
       conn
-      |> Map.replace!(:secret_key_base, WhatsappbotWeb.Endpoint.config(:secret_key_base))
+      |> Map.replace!(:secret_key_base, SokochatWeb.Endpoint.config(:secret_key_base))
       |> init_test_session(%{})
 
     %{user: user_fixture(), conn: conn}
@@ -66,7 +66,7 @@ defmodule WhatsappbotWeb.UserAuthTest do
 
     test "broadcasts to the given live_socket_id", %{conn: conn} do
       live_socket_id = "users_sessions:abcdef-token"
-      WhatsappbotWeb.Endpoint.subscribe(live_socket_id)
+      SokochatWeb.Endpoint.subscribe(live_socket_id)
 
       conn
       |> put_session(:live_socket_id, live_socket_id)
@@ -164,7 +164,7 @@ defmodule WhatsappbotWeb.UserAuthTest do
       session = conn |> put_session(:user_token, user_token) |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: WhatsappbotWeb.Endpoint,
+        endpoint: SokochatWeb.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
@@ -176,7 +176,7 @@ defmodule WhatsappbotWeb.UserAuthTest do
       session = conn |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: WhatsappbotWeb.Endpoint,
+        endpoint: SokochatWeb.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 

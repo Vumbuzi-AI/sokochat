@@ -1,4 +1,4 @@
-defmodule WhatsappbotWeb.Telemetry do
+defmodule SokochatWeb.Telemetry do
   use Supervisor
   import Telemetry.Metrics
 
@@ -52,23 +52,23 @@ defmodule WhatsappbotWeb.Telemetry do
       ),
 
       # Database Metrics
-      summary("whatsappbot.repo.query.total_time",
+      summary("sokochat.repo.query.total_time",
         unit: {:native, :millisecond},
         description: "The sum of the other measurements"
       ),
-      summary("whatsappbot.repo.query.decode_time",
+      summary("sokochat.repo.query.decode_time",
         unit: {:native, :millisecond},
         description: "The time spent decoding the data received from the database"
       ),
-      summary("whatsappbot.repo.query.query_time",
+      summary("sokochat.repo.query.query_time",
         unit: {:native, :millisecond},
         description: "The time spent executing the query"
       ),
-      summary("whatsappbot.repo.query.queue_time",
+      summary("sokochat.repo.query.queue_time",
         unit: {:native, :millisecond},
         description: "The time spent waiting for a database connection"
       ),
-      summary("whatsappbot.repo.query.idle_time",
+      summary("sokochat.repo.query.idle_time",
         unit: {:native, :millisecond},
         description:
           "The time the connection spent waiting before being checked out for the query"
@@ -86,7 +86,7 @@ defmodule WhatsappbotWeb.Telemetry do
     [
       # A module, function and arguments to be invoked periodically.
       # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {WhatsappbotWeb, :count_users, []}
+      # {SokochatWeb, :count_users, []}
     ]
   end
 end

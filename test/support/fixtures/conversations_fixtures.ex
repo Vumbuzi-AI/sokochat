@@ -1,10 +1,10 @@
-defmodule Whatsappbot.ConversationsFixtures do
+defmodule Sokochat.ConversationsFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  conversation entities via the `Whatsappbot.Conversations` context.
+  conversation entities via the `Sokochat.Conversations` context.
   """
 
-  alias Whatsappbot.Conversations
+  alias Sokochat.Conversations
 
   def conversation_fixture(workspace, attrs \\ %{}) do
     phone_number = Map.get(attrs, :phone_number, "+254700#{System.unique_integer([:positive])}")

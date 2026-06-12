@@ -1,12 +1,12 @@
-defmodule Whatsappbot.CTARules do
+defmodule Sokochat.CTARules do
   @moduledoc """
   The CTA rules context.
   """
 
   import Ecto.Query, warn: false
 
-  alias Whatsappbot.CTARules.CTARule
-  alias Whatsappbot.Repo
+  alias Sokochat.CTARules.CTARule
+  alias Sokochat.Repo
 
   def list_cta_rules(workspace_id) do
     CTARule

@@ -1,14 +1,14 @@
-defmodule Whatsappbot.Accounts.UserNotifier do
+defmodule Sokochat.Accounts.UserNotifier do
   import Swoosh.Email
 
-  alias Whatsappbot.Mailer
+  alias Sokochat.Mailer
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
     email =
       new()
       |> to(recipient)
-      |> from({"Whatsappbot", "contact@example.com"})
+      |> from({"Sokochat", "contact@example.com"})
       |> subject(subject)
       |> text_body(body)
 

@@ -1,5 +1,5 @@
-defmodule WhatsappbotWeb.ProductControllerTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.ProductControllerTest do
+  use SokochatWeb.ConnCase, async: true
 
   test "GET /api/test/products returns 20 public products", %{conn: conn} do
     conn = get(conn, ~p"/api/test/products")

@@ -1,3 +1,3 @@
-defmodule Whatsappbot.Mailer do
-  use Swoosh.Mailer, otp_app: :whatsappbot
+defmodule Sokochat.Mailer do
+  use Swoosh.Mailer, otp_app: :sokochat
 end

@@ -1,7 +1,7 @@
-defmodule Whatsappbot.EndpointsFixtures do
+defmodule Sokochat.EndpointsFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  endpoint entities via the `Whatsappbot.Endpoints` context.
+  endpoint entities via the `Sokochat.Endpoints` context.
   """
 
   def valid_endpoint_attributes(attrs \\ %{}) do
@@ -18,7 +18,7 @@ defmodule Whatsappbot.EndpointsFixtures do
     attrs = valid_endpoint_attributes(attrs)
 
     {:ok, endpoint} =
-      Whatsappbot.Endpoints.upsert_endpoint(workspace.id, attrs)
+      Sokochat.Endpoints.upsert_endpoint(workspace.id, attrs)
 
     endpoint
   end

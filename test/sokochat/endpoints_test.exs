@@ -1,12 +1,12 @@
-defmodule Whatsappbot.EndpointsTest do
-  use Whatsappbot.DataCase, async: true
+defmodule Sokochat.EndpointsTest do
+  use Sokochat.DataCase, async: true
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.EndpointsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.EndpointsFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Endpoints
-  alias Whatsappbot.Repo
+  alias Sokochat.Endpoints
+  alias Sokochat.Repo
 
   setup {Req.Test, :verify_on_exit!}
 

@@ -1,9 +1,9 @@
-defmodule WhatsappbotWeb.WorkspacesLiveTest do
-  use WhatsappbotWeb.ConnCase, async: true
+defmodule SokochatWeb.WorkspacesLiveTest do
+  use SokochatWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.WorkspacesFixtures
 
   test "another user's workspace cannot be accessed", %{conn: conn} do
     owner = user_fixture()

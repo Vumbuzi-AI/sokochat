@@ -1,11 +1,11 @@
-defmodule Whatsappbot.MetaTest do
-  use Whatsappbot.DataCase, async: true
+defmodule Sokochat.MetaTest do
+  use Sokochat.DataCase, async: true
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.WorkspacesFixtures
 
-  alias Whatsappbot.Meta
-  alias Whatsappbot.Repo
+  alias Sokochat.Meta
+  alias Sokochat.Repo
 
   setup do
     %{workspace: workspace_fixture(user_fixture())}

@@ -1,11 +1,11 @@
-defmodule WhatsappbotWeb.WorkspacesLive.CTARules do
-  use WhatsappbotWeb, :live_view
+defmodule SokochatWeb.WorkspacesLive.CTARules do
+  use SokochatWeb, :live_view
 
   alias Ecto.Changeset
-  alias Whatsappbot.CTARules
-  alias Whatsappbot.CTARules.CTARule
-  alias Whatsappbot.CTARules.RuleForm
-  alias Whatsappbot.Workspaces
+  alias Sokochat.CTARules
+  alias Sokochat.CTARules.CTARule
+  alias Sokochat.CTARules.RuleForm
+  alias Sokochat.Workspaces
 
   @impl true
   def mount(_params, _session, socket) do

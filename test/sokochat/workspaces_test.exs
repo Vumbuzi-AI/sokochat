@@ -1,10 +1,10 @@
-defmodule Whatsappbot.WorkspacesTest do
-  use Whatsappbot.DataCase
+defmodule Sokochat.WorkspacesTest do
+  use Sokochat.DataCase
 
-  alias Whatsappbot.Workspaces
+  alias Sokochat.Workspaces
 
-  import Whatsappbot.AccountsFixtures
-  import Whatsappbot.WorkspacesFixtures
+  import Sokochat.AccountsFixtures
+  import Sokochat.WorkspacesFixtures
 
   describe "create_workspace/2" do
     test "auto-generates a slug from the workspace name" do

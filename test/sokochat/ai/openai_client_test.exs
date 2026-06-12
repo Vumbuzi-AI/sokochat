@@ -1,15 +1,15 @@
-defmodule Whatsappbot.AI.OpenAIClientTest do
+defmodule Sokochat.AI.OpenAIClientTest do
   use ExUnit.Case, async: true
 
-  alias Whatsappbot.AI.OpenAIClient
+  alias Sokochat.AI.OpenAIClient
 
   setup {Req.Test, :verify_on_exit!}
 
   setup do
-    previous_config = Application.fetch_env!(:whatsappbot, :openai)
+    previous_config = Application.fetch_env!(:sokochat, :openai)
 
     Application.put_env(
-      :whatsappbot,
+      :sokochat,
       :openai,
       previous_config
       |> Keyword.put(:api_key, "test-openai-key")
@@ -18,7 +18,7 @@ defmodule Whatsappbot.AI.OpenAIClientTest do
 
     on_exit(fn ->
       Process.delete(:openai_req_options)
-      Application.put_env(:whatsappbot, :openai, previous_config)
+      Application.put_env(:sokochat, :openai, previous_config)
     end)
 
     :ok

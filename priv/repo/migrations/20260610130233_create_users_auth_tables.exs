@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Repo.Migrations.CreateUsersAuthTables do
+defmodule Sokochat.Repo.Migrations.CreateUsersAuthTables do
   use Ecto.Migration
 
   def change do

@@ -9,9 +9,9 @@
 ## TASK GROUP 1 — Project bootstrap
 
 - [x] `T1.1` Verify Phoenix app exists
-  - [x] Check that `mix.exs` exists and the app is named `:whatsappbot`.
+  - [x] Check that `mix.exs` exists and the app is named `:sokochat`.
   - [x] Confirm Phoenix 1.7+, LiveView, Ecto, and Tailwind are present.
-  - [x] If not, run `mix phx.new whatsappbot --live --database postgres`.
+  - [x] If not, run `mix phx.new sokochat --live --database postgres`.
 
 - [x] `T1.2` Add dependencies to `mix.exs`
   - [x] Add the following to `deps`:
@@ -33,28 +33,28 @@
 - [x] `T1.4` Configure Oban
   - [x] Add this to `config/config.exs`:
     ```elixir
-    config :whatsappbot, Oban,
-      repo: Whatsappbot.Repo,
+    config :sokochat, Oban,
+      repo: Sokochat.Repo,
       plugins: [Oban.Plugins.Pruner],
       queues: [default: 10, endpoint_refresh: 5, meta_send: 10]
     ```
-  - [x] Add `{Oban, Application.fetch_env!(:whatsappbot, Oban)}` to the supervision tree in `application.ex`.
+  - [x] Add `{Oban, Application.fetch_env!(:sokochat, Oban)}` to the supervision tree in `application.ex`.
 
 - [x] `T1.5` Set up Cloak encryption
   - [x] Generate a secret key with `mix cloak.gen.key AES.GCM 256`.
   - [x] Add this to `config/runtime.exs`:
     ```elixir
-    config :whatsappbot, Whatsappbot.Vault,
+    config :sokochat, Sokochat.Vault,
       ciphers: [
         default: {Cloak.Ciphers.AES.GCM,
           tag: "AES.GCM.V1",
           key: Base.decode64!(System.fetch_env!("ENCRYPTION_KEY"))}
       ]
     ```
-  - [x] Create `lib/whatsappbot/vault.ex`:
+  - [x] Create `lib/sokochat/vault.ex`:
     ```elixir
-    defmodule Whatsappbot.Vault do
-      use Cloak.Vault, otp_app: :whatsappbot
+    defmodule Sokochat.Vault do
+      use Cloak.Vault, otp_app: :sokochat
     end
     ```
   - [x] Add the Vault to the supervision tree.
@@ -69,7 +69,7 @@
   - [x] Confirm the generator created the User schema, registration/login/logout pages, and session tokens.
 
 - [x] `T2.2` Customise the registration form
-  - [x] Add a required `name` field to the registration form in `lib/whatsappbot_web/controllers/user_registration_html/new.html.heex`.
+  - [x] Add a required `name` field to the registration form in `lib/sokochat_web/controllers/user_registration_html/new.html.heex`.
   - [x] Add `name` to the User schema and migration with `add_column :users, :name, :string`.
   - [x] Show the user's name in the top nav after login.
 
@@ -98,7 +98,7 @@
     mix ecto.migrate
     ```
 
-- [x] `T3.2` Create workspace context in `lib/whatsappbot/workspaces.ex`
+- [x] `T3.2` Create workspace context in `lib/sokochat/workspaces.ex`
   - [x] Add `list_workspaces(user_id)` scoped to account.
   - [x] Add `get_workspace!(id, user_id)` that raises if not found or wrong owner.
   - [x] Add `create_workspace(attrs, user_id)`.
@@ -156,11 +156,11 @@
 - [x] `T4.2` Add Cloak encrypted field for headers
   - [x] Replace `headers_encrypted` in the Endpoint schema with:
     ```elixir
-    field :headers, Whatsappbot.Encrypted.Map
+    field :headers, Sokochat.Encrypted.Map
     ```
-  - [x] Create `lib/whatsappbot/encrypted/map.ex` using `Cloak.Ecto.Binary` behaviour.
+  - [x] Create `lib/sokochat/encrypted/map.ex` using `Cloak.Ecto.Binary` behaviour.
 
-- [x] `T4.3` Create endpoint context in `lib/whatsappbot/endpoints.ex`
+- [x] `T4.3` Create endpoint context in `lib/sokochat/endpoints.ex`
   - [x] Add `get_endpoint(workspace_id)` for one endpoint per workspace in v1.
   - [x] Add `upsert_endpoint(workspace_id, attrs)`.
   - [x] Add `fetch_live_data(endpoint)` returning `{:ok, data}` or `{:error, reason}`.
@@ -184,7 +184,7 @@
   - [x] Show "Last fetched: X minutes ago" when cached data exists.
 
 - [x] `T4.5` Add Oban worker for polling endpoints
-  - [x] Create `lib/whatsappbot/workers/endpoint_refresh_worker.ex`.
+  - [x] Create `lib/sokochat/workers/endpoint_refresh_worker.ex`.
   - [x] Schedule it with recurring Oban cron for `poll_60s` and `poll_300s`.
   - [x] Call `Endpoints.refresh_cached_data(endpoint)`.
   - [x] Broadcast `{:endpoint_refreshed, workspace_id}` via PubSub so Playground can react.
@@ -202,13 +202,13 @@
 - [x] `T5.1` Configure Anthropic API
   - [x] Add this to `config/runtime.exs`:
     ```elixir
-    config :whatsappbot, :anthropic,
+    config :sokochat, :anthropic,
       api_key: System.fetch_env!("ANTHROPIC_API_KEY"),
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024
     ```
 
-- [x] `T5.2` Build AI context builder in `lib/whatsappbot/ai/context_builder.ex`
+- [x] `T5.2` Build AI context builder in `lib/sokochat/ai/context_builder.ex`
   - [x] Implement `build_system_prompt(workspace, endpoint_data)`.
   - [x] Use this template:
     ```text
@@ -242,7 +242,7 @@
   - [x] Format endpoint JSON into a readable text block.
   - [x] Truncate endpoint data to 3000 characters max.
 
-- [x] `T5.3` Build CTA rules injector in `lib/whatsappbot/ai/cta_injector.ex`
+- [x] `T5.3` Build CTA rules injector in `lib/sokochat/ai/cta_injector.ex`
   - [x] Implement `inject_cta_rules(system_prompt, cta_rules)`.
   - [x] Append this section to the system prompt:
     ```text
@@ -251,7 +251,7 @@
     2. ...
     ```
 
-- [x] `T5.4` Build Claude client in `lib/whatsappbot/ai/claude_client.ex`
+- [x] `T5.4` Build Claude client in `lib/sokochat/ai/claude_client.ex`
   - [x] Implement `chat(messages, system_prompt)`.
   - [x] Return `{:ok, %{reply: text, cta: map_or_nil, tokens: integer}}` or `{:error, reason}`.
   - [x] POST to `https://api.anthropic.com/v1/messages`.
@@ -296,7 +296,7 @@
     mix ecto.migrate
     ```
 
-- [x] `T6.2` Build conversations context in `lib/whatsappbot/conversations.ex`
+- [x] `T6.2` Build conversations context in `lib/sokochat/conversations.ex`
   - [x] Add `get_or_create_conversation(workspace_id, phone_number, source)`.
   - [x] Add `list_conversations(workspace_id)` ordered by latest message.
   - [x] Add `get_conversation!(id, workspace_id)`.
@@ -304,7 +304,7 @@
   - [x] Support opts for `cta`, `endpoint_snapshot`, and `tokens_used`.
   - [x] Add `list_messages(conversation_id)` returning the last 50 messages ordered ascending.
 
-- [x] `T6.3` Build message dispatcher in `lib/whatsappbot/conversations/dispatcher.ex`
+- [x] `T6.3` Build message dispatcher in `lib/sokochat/conversations/dispatcher.ex`
   - [x] Implement `dispatch(workspace_id, phone_number, user_message, source \\ :playground)`.
   - [ ] Steps:
     - [x] Load workspace, endpoint, and `cta_rules`.
@@ -392,8 +392,8 @@
 - [x] `T8.2` Implement Playground LiveView
   - [x] Use this module shape:
     ```elixir
-    defmodule WhatsappbotWeb.PlaygroundLive do
-      use WhatsappbotWeb, :live_view
+    defmodule SokochatWeb.PlaygroundLive do
+      use SokochatWeb, :live_view
 
       # mount: load workspace, subscribe to "conversation:playground_#{workspace.id}"
       # handle_event "send_message": call Dispatcher.dispatch(..., :playground), clear input
@@ -448,7 +448,7 @@
 
 - [ ] `T9.2` Add Cloak encrypted field for `access_token`
   - [ ] Reuse the same pattern as endpoint headers.
-  - [ ] Create `Whatsappbot.Encrypted.String`.
+  - [ ] Create `Sokochat.Encrypted.String`.
 
 - [ ] `T9.3` Build Meta connection LiveView at `/workspaces/:id/meta`
   - [ ] Step 1 — Credentials:
@@ -463,7 +463,7 @@
     - [ ] Show status badge: pending / active / error.
     - [ ] Show an error message if verification fails.
 
-- [ ] `T9.4` Build webhook controller in `lib/whatsappbot_web/controllers/webhook_controller.ex`
+- [ ] `T9.4` Build webhook controller in `lib/sokochat_web/controllers/webhook_controller.ex`
   - [ ] Add routes:
     - [ ] `GET /webhooks/whatsapp/:slug` → `handle_verification/2`
     - [ ] `POST /webhooks/whatsapp/:slug` → `handle_message/2`
@@ -479,13 +479,13 @@
     - [ ] Enqueue `Workers.ProcessInboundMessage` with the payload.
 
 - [ ] `T9.5` Add Oban worker `ProcessInboundMessage`
-  - [ ] Create `lib/whatsappbot/workers/process_inbound_message.ex`.
+  - [ ] Create `lib/sokochat/workers/process_inbound_message.ex`.
   - [ ] Accept `workspace_id`, `phone_number`, `message_text`, and `whatsapp_message_id`.
   - [ ] Call `Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp)`.
   - [ ] On success, call `send_whatsapp_reply(connection, phone_number, reply, cta)`.
   - [ ] On error, log and stop retries after `max_attempts: 3`.
 
-- [ ] `T9.6` Build Meta API sender in `lib/whatsappbot/meta/sender.ex`
+- [ ] `T9.6` Build Meta API sender in `lib/sokochat/meta/sender.ex`
   - [ ] Implement `send_message(connection, to_number, reply_text, cta)`.
   - [ ] Return `{:ok, message_id}` or `{:error, reason}`.
   - [ ] Build the correct Meta API payload for each CTA type:
@@ -526,7 +526,7 @@
 - [ ] `T10.4` Create environment configuration checklist
   - [ ] Create `.env.example` with:
     ```dotenv
-    DATABASE_URL=postgres://user:pass@localhost/whatsappbot_dev
+    DATABASE_URL=postgres://user:pass@localhost/sokochat_dev
     ENCRYPTION_KEY=<base64 AES-256 key>
     ANTHROPIC_API_KEY=sk-ant-...
     SECRET_KEY_BASE=<mix phx.gen.secret>
@@ -540,8 +540,8 @@
     - [ ] `http_service` on port `4000`
     - [ ] health check on `/`
     - [ ] env vars `PHX_HOST` and `PORT`
-    - [ ] release command `/app/bin/whatsappbot eval "Whatsappbot.Release.migrate"`
-  - [ ] Create `lib/whatsappbot/release.ex` with `migrate/0`.
+    - [ ] release command `/app/bin/sokochat eval "Sokochat.Release.migrate"`
+  - [ ] Create `lib/sokochat/release.ex` with `migrate/0`.
 
 - [ ] `T10.6` Update `README.md`
   - [ ] Add quick-start instructions:
@@ -580,7 +580,7 @@ mix phx.server
 mix test
 
 # Run a specific test file
-mix test test/whatsappbot/ai/claude_client_test.exs
+mix test test/sokochat/ai/claude_client_test.exs
 
 # Run migrations
 mix ecto.migrate
@@ -602,9 +602,9 @@ Oban.check_queue(:default) |> IO.inspect()
 
 ## Conventions for this project
 
-- [ ] All context modules live in `lib/whatsappbot/` with no web concerns.
-- [ ] All LiveViews live in `lib/whatsappbot_web/live/`.
+- [ ] All context modules live in `lib/sokochat/` with no web concerns.
+- [ ] All LiveViews live in `lib/sokochat_web/live/`.
 - [ ] PubSub topics use `"conversation:#{id}"` and `"workspace:#{id}"`.
 - [ ] All DB queries are scoped to `workspace_id`.
-- [ ] Encrypted fields always use `Whatsappbot.Encrypted.*` types.
-- [ ] Tests use `Whatsappbot.DataCase` for DB tests and `WhatsappbotWeb.ConnCase` for controller/LiveView tests.
+- [ ] Encrypted fields always use `Sokochat.Encrypted.*` types.
+- [ ] Tests use `Sokochat.DataCase` for DB tests and `SokochatWeb.ConnCase` for controller/LiveView tests.

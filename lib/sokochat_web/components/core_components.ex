@@ -1,4 +1,4 @@
-defmodule WhatsappbotWeb.CoreComponents do
+defmodule SokochatWeb.CoreComponents do
   @moduledoc """
   Provides core UI components.
 
@@ -15,7 +15,7 @@ defmodule WhatsappbotWeb.CoreComponents do
   Icons are provided by [heroicons](https://heroicons.com). See `icon/1` for usage.
   """
   use Phoenix.Component
-  use Gettext, backend: WhatsappbotWeb.Gettext
+  use Gettext, backend: SokochatWeb.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -666,9 +666,9 @@ defmodule WhatsappbotWeb.CoreComponents do
     # with our gettext backend as first argument. Translations are
     # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
-      Gettext.dngettext(WhatsappbotWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(SokochatWeb.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(WhatsappbotWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext(SokochatWeb.Gettext, "errors", msg, opts)
     end
   end
 

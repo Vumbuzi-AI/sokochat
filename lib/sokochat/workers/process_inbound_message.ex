@@ -1,4 +1,4 @@
-defmodule Whatsappbot.Workers.ProcessInboundMessage do
+defmodule Sokochat.Workers.ProcessInboundMessage do
   @moduledoc """
   Processes a single inbound WhatsApp message: runs it through the shared
   conversation `Dispatcher` and sends the assistant reply back through Meta.
@@ -12,9 +12,9 @@ defmodule Whatsappbot.Workers.ProcessInboundMessage do
     max_attempts: 3,
     unique: [keys: [:whatsapp_message_id], period: 60 * 60 * 24]
 
-  alias Whatsappbot.Conversations.Dispatcher
-  alias Whatsappbot.Meta
-  alias Whatsappbot.Meta.Sender
+  alias Sokochat.Conversations.Dispatcher
+  alias Sokochat.Meta
+  alias Sokochat.Meta.Sender
 
   require Logger
 

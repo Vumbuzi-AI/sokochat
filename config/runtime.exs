@@ -61,12 +61,12 @@ end
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/whatsappbot start
+#     PHX_SERVER=true bin/sokochat start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if env_value.("PHX_SERVER") do
-  config :whatsappbot, WhatsappbotWeb.Endpoint, server: true
+  config :sokochat, SokochatWeb.Endpoint, server: true
 end
 
 encryption_key =
@@ -85,7 +85,7 @@ encryption_key =
       end
   end
 
-config :whatsappbot, Whatsappbot.Vault,
+config :sokochat, Sokochat.Vault,
   ciphers: [
     default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(encryption_key)}
   ]
@@ -105,7 +105,7 @@ openai_api_key =
       end
   end
 
-config :whatsappbot, :openai,
+config :sokochat, :openai,
   api_key: openai_api_key,
   model: env_value.("OPENAI_MODEL") || "gpt-5.5",
   reasoning_effort: "low",
@@ -115,7 +115,7 @@ config :whatsappbot, :openai,
 # WhatsApp Cloud API. Per-workspace credentials (phone number id, WABA id, access
 # token) are configured in the dashboard at /workspaces/:id/meta. Only the Graph
 # API version is global. Confirm the current version in your Meta app's dashboard.
-config :whatsappbot, :meta,
+config :sokochat, :meta,
   graph_api_version: env_value.("WHATSAPP_GRAPH_API_VERSION") || "v21.0"
 
 if config_env() == :prod do
@@ -128,7 +128,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if env_value.("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :whatsappbot, Whatsappbot.Repo,
+  config :sokochat, Sokochat.Repo,
     # ssl: true,
     url: database_url,
     pool_size: String.to_integer(env_value.("POOL_SIZE") || "10"),
@@ -149,9 +149,9 @@ if config_env() == :prod do
   host = env_value.("PHX_HOST") || "example.com"
   port = String.to_integer(env_value.("PORT") || "4000")
 
-  config :whatsappbot, :dns_cluster_query, env_value.("DNS_CLUSTER_QUERY")
+  config :sokochat, :dns_cluster_query, env_value.("DNS_CLUSTER_QUERY")
 
-  config :whatsappbot, WhatsappbotWeb.Endpoint,
+  config :sokochat, SokochatWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable IPv6 and bind on all interfaces.
@@ -168,7 +168,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :whatsappbot, WhatsappbotWeb.Endpoint,
+  #     config :sokochat, SokochatWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -190,7 +190,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :whatsappbot, WhatsappbotWeb.Endpoint,
+  #     config :sokochat, SokochatWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
@@ -201,7 +201,7 @@ if config_env() == :prod do
   # Also, you may need to configure the Swoosh API client of your choice if you
   # are not using SMTP. Here is an example of the configuration:
   #
-  #     config :whatsappbot, Whatsappbot.Mailer,
+  #     config :sokochat, Sokochat.Mailer,
   #       adapter: Swoosh.Adapters.Mailgun,
   #       api_key: System.get_env("MAILGUN_API_KEY"),
   #       domain: System.get_env("MAILGUN_DOMAIN")
