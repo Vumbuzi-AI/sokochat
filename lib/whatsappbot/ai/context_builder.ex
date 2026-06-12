@@ -1,6 +1,6 @@
 defmodule Whatsappbot.AI.ContextBuilder do
   @moduledoc """
-  Builds the Claude system prompt from workspace configuration and live business data.
+  Builds the AI system prompt from workspace configuration and live business data.
   """
 
   @max_endpoint_chars 3000
@@ -21,14 +21,10 @@ defmodule Whatsappbot.AI.ContextBuilder do
     - Answer only from the data provided. If you don't know, say so.
     - Be concise. WhatsApp messages should be short.
     - Never make up prices, stock levels, or contact details.
-    - At the end of your JSON response, include a "cta" key if a CTA rule applies.
-      Otherwise set "cta" to null.
-
-    RESPONSE FORMAT (always valid JSON):
-    {
-      "reply": "your message text here",
-      "cta": null | { "type": "website|phone|whatsapp|reply_buttons|list_message", "payload": {...} }
-    }
+    - Return a short buyer-facing reply.
+    - Apply CTA rules first when they match.
+    - If no CTA rule matches but a product has a direct link, WhatsApp number, or phone number, you may include a CTA for that product.
+    - When a product has rich fields like title, price, description, and image URL, include them in the CTA payload when useful so channels can show a product card.
     """
     |> String.trim()
   end

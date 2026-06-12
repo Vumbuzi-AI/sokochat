@@ -21,6 +21,8 @@ defmodule Whatsappbot.AI.ContextBuilderTest do
     assert prompt =~ "Detect the buyer's language and respond in the same language"
     assert prompt =~ "\"name\": \"Tomatoes\""
     assert prompt =~ "\"price\": 100"
+    assert prompt =~ "Apply CTA rules first when they match."
+    assert prompt =~ "include them in the CTA payload"
   end
 
   test "build_system_prompt/2 truncates large endpoint data" do

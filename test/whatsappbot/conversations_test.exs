@@ -94,7 +94,7 @@ defmodule Whatsappbot.ConversationsTest do
   end
 
   describe "build_messages/2" do
-    test "returns the last 10 messages in Anthropic format and appends the new user message once" do
+    test "returns the last 10 messages in chat format and appends the new user message once" do
       workspace = workspace_fixture(user_fixture())
       conversation = conversation_fixture(workspace)
 

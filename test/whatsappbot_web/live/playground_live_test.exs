@@ -14,9 +14,9 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
   setup do
     on_exit(fn ->
       Process.delete(:endpoint_req_options)
-      Process.delete(:claude_req_options)
+      Process.delete(:openai_req_options)
       Application.delete_env(:whatsappbot, :endpoint_req_options)
-      Application.delete_env(:whatsappbot, :claude_req_options)
+      Application.delete_env(:whatsappbot, :openai_req_options)
     end)
 
     :ok
@@ -34,7 +34,7 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
 
     stub_endpoint(%{"items" => [%{"name" => "Tomatoes", "price" => 120}]})
 
-    stub_claude(~s({"reply":"Tomatoes are available today.","cta":null}))
+    stub_openai(~s({"reply":"Tomatoes are available today.","cta":null}))
 
     {:ok, view, _html} =
       conn
@@ -65,7 +65,7 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
 
     stub_endpoint(%{"items" => [%{"name" => "Tomatoes", "price" => 120}]})
 
-    stub_claude(
+    stub_openai(
       ~s({"reply":"You can order tomatoes now.","cta":{"type":"website","payload":{"url":"https://shop.example.com/checkout"}}})
     )
 
@@ -83,6 +83,50 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
     assert html =~ "You can order tomatoes now."
     assert html =~ "Open link"
     assert html =~ "https://shop.example.com/checkout"
+  end
+
+  test "assistant bubble shows product image preview fields from CTA payload", %{conn: conn} do
+    user = user_fixture()
+    workspace = workspace_fixture(user)
+
+    endpoint_fixture(workspace, %{
+      url: "https://catalog.test/products",
+      method: "GET",
+      refresh_strategy: "on_demand"
+    })
+
+    stub_endpoint(%{
+      "products" => [
+        %{
+          "name" => "Classic Hoodie",
+          "price" => 39.99,
+          "currency" => "USD",
+          "image_url" =>
+            "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+          "url" => "https://shop.example.com/products/classic-hoodie"
+        }
+      ]
+    })
+
+    stub_openai(
+      ~s({"reply":"The Classic Hoodie is available.","cta":{"type":"website","payload":{"url":"https://shop.example.com/products/classic-hoodie","title":"Classic Hoodie","body":"USD 39.99","image_url":"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80"}}})
+    )
+
+    {:ok, view, _html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}/playground")
+
+    view
+    |> form("form", playground: %{message: "Show me the hoodie"})
+    |> render_submit()
+
+    html = render(view)
+
+    assert html =~ "Classic Hoodie"
+    assert html =~ "USD 39.99"
+
+    assert html =~ "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab"
   end
 
   test "clear chat removes the playground messages", %{conn: conn} do
@@ -136,25 +180,31 @@ defmodule WhatsappbotWeb.PlaygroundLiveTest do
     Application.put_env(:whatsappbot, :endpoint_req_options, stub_options)
   end
 
-  defp stub_claude(response_text) do
-    Req.Test.expect(__MODULE__.ClaudeStub, fn conn ->
+  defp stub_openai(response_text) do
+    Req.Test.expect(__MODULE__.OpenAIStub, fn conn ->
       request =
         conn
         |> Req.Test.raw_body()
         |> IO.iodata_to_binary()
         |> Jason.decode!()
 
-      assert is_binary(request["system"])
-      assert request["messages"] != []
+      assert is_binary(request["instructions"])
+      assert request["input"] != []
 
       Req.Test.json(conn, %{
-        "content" => [%{"type" => "text", "text" => response_text}],
-        "usage" => %{"input_tokens" => 21, "output_tokens" => 9}
+        "output" => [
+          %{
+            "type" => "message",
+            "role" => "assistant",
+            "content" => [%{"type" => "output_text", "text" => response_text}]
+          }
+        ],
+        "usage" => %{"input_tokens" => 21, "output_tokens" => 9, "total_tokens" => 30}
       })
     end)
 
-    stub_options = [plug: {Req.Test, __MODULE__.ClaudeStub}]
-    Process.put(:claude_req_options, stub_options)
-    Application.put_env(:whatsappbot, :claude_req_options, stub_options)
+    stub_options = [plug: {Req.Test, __MODULE__.OpenAIStub}]
+    Process.put(:openai_req_options, stub_options)
+    Application.put_env(:whatsappbot, :openai_req_options, stub_options)
   end
 end

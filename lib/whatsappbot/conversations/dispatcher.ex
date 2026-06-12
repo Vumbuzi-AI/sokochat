@@ -3,10 +3,11 @@ defmodule Whatsappbot.Conversations.Dispatcher do
   Orchestrates inbound conversation handling for playground and channel integrations.
   """
 
-  alias Whatsappbot.AI.ClaudeClient
   alias Whatsappbot.AI.ContextBuilder
   alias Whatsappbot.AI.CtaInjector
+  alias Whatsappbot.AI.OpenAIClient
   alias Whatsappbot.Conversations
+  alias Whatsappbot.Conversations.ProductCTA
   alias Whatsappbot.Endpoints
   alias Whatsappbot.Repo
   alias Whatsappbot.Workspaces.Workspace
@@ -50,10 +51,11 @@ defmodule Whatsappbot.Conversations.Dispatcher do
              endpoint_snapshot: endpoint_data
            ),
          messages <- Conversations.build_messages(conversation.id, user_message),
-         {:ok, reply} <- ClaudeClient.chat(messages, system_prompt),
+         {:ok, reply} <- OpenAIClient.chat(messages, system_prompt),
+         final_cta = ProductCTA.attach(reply.reply, user_message, endpoint_data, reply.cta),
          {:ok, assistant_message} <-
            Conversations.add_message(conversation, :assistant, reply.reply,
-             cta: reply.cta,
+             cta: final_cta,
              tokens_used: reply.tokens
            ) do
       Conversations.broadcast_new_message(assistant_message)

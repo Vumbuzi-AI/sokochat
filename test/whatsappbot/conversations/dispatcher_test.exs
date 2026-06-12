@@ -13,7 +13,7 @@ defmodule Whatsappbot.Conversations.DispatcherTest do
   setup do
     on_exit(fn ->
       Process.delete(:endpoint_req_options)
-      Process.delete(:claude_req_options)
+      Process.delete(:openai_req_options)
     end)
 
     :ok
@@ -33,30 +33,36 @@ defmodule Whatsappbot.Conversations.DispatcherTest do
       Req.Test.json(conn, [%{"name" => "Tomatoes", "price" => 120}])
     end)
 
-    Req.Test.expect(__MODULE__.ClaudeStub, fn conn ->
+    Req.Test.expect(__MODULE__.OpenAIStub, fn conn ->
       request =
         conn
         |> Req.Test.raw_body()
         |> IO.iodata_to_binary()
         |> Jason.decode!()
 
-      assert request["messages"] == [%{"role" => "user", "content" => "Do you have tomatoes?"}]
-      assert request["system"] =~ "Tomatoes"
+      assert request["input"] == [%{"role" => "user", "content" => "Do you have tomatoes?"}]
+      assert request["instructions"] =~ "Tomatoes"
 
       Req.Test.json(conn, %{
-        "content" => [
+        "output" => [
           %{
-            "type" => "text",
-            "text" =>
-              ~s({"reply":"Yes, tomatoes are available.","cta":{"type":"website","payload":{"url":"https://shop.example.com/tomatoes"}}})
+            "type" => "message",
+            "role" => "assistant",
+            "content" => [
+              %{
+                "type" => "output_text",
+                "text" =>
+                  ~s({"reply":"Yes, tomatoes are available.","cta":{"type":"website","payload":{"url":"https://shop.example.com/tomatoes"}}})
+              }
+            ]
           }
         ],
-        "usage" => %{"input_tokens" => 33, "output_tokens" => 12}
+        "usage" => %{"input_tokens" => 33, "output_tokens" => 12, "total_tokens" => 45}
       })
     end)
 
     Process.put(:endpoint_req_options, plug: {Req.Test, __MODULE__.EndpointStub})
-    Process.put(:claude_req_options, plug: {Req.Test, __MODULE__.ClaudeStub})
+    Process.put(:openai_req_options, plug: {Req.Test, __MODULE__.OpenAIStub})
 
     assert {:ok, conversation} =
              Conversations.get_or_create_conversation(
@@ -101,23 +107,32 @@ defmodule Whatsappbot.Conversations.DispatcherTest do
       cached_data: %{"items" => [%{"name" => "Onions"}]}
     })
 
-    Req.Test.expect(__MODULE__.CachedClaudeStub, fn conn ->
+    Req.Test.expect(__MODULE__.CachedOpenAIStub, fn conn ->
       request =
         conn
         |> Req.Test.raw_body()
         |> IO.iodata_to_binary()
         |> Jason.decode!()
 
-      assert request["system"] =~ "Onions"
+      assert request["instructions"] =~ "Onions"
 
       Req.Test.json(conn, %{
-        "content" => [
-          %{"type" => "text", "text" => ~s({"reply":"Onions are in stock.","cta":null})}
+        "output" => [
+          %{
+            "type" => "message",
+            "role" => "assistant",
+            "content" => [
+              %{
+                "type" => "output_text",
+                "text" => ~s({"reply":"Onions are in stock.","cta":null})
+              }
+            ]
+          }
         ]
       })
     end)
 
-    Process.put(:claude_req_options, plug: {Req.Test, __MODULE__.CachedClaudeStub})
+    Process.put(:openai_req_options, plug: {Req.Test, __MODULE__.CachedOpenAIStub})
 
     assert {:ok, _assistant_message} =
              Dispatcher.dispatch(
@@ -134,5 +149,79 @@ defmodule Whatsappbot.Conversations.DispatcherTest do
 
     assert user_message.endpoint_snapshot == %{"items" => [%{"name" => "Onions"}]}
     assert assistant_message.content == "Onions are in stock."
+  end
+
+  test "dispatch/4 builds a default website CTA with product preview fields" do
+    workspace = workspace_fixture(user_fixture())
+
+    endpoint_fixture(workspace, %{
+      url: "https://catalog.test/products",
+      method: "GET",
+      refresh_strategy: "on_demand"
+    })
+
+    Req.Test.expect(__MODULE__.PreviewEndpointStub, fn conn ->
+      assert conn.method == "GET"
+
+      Req.Test.json(conn, %{
+        "products" => [
+          %{
+            "name" => "Classic Hoodie",
+            "price" => 39.99,
+            "currency" => "USD",
+            "image_url" =>
+              "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+            "url" => "https://shop.example.com/products/classic-hoodie"
+          }
+        ]
+      })
+    end)
+
+    Req.Test.expect(__MODULE__.PreviewOpenAIStub, fn conn ->
+      request =
+        conn
+        |> Req.Test.raw_body()
+        |> IO.iodata_to_binary()
+        |> Jason.decode!()
+
+      assert request["instructions"] =~ "you may include a CTA for that product"
+
+      Req.Test.json(conn, %{
+        "output" => [
+          %{
+            "type" => "message",
+            "role" => "assistant",
+            "content" => [
+              %{
+                "type" => "output_text",
+                "text" => ~s({"reply":"The Classic Hoodie is available in stock.","cta":null})
+              }
+            ]
+          }
+        ]
+      })
+    end)
+
+    Process.put(:endpoint_req_options, plug: {Req.Test, __MODULE__.PreviewEndpointStub})
+    Process.put(:openai_req_options, plug: {Req.Test, __MODULE__.PreviewOpenAIStub})
+
+    assert {:ok, assistant_message} =
+             Dispatcher.dispatch(
+               workspace.id,
+               "preview-phone",
+               "Show me the hoodie",
+               :playground
+             )
+
+    assert assistant_message.cta == %{
+             "type" => "website",
+             "payload" => %{
+               "body" => "USD 39.99",
+               "image_url" =>
+                 "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+               "title" => "Classic Hoodie",
+               "url" => "https://shop.example.com/products/classic-hoodie"
+             }
+           }
   end
 end

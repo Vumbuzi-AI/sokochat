@@ -1,5 +1,54 @@
 import Config
 
+strip_wrapping_quotes = fn
+  "\"" <> rest ->
+    String.trim_trailing(rest, "\"")
+
+  "'" <> rest ->
+    String.trim_trailing(rest, "'")
+
+  value ->
+    value
+end
+
+dotenv_path = Path.expand("../.env", __DIR__)
+
+dotenv_values =
+  if File.exists?(dotenv_path) do
+    dotenv_path
+    |> File.stream!([], :line)
+    |> Enum.reduce(%{}, fn line, acc ->
+      trimmed = String.trim(line)
+
+      cond do
+        trimmed == "" or String.starts_with?(trimmed, "#") ->
+          acc
+
+        true ->
+          case String.split(String.trim_leading(trimmed, "export "), "=", parts: 2) do
+            [key, value] ->
+              Map.put(acc, String.trim(key), strip_wrapping_quotes.(String.trim(value)))
+
+            _ ->
+              acc
+          end
+      end
+    end)
+  else
+    %{}
+  end
+
+env_value = fn key ->
+  case System.get_env(key) || Map.get(dotenv_values, key) do
+    value when is_binary(value) ->
+      trimmed = String.trim(value)
+      if trimmed == "", do: nil, else: trimmed
+
+    _ ->
+      nil
+  end
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -16,12 +65,12 @@ import Config
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
-if System.get_env("PHX_SERVER") do
+if env_value.("PHX_SERVER") do
   config :whatsappbot, WhatsappbotWeb.Endpoint, server: true
 end
 
 encryption_key =
-  case System.get_env("ENCRYPTION_KEY") do
+  case env_value.("ENCRYPTION_KEY") do
     key when is_binary(key) and byte_size(key) > 0 ->
       key
 
@@ -41,40 +90,42 @@ config :whatsappbot, Whatsappbot.Vault,
     default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(encryption_key)}
   ]
 
-anthropic_api_key =
-  case System.get_env("ANTHROPIC_API_KEY") do
+openai_api_key =
+  case env_value.("OPENAI_API_KEY") do
     key when is_binary(key) and byte_size(key) > 0 ->
       key
 
     _ ->
       if config_env() == :prod do
         raise """
-        environment variable ANTHROPIC_API_KEY is missing.
+        environment variable OPENAI_API_KEY is missing.
         """
       else
-        "test-anthropic-key"
+        "test-openai-key"
       end
   end
 
-config :whatsappbot, :anthropic,
-  api_key: anthropic_api_key,
-  model: "claude-sonnet-4-20250514",
-  max_tokens: 1024
+config :whatsappbot, :openai,
+  api_key: openai_api_key,
+  model: env_value.("OPENAI_MODEL") || "gpt-5.5",
+  reasoning_effort: "low",
+  text_verbosity: "low",
+  max_output_tokens: 1024
 
 if config_env() == :prod do
   database_url =
-    System.get_env("DATABASE_URL") ||
+    env_value.("DATABASE_URL") ||
       raise """
       environment variable DATABASE_URL is missing.
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  maybe_ipv6 = if env_value.("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :whatsappbot, Whatsappbot.Repo,
     # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    pool_size: String.to_integer(env_value.("POOL_SIZE") || "10"),
     socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
@@ -83,16 +134,16 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
+    env_value.("SECRET_KEY_BASE") ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
-  port = String.to_integer(System.get_env("PORT") || "4000")
+  host = env_value.("PHX_HOST") || "example.com"
+  port = String.to_integer(env_value.("PORT") || "4000")
 
-  config :whatsappbot, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :whatsappbot, :dns_cluster_query, env_value.("DNS_CLUSTER_QUERY")
 
   config :whatsappbot, WhatsappbotWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

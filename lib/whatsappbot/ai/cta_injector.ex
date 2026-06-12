@@ -1,6 +1,6 @@
 defmodule Whatsappbot.AI.CtaInjector do
   @moduledoc """
-  Appends CTA rule guidance to the Claude system prompt.
+  Appends CTA rule guidance to the AI system prompt.
   """
 
   def inject_cta_rules(system_prompt, cta_rules) when cta_rules in [nil, []] do

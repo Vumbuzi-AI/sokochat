@@ -23,6 +23,12 @@ defmodule WhatsappbotWeb.Router do
     get "/", PageController, :home
   end
 
+  scope "/api", WhatsappbotWeb do
+    pipe_through :api
+
+    get "/test/products", ProductController, :index
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", WhatsappbotWeb do
   #   pipe_through :api

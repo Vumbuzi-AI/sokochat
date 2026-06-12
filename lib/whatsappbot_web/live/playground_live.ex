@@ -240,6 +240,26 @@ defmodule WhatsappbotWeb.PlaygroundLive do
 
     ~H"""
     <div class="mt-3 space-y-2 border-t border-[#E9EDEF] pt-3">
+      <div
+        :if={cta_preview?(@payload)}
+        class="overflow-hidden rounded-2xl border border-[#D1D7DB] bg-white shadow-[0_1px_2px_rgba(17,27,33,0.08)]"
+      >
+        <img
+          :if={payload_value(@payload, "image_url")}
+          src={payload_value(@payload, "image_url")}
+          alt={payload_value(@payload, "title") || "Product image"}
+          class="h-40 w-full object-cover"
+        />
+        <div class="space-y-1 px-3 py-3">
+          <p :if={payload_value(@payload, "title")} class="text-sm font-semibold text-[#111B21]">
+            {payload_value(@payload, "title")}
+          </p>
+          <p :if={payload_value(@payload, "body")} class="text-xs text-[#667781]">
+            {payload_value(@payload, "body")}
+          </p>
+        </div>
+      </div>
+
       <a
         :if={@type == "website"}
         href={payload_value(@payload, "url")}
@@ -590,6 +610,11 @@ defmodule WhatsappbotWeb.PlaygroundLive do
   end
 
   defp payload_value(_value, _key), do: nil
+
+  defp cta_preview?(payload) do
+    payload_value(payload, "image_url") || payload_value(payload, "title") ||
+      payload_value(payload, "body")
+  end
 
   defp safe_existing_atom(key) when is_binary(key) do
     String.to_existing_atom(key)
