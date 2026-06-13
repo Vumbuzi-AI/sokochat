@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
 @import "tailwindcss/base";
 @import "tailwindcss/components";
@@ -120,6 +120,15 @@ summary:focus-visible,
   }
 }
 
+@keyframes logo-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-bubble-in {
   animation: bubble-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -130,6 +139,238 @@ summary:focus-visible,
 
 .animate-pulse-dot {
   animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+.landing-logo-track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  animation: logo-marquee 22s linear infinite;
+}
+
+.landing-logo-track:hover {
+  animation-play-state: paused;
+}
+
+.marketing-home {
+  --home-primary: #1f6b52;
+  --home-primary-strong: #153f33;
+  --home-primary-soft: #e7f1eb;
+  --home-text: #16241f;
+  --home-muted: #61716b;
+  --home-smoke: #eef5f1;
+  --home-line: #d7e1db;
+  --home-surface: rgba(255, 255, 255, 0.82);
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  color: var(--home-muted);
+  font-size: 16px;
+  line-height: 1.72;
+  background-color: #f5f6ef;
+  background-image:
+    radial-gradient(circle at top, rgba(31, 107, 82, 0.12), transparent 30%),
+    linear-gradient(180deg, #fbfcf7 0%, #f5f6ef 42%, #ffffff 100%);
+}
+
+.marketing-home .font-body {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+}
+
+.marketing-home .font-head {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+}
+
+.marketing-home h1,
+.marketing-home h2,
+.marketing-home h3,
+.marketing-home h4,
+.marketing-home h5,
+.marketing-home h6 {
+  margin: 0 0 10px;
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  color: var(--home-text);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.marketing-home h1 {
+  font-size: clamp(3rem, 6vw, 4.6rem);
+}
+
+.marketing-home h2 {
+  font-size: clamp(2.35rem, 5vw, 3.45rem);
+}
+
+.marketing-home h3 {
+  font-size: clamp(1.65rem, 3vw, 2rem);
+}
+
+.marketing-home h4 {
+  font-size: 1.5rem;
+}
+
+.marketing-home h5 {
+  font-size: 1.25rem;
+}
+
+.marketing-home h6 {
+  font-size: 1.05rem;
+}
+
+.marketing-home p {
+  margin: 0 0 10px;
+  color: var(--home-muted);
+}
+
+.marketing-home .bg-primary {
+  background-color: var(--home-primary);
+}
+
+.marketing-home .bg-dark {
+  background-color: var(--home-primary-strong);
+}
+
+.marketing-home .bg-lavender {
+  background-color: var(--home-primary-soft);
+}
+
+.marketing-home .text-primary {
+  color: var(--home-primary);
+}
+
+.marketing-home .text-dark {
+  color: var(--home-text);
+}
+
+.marketing-home .text-dim {
+  color: var(--home-muted);
+}
+
+.marketing-home .text-smoke {
+  color: var(--home-smoke);
+}
+
+.marketing-home .border-primary {
+  border-color: var(--home-primary);
+}
+
+.marketing-home .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: 0.75rem;
+}
+
+.marketing-home .navbar .container > div {
+  border: 1px solid var(--home-line);
+  border-radius: 24px;
+  background: var(--home-surface);
+  padding: 0.95rem 1.25rem;
+  box-shadow: 0 18px 45px -32px rgba(21, 63, 51, 0.45);
+  backdrop-filter: blur(18px);
+}
+
+.marketing-home .hero-section h1 {
+  max-width: 12ch;
+  margin-inline: auto;
+}
+
+.marketing-home .hero-section p {
+  max-width: 48rem;
+}
+
+.marketing-home .hero-section .container > .grid img,
+.marketing-home #cases a,
+.marketing-home #services a,
+.marketing-home #blog a {
+  box-shadow: 0 28px 60px -42px rgba(21, 63, 51, 0.34);
+}
+
+.marketing-home .about-item,
+.marketing-home #features > div > .grid > div,
+.marketing-home #services a {
+  border: 1px solid var(--home-line);
+  box-shadow: 0 24px 48px -38px rgba(21, 63, 51, 0.24);
+}
+
+.marketing-home .about-item {
+  display: grid;
+  gap: 1rem;
+  border-radius: 24px;
+  background: var(--home-surface);
+  padding: 1.35rem 1.5rem;
+}
+
+@keyframes client-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marketing-home .client-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 70px;
+  animation: client-marquee 25s linear infinite;
+}
+
+.marketing-home .client-track:hover {
+  animation-play-state: paused;
+}
+
+.marketing-home .t-pane {
+  display: none;
+}
+
+.marketing-home #t1:checked ~ .t-content .t-pane-1,
+.marketing-home #t2:checked ~ .t-content .t-pane-2,
+.marketing-home #t3:checked ~ .t-content .t-pane-3,
+.marketing-home #t4:checked ~ .t-content .t-pane-4 {
+  display: block;
+}
+
+.marketing-home #t1:checked ~ .t-menu .t-tab-1,
+.marketing-home #t2:checked ~ .t-menu .t-tab-2,
+.marketing-home #t3:checked ~ .t-menu .t-tab-3,
+.marketing-home #t4:checked ~ .t-menu .t-tab-4 {
+  z-index: 1;
+  border-color: var(--home-primary);
+  box-shadow: 0 18px 44px -24px rgba(31, 107, 82, 0.55);
+}
+
+@media (max-width: 767px) {
+  .marketing-home h1 {
+    font-size: 2.8rem;
+  }
+
+  .marketing-home h2 {
+    font-size: 2.2rem;
+  }
+
+  .marketing-home h3 {
+    font-size: 1.65rem;
+  }
+
+  .marketing-home h4 {
+    font-size: 1.35rem;
+  }
+
+  .marketing-home h5 {
+    font-size: 1.15rem;
+  }
+
+  .marketing-home h6 {
+    font-size: 1rem;
+  }
+
+  .marketing-home .navbar .container > div {
+    padding: 0.85rem 1rem;
+  }
 }
 
 /* ------------------------------------------------------------------ *

@@ -20,7 +20,9 @@ defmodule SokochatWeb.Router do
   scope "/", SokochatWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live_session :marketing, on_mount: [{SokochatWeb.UserAuth, :mount_current_user}] do
+      live "/", HomeLive.Index, :index
+    end
   end
 
   scope "/api", SokochatWeb do
