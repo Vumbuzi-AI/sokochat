@@ -2,6 +2,7 @@ defmodule Sokochat.Conversations.DispatcherTest do
   use Sokochat.DataCase, async: true
 
   import Sokochat.AccountsFixtures
+  import Sokochat.CatalogsFixtures
   import Sokochat.EndpointsFixtures
   import Sokochat.WorkspacesFixtures
 
@@ -209,6 +210,67 @@ defmodule Sokochat.Conversations.DispatcherTest do
              Dispatcher.dispatch(
                workspace.id,
                "preview-phone",
+               "Show me the hoodie",
+               :playground
+             )
+
+    assert assistant_message.cta == %{
+             "type" => "website",
+             "payload" => %{
+               "body" => "USD 39.99",
+               "image_url" =>
+                 "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+               "title" => "Classic Hoodie",
+               "url" => "https://shop.example.com/products/classic-hoodie"
+             }
+             }
+  end
+
+  test "dispatch/4 uses manual catalog items when no API endpoint is configured" do
+    workspace = workspace_fixture(user_fixture())
+    catalog = catalog_fixture(workspace)
+    item_fixture(catalog, %{
+      title: "Classic Hoodie",
+      description: "A warm hoodie for cold evenings.",
+      price: 39.99,
+      currency: "USD",
+      image_url:
+        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+      url: "https://shop.example.com/products/classic-hoodie"
+    })
+
+    Req.Test.expect(__MODULE__.CatalogOpenAIStub, fn conn ->
+      request =
+        conn
+        |> Req.Test.raw_body()
+        |> IO.iodata_to_binary()
+        |> Jason.decode!()
+
+      assert request["instructions"] =~ "Classic Hoodie"
+      assert request["instructions"] =~ "manual catalog"
+
+      Req.Test.json(conn, %{
+        "output" => [
+          %{
+            "type" => "message",
+            "role" => "assistant",
+            "content" => [
+              %{
+                "type" => "output_text",
+                "text" => ~s({"reply":"The Classic Hoodie is available.","cta":null})
+              }
+            ]
+          }
+        ]
+      })
+    end)
+
+    Process.put(:openai_req_options, plug: {Req.Test, __MODULE__.CatalogOpenAIStub})
+
+    assert {:ok, assistant_message} =
+             Dispatcher.dispatch(
+               workspace.id,
+               "manual-catalog-phone",
                "Show me the hoodie",
                :playground
              )

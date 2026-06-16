@@ -472,7 +472,7 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
                     placeholder="+254700000000"
                   />
                 <% "reply_buttons" -> %>
-                  <div class="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div class="space-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
                     <div class="space-y-1">
                       <h3 class="text-sm font-semibold text-zinc-900">Reply button labels</h3>
                       <p class="text-sm text-zinc-600">Add up to three button labels.</p>
@@ -484,7 +484,7 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
                     />
                   </div>
                 <% "list_message" -> %>
-                  <div class="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div class="space-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
                     <div class="space-y-1">
                       <h3 class="text-sm font-semibold text-zinc-900">List items</h3>
                       <p class="text-sm text-zinc-600">
@@ -493,7 +493,7 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
                     </div>
                     <div
                       :for={index <- RuleForm.list_item_indexes()}
-                      class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:grid-cols-2"
+                      class="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-2"
                     >
                       <.input
                         field={@form[String.to_atom("list_item_#{index}_title")]}

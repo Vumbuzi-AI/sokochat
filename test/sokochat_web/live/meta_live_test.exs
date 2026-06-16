@@ -22,7 +22,7 @@ defmodule SokochatWeb.MetaLiveTest do
     assert html =~ "Start in Meta"
     assert html =~ "Phone Number ID"
     assert html =~ "Finish the workspace before going live"
-    assert html =~ "Data Endpoint and CTA Rules"
+    assert html =~ "Data Ingestion and CTA Rules"
   end
 
   test "saving credentials creates a connection and reveals the webhook panel", %{conn: conn} do
@@ -59,7 +59,7 @@ defmodule SokochatWeb.MetaLiveTest do
     assert html =~ connection.verify_token
   end
 
-  test "workspace dashboard shows Meta configured when the connection is active", %{conn: conn} do
+  test "workspace setup shows Meta validated when the connection is active", %{conn: conn} do
     user = user_fixture()
     workspace = workspace_fixture(user)
     endpoint_fixture(workspace)
@@ -70,10 +70,10 @@ defmodule SokochatWeb.MetaLiveTest do
     {:ok, _view, html} =
       conn
       |> log_in_user(user)
-      |> live(~p"/workspaces/#{workspace.id}")
+      |> live(~p"/workspaces/#{workspace.id}?step=meta")
 
-    assert html =~ "Meta Connection"
-    assert html =~ "4 of 4 steps complete"
+    assert html =~ "Meta Verification Pipeline"
+    assert html =~ "Pre-Live Stage Validated"
   end
 
   test "redirects when the workspace belongs to someone else", %{conn: conn} do

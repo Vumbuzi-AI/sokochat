@@ -6,6 +6,7 @@ defmodule Sokochat.Conversations.Dispatcher do
   alias Sokochat.AI.ContextBuilder
   alias Sokochat.AI.CtaInjector
   alias Sokochat.AI.OpenAIClient
+  alias Sokochat.Catalogs
   alias Sokochat.Conversations
   alias Sokochat.Conversations.ProductCTA
   alias Sokochat.Endpoints
@@ -24,15 +25,17 @@ defmodule Sokochat.Conversations.Dispatcher do
     cta_rules = cta_rules_for(workspace.id)
 
     with {:ok, endpoint_data} <- endpoint_data_for_dispatch(endpoint) do
+      business_context = Catalogs.build_workspace_context(workspace.id, endpoint_data)
+
       {:ok,
        %{
          workspace: workspace,
          endpoint: Endpoints.get_endpoint(workspace.id) || endpoint,
          cta_rules: cta_rules,
-         endpoint_data: endpoint_data,
+         endpoint_data: business_context,
          system_prompt:
            workspace
-           |> ContextBuilder.build_system_prompt(endpoint_data)
+           |> ContextBuilder.build_system_prompt(business_context)
            |> CtaInjector.inject_cta_rules(cta_rules)
        }}
     end

@@ -32,6 +32,7 @@ defmodule Sokochat.AI.ContextBuilder do
     - Apply CTA rules first when they match.
     - If no CTA rule matches but a product has a direct link, WhatsApp number, or phone number, you may include a CTA for that product.
     - When a product has rich fields like title, price, description, and image URL, include them in the CTA payload when useful so channels can show a product card.
+    - When a manual catalog model is present, treat its fields and notes as schema hints for what item data exists and how it should be interpreted.
     """
     |> String.trim()
   end

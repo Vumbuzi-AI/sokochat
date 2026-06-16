@@ -18,4 +18,17 @@ defmodule SokochatWeb.WorkspacesLiveTest do
     assert to == ~p"/workspaces"
     assert flash["error"] == "Workspace not found."
   end
+
+  test "endpoint page renders for a workspace without a catalog", %{conn: conn} do
+    user = user_fixture()
+    workspace = workspace_fixture(user)
+
+    {:ok, view, html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}/endpoint")
+
+    assert html =~ "Data Ingestion"
+    assert render(view) =~ "Manual catalog model"
+  end
 end

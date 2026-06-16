@@ -1,26 +1,126 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">
-    Register for an account
-    <:subtitle>
-      Already registered?
-      <.link navigate={~p"/users/log_in"} class="font-semibold text-brand hover:underline">
-        Log in
-      </.link>
-      to your account now.
-    </:subtitle>
-  </.header>
+<div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+  <div class="grid lg:grid-cols-2">
+    <%!-- Form panel (left) --%>
+    <div class="flex items-center justify-center p-8 sm:p-12">
+      <div class="w-full max-w-sm">
+        <div class="mb-8">
+          <div class="section-title">Get started</div>
+          <h1 class="mt-1 text-[28px] font-semibold leading-tight text-n900">
+            Create your account
+          </h1>
+          <p class="mt-2 text-sm text-n400">
+            Already registered?
+            <.link
+              navigate={~p"/users/log_in"}
+              class="font-semibold text-primary no-underline hover:underline"
+            >
+              Log in
+            </.link>
+            to your account.
+          </p>
+        </div>
 
-  <.simple_form :let={f} for={@changeset} action={~p"/users/register"}>
-    <.error :if={@changeset.action == :insert}>
-      Oops, something went wrong! Please check the errors below.
-    </.error>
+        <.form :let={f} for={@changeset} action={~p"/users/register"} class="flex flex-col gap-5">
+          <div
+            :if={@changeset.action == :insert}
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            Oops, something went wrong! Please check the errors below.
+          </div>
 
-    <.input field={f[:name]} type="text" label="Name" required />
-    <.input field={f[:email]} type="email" label="Email" required />
-    <.input field={f[:password]} type="password" label="Password" required />
+          <div class="flex flex-col gap-1.5">
+            <label for="user_name" class="text-sm font-medium text-n800">Name</label>
+            <input
+              type="text"
+              name="user[name]"
+              id="user_name"
+              value={Phoenix.HTML.Form.normalize_value("text", f[:name].value)}
+              required
+              autocomplete="name"
+              placeholder="Jane Doe"
+              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p :for={msg <- translate_errors(f[:name].errors, :name)} class="text-sm text-red-600">
+              {msg}
+            </p>
+          </div>
 
-    <:actions>
-      <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
-    </:actions>
-  </.simple_form>
+          <div class="flex flex-col gap-1.5">
+            <label for="user_email" class="text-sm font-medium text-n800">Email</label>
+            <input
+              type="email"
+              name="user[email]"
+              id="user_email"
+              value={Phoenix.HTML.Form.normalize_value("email", f[:email].value)}
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p
+              :for={msg <- translate_errors(f[:email].errors, :email)}
+              class="text-sm text-red-600"
+            >
+              {msg}
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="user_password" class="text-sm font-medium text-n800">Password</label>
+            <input
+              type="password"
+              name="user[password]"
+              id="user_password"
+              required
+              autocomplete="new-password"
+              placeholder="••••••••"
+              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p
+              :for={msg <- translate_errors(f[:password].errors, :password)}
+              class="text-sm text-red-600"
+            >
+              {msg}
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            phx-disable-with="Creating account..."
+            class="btn btn-primary mt-1 w-full"
+          >
+            Create an account <span aria-hidden="true">→</span>
+          </button>
+        </.form>
+      </div>
+    </div>
+
+    <%!-- Image panel (right) --%>
+    <div class="relative hidden flex-col justify-between gap-8 overflow-hidden bg-[linear-gradient(to_bottom,rgba(15,156,92,0.12),rgba(255,255,255,0)_60%)] p-10 lg:flex">
+      <a href={~p"/"} class="flex items-center justify-end gap-2 no-underline">
+        <img src={~p"/images/logo.png"} alt="Sokochat" class="h-9 w-auto object-contain" />
+      </a>
+
+      <div class="flex flex-1 flex-col items-center justify-center gap-8">
+        <img
+          src={~p"/images/2.png"}
+          alt="No-code chatbot setup illustration"
+          class="h-[220px] w-auto object-contain"
+        />
+        <img
+          src={~p"/images/6.png"}
+          alt="Live data answers illustration"
+          class="h-[220px] w-auto object-contain"
+        />
+      </div>
+
+      <div class="max-w-[420px] text-right lg:ml-auto">
+        <h2 class="h5 text-n900">Build your WhatsApp chatbot</h2>
+        <p class="mt-2 text-sm font-light text-n400">
+          Create and run an AI-powered WhatsApp chatbot without code. Connect your
+          own data, keep answers current, and test in the browser before you launch.
+        </p>
+      </div>
+    </div>
+  </div>
 </div>

@@ -1,31 +1,120 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">
-    Log in to account
-    <:subtitle>
-      Don't have an account?
-      <.link navigate={~p"/users/register"} class="font-semibold text-brand hover:underline">
-        Sign up
-      </.link>
-      for an account now.
-    </:subtitle>
-  </.header>
+<div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+  <div class="grid lg:grid-cols-2">
+    <%!-- Image panel (left) --%>
+    <div class="relative hidden flex-col justify-between gap-8 overflow-hidden bg-[linear-gradient(to_bottom,rgba(15,156,92,0.12),rgba(255,255,255,0)_60%)] p-10 lg:flex">
+      <a href={~p"/"} class="flex items-center gap-2 no-underline">
+        <img src={~p"/images/logo.png"} alt="Sokochat" class="h-9 w-auto object-contain" />
+      </a>
 
-  <.simple_form :let={f} for={@conn.params["user"]} as={:user} action={~p"/users/log_in"}>
-    <.error :if={@error_message}>{@error_message}</.error>
+      <div class="flex flex-1 flex-col items-center justify-center gap-8">
+        <img
+          src={~p"/images/1.png"}
+          alt="WhatsApp business network illustration"
+          class="h-[220px] w-auto object-contain"
+        />
+        <img
+          src={~p"/images/5.png"}
+          alt="AI chatbot conversation illustration"
+          class="h-[220px] w-auto object-contain"
+        />
+      </div>
 
-    <.input field={f[:email]} type="email" label="Email" required />
-    <.input field={f[:password]} type="password" label="Password" required />
+      <div class="max-w-[420px]">
+        <h2 class="h5 text-n900">Welcome back to Sokochat</h2>
+        <p class="mt-2 text-sm font-light text-n400">
+          Pick up where you left off — manage your AI-powered WhatsApp chatbots,
+          keep your data current, and test before you go live.
+        </p>
+      </div>
+    </div>
 
-    <:actions :let={f}>
-      <.input field={f[:remember_me]} type="checkbox" label="Keep me logged in" />
-      <.link href={~p"/users/reset_password"} class="text-sm font-semibold">
-        Forgot your password?
-      </.link>
-    </:actions>
-    <:actions>
-      <.button phx-disable-with="Logging in..." class="w-full">
-        Log in <span aria-hidden="true">→</span>
-      </.button>
-    </:actions>
-  </.simple_form>
+    <%!-- Form panel (right) --%>
+    <div class="flex items-center justify-center p-8 sm:p-12">
+      <div class="w-full max-w-sm">
+        <div class="mb-8">
+          <div class="section-title">Sign in</div>
+          <h1 class="mt-1 text-[28px] font-semibold leading-tight text-n900">
+            Log in to your account
+          </h1>
+          <p class="mt-2 text-sm text-n400">
+            Don't have an account?
+            <.link
+              navigate={~p"/users/register"}
+              class="font-semibold text-primary no-underline hover:underline"
+            >
+              Sign up
+            </.link>
+            for free.
+          </p>
+        </div>
+
+        <.form
+          :let={f}
+          for={@conn.params["user"]}
+          as={:user}
+          action={~p"/users/log_in"}
+          class="flex flex-col gap-5"
+        >
+          <div
+            :if={@error_message}
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {@error_message}
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="user_email" class="text-sm font-medium text-n800">Email</label>
+            <input
+              type="email"
+              name="user[email]"
+              id="user_email"
+              value={Phoenix.HTML.Form.normalize_value("email", f[:email].value)}
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="user_password" class="text-sm font-medium text-n800">Password</label>
+            <input
+              type="password"
+              name="user[password]"
+              id="user_password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 text-sm text-n600">
+              <input
+                type="checkbox"
+                name="user[remember_me]"
+                value="true"
+                class="h-4 w-4 rounded border-n300 text-primary focus:ring-primary/30"
+              /> Keep me logged in
+            </label>
+            <.link
+              href={~p"/users/reset_password"}
+              class="text-sm font-semibold text-primary no-underline hover:underline"
+            >
+              Forgot password?
+            </.link>
+          </div>
+
+          <button
+            type="submit"
+            phx-disable-with="Logging in..."
+            class="btn btn-primary mt-1 w-full"
+          >
+            Log in <span aria-hidden="true">→</span>
+          </button>
+        </.form>
+      </div>
+    </div>
+  </div>
 </div>

@@ -2,6 +2,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   use SokochatWeb, :live_view
 
   alias Ecto.Changeset
+  alias Sokochat.Catalogs
   alias Sokochat.CTARules
   alias Sokochat.Endpoints
   alias Sokochat.Meta
@@ -14,7 +15,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
      |> assign(:page_title, "Meta Connection")
      |> assign(:workspace, nil)
      |> assign(:connection, nil)
-     |> assign(:endpoint_configured, false)
+     |> assign(:data_ingestion_configured, false)
      |> assign(:cta_rules_configured, false)}
   end
 
@@ -24,13 +25,14 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
       {:ok, workspace} ->
         connection = Meta.get_connection_or_new(workspace.id)
         endpoint = Endpoints.get_endpoint(workspace.id)
+        catalog = Catalogs.get_catalog(workspace.id)
         cta_rules = CTARules.list_cta_rules(workspace.id)
 
         {:noreply,
          socket
          |> assign(:workspace, workspace)
          |> assign(:connection, connection)
-         |> assign(:endpoint_configured, endpoint_configured?(endpoint))
+         |> assign(:data_ingestion_configured, data_ingestion_configured?(endpoint, catalog))
          |> assign(:cta_rules_configured, cta_rules != [])
          |> assign_form(Meta.change_connection(connection))}
 
@@ -81,12 +83,19 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
   defp webhook_url(socket, slug), do: url(socket, ~p"/webhooks/whatsapp/#{slug}")
 
+  defp data_ingestion_configured?(endpoint, catalog) do
+    endpoint_configured?(endpoint) or catalog_configured?(catalog)
+  end
+
   defp endpoint_configured?(%{url: url}) when is_binary(url), do: String.trim(url) != ""
   defp endpoint_configured?(_), do: false
 
-  defp status_badge_class("active"), do: "border-[#B7EBCF] bg-[#E8FFF3] text-brand-mid"
+  defp catalog_configured?(%{id: id}) when not is_nil(id), do: true
+  defp catalog_configured?(_), do: false
+
+  defp status_badge_class("active"), do: "border-[#B7EBCF] bg-[#E8FFF3] text-primary"
   defp status_badge_class("error"), do: "border-[#FFCDD2] bg-danger-bg text-danger"
-  defp status_badge_class(_), do: "border-line bg-surface-alt text-ink-muted"
+  defp status_badge_class(_), do: "border-n300 bg-n200 text-n400"
 
   defp status_label("active"), do: "Active"
   defp status_label("error"), do: "Error"
@@ -95,11 +104,11 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   defp verified_label(nil), do: "Not verified yet"
   defp verified_label(%DateTime{} = at), do: Calendar.strftime(at, "%d %b %Y, %H:%M UTC")
 
-  defp meta_alerts(connection, endpoint_configured, cta_rules_configured) do
+  defp meta_alerts(connection, data_ingestion_configured, cta_rules_configured) do
     []
     |> maybe_add_credentials_alert(connection)
     |> maybe_add_webhook_alert(connection)
-    |> maybe_add_workspace_alert(endpoint_configured, cta_rules_configured)
+    |> maybe_add_workspace_alert(data_ingestion_configured, cta_rules_configured)
     |> Enum.reverse()
   end
 
@@ -133,10 +142,10 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
   defp maybe_add_workspace_alert(alerts, true, true), do: alerts
 
-  defp maybe_add_workspace_alert(alerts, endpoint_configured, cta_rules_configured) do
+  defp maybe_add_workspace_alert(alerts, data_ingestion_configured, cta_rules_configured) do
     missing =
       []
-      |> maybe_add_missing("Data Endpoint", endpoint_configured)
+      |> maybe_add_missing("Data Ingestion", data_ingestion_configured)
       |> maybe_add_missing("CTA Rules", cta_rules_configured)
       |> Enum.join(" and ")
 
@@ -161,7 +170,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
     do: "border-[#BFD7FF] border-l-[#2F6FED] bg-[#F4F8FF] text-[#23448E]"
 
   defp alert_classes(:success),
-    do: "border-[#B7EBCF] border-l-brand-mid bg-[#E8FFF3] text-brand-mid"
+    do: "border-[#B7EBCF] border-l-primary bg-[#E8FFF3] text-primary"
 
   defp alert_icon(:warning), do: "hero-exclamation-triangle-mini"
   defp alert_icon(:info), do: "hero-information-circle-mini"
@@ -171,20 +180,20 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   def render(assigns) do
     ~H"""
     <section :if={@workspace} class="mx-auto max-w-3xl space-y-6">
-      <nav class="flex items-center gap-1.5 text-[13px] text-ink-faint">
-        <.link navigate={~p"/workspaces"} class="transition hover:text-ink-muted">Workspaces</.link>
+      <nav class="flex items-center gap-1.5 text-[13px] text-n500">
+        <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
         <span>/</span>
-        <.link navigate={~p"/workspaces/#{@workspace.id}"} class="transition hover:text-ink-muted">
+        <.link navigate={~p"/workspaces/#{@workspace.id}"} class="transition hover:text-n400">
           {@workspace.name}
         </.link>
         <span>/</span>
-        <span class="text-ink-muted">Meta Connection</span>
+        <span class="text-n400">Meta Connection</span>
       </nav>
 
-      <div class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-        <div class="space-y-1.5 border-b border-line px-8 py-6">
-          <h1 class="text-[22px] font-bold tracking-tight text-ink">Meta Connection</h1>
-          <p class="max-w-2xl text-sm leading-6 text-ink-muted">
+      <div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
+          <h1 class="text-[22px] font-bold tracking-tight text-n900">Meta Connection</h1>
+          <p class="max-w-2xl text-sm leading-6 text-n400">
             Connect this workspace to the WhatsApp Business Platform. Save your Cloud API
             credentials, then point Meta's webhook at the URL below to go live.
           </p>
@@ -192,7 +201,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
         <div class="space-y-6 px-8 py-6">
           <div
-            :for={alert <- meta_alerts(@connection, @endpoint_configured, @cta_rules_configured)}
+            :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
             role="alert"
             class={[
               "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
@@ -207,7 +216,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
           </div>
 
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-ink-muted">Status</span>
+            <span class="text-sm font-medium text-n400">Status</span>
             <span class={[
               "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold",
               status_badge_class(@connection.status)
@@ -219,7 +228,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
           <div
             :if={@connection.last_error}
             role="alert"
-            class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-ink-muted"
+            class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-n400"
           >
             <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-danger" />
             <span>{@connection.last_error}</span>
@@ -235,7 +244,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
               required
               autocomplete="off"
             />
-            <p class="-mt-3 text-[13px] text-ink-muted">
+            <p class="-mt-3 text-[13px] text-n400">
               The access token is encrypted at rest. Saving new credentials resets the
               connection to <span class="font-medium">pending</span> until the webhook is re-verified.
             </p>
@@ -243,7 +252,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
             <:actions>
               <.link
                 navigate={~p"/workspaces/#{@workspace.id}"}
-                class="mr-auto text-sm font-medium text-ink-muted transition hover:text-ink"
+                class="mr-auto text-sm font-medium text-n400 transition hover:text-n900"
               >
                 Back to dashboard
               </.link>
@@ -255,11 +264,11 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
       <div
         :if={persisted?(@connection)}
-        class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+        class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
       >
-        <div class="space-y-1.5 border-b border-line px-8 py-6">
-          <h2 class="text-[17px] font-bold tracking-tight text-ink">Webhook setup</h2>
-          <p class="text-sm leading-6 text-ink-muted">
+        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
+          <h2 class="text-[17px] font-bold tracking-tight text-n900">Webhook setup</h2>
+          <p class="text-sm leading-6 text-n400">
             In your Meta app, open WhatsApp → Configuration → Webhooks and paste these values,
             then subscribe to the <span class="font-medium">messages</span> field.
           </p>
@@ -277,10 +286,10 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
       <div
         :if={persisted?(@connection)}
-        class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+        class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
       >
-        <div class="space-y-1.5 border-b border-line px-8 py-6">
-          <h2 class="text-[17px] font-bold tracking-tight text-ink">Setup checklist</h2>
+        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
+          <h2 class="text-[17px] font-bold tracking-tight text-n900">Setup checklist</h2>
         </div>
         <div class="space-y-3 px-8 py-6 text-sm">
           <.checklist_item done={true} label="Credentials saved" />
@@ -305,21 +314,21 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   defp copy_field(assigns) do
     ~H"""
     <div>
-      <label class="block text-sm font-medium text-ink">{@label}</label>
+      <label class="block text-sm font-medium text-n900">{@label}</label>
       <div class="mt-1.5 flex items-center gap-2">
         <input
           id={@id}
           type="text"
           readonly
           value={@value}
-          class="w-full rounded-lg border border-line bg-surface-alt px-3 py-2 font-mono text-[13px] text-ink"
+          class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
         />
         <button
           id={"copy-#{@id}"}
           type="button"
           phx-hook="ClipboardCopy"
           data-copy={@value}
-          class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink transition hover:bg-surface-alt"
+          class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 text-sm font-medium text-n900 transition hover:bg-n200"
           title="Copy to clipboard"
         >
           <.icon name="hero-document-duplicate-mini" class="h-4 w-4" /> Copy
@@ -335,9 +344,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   defp checklist_item(assigns) do
     ~H"""
     <div class="flex items-center gap-2.5">
-      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-brand-mid" />
-      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-ink-faint" />
-      <span class={if @done, do: "text-ink", else: "text-ink-muted"}>{@label}</span>
+      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-primary" />
+      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-n500" />
+      <span class={if @done, do: "text-n900", else: "text-n400"}>{@label}</span>
     </div>
     """
   end

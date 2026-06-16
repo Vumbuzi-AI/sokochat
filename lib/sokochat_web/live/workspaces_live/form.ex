@@ -98,16 +98,16 @@ defmodule SokochatWeb.WorkspacesLive.Form do
   def render(assigns) do
     ~H"""
     <section class="mx-auto max-w-3xl space-y-6">
-      <nav class="flex items-center gap-1.5 text-[13px] text-ink-faint">
-        <.link navigate={~p"/workspaces"} class="transition hover:text-ink-muted">Workspaces</.link>
+      <nav class="flex items-center gap-1.5 text-[13px] text-n500">
+        <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
         <span>/</span>
-        <span class="text-ink-muted">{@page_title}</span>
+        <span class="text-n400">{@page_title}</span>
       </nav>
 
-      <div class="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-        <div class="space-y-1.5 border-b border-line px-8 py-6">
-          <h1 class="text-[22px] font-bold tracking-tight text-ink">{@page_title}</h1>
-          <p class="text-sm leading-6 text-ink-muted">
+      <div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
+          <h1 class="text-[22px] font-bold tracking-tight text-n900">{@page_title}</h1>
+          <p class="text-sm leading-6 text-n400">
             Set the business name, the AI's baseline instructions, and the languages the bot should support.
           </p>
         </div>
@@ -135,7 +135,7 @@ defmodule SokochatWeb.WorkspacesLive.Form do
             <:actions>
               <.link
                 navigate={~p"/workspaces"}
-                class="mr-auto text-sm font-medium text-ink-muted transition hover:text-ink"
+                class="mr-auto text-sm font-medium text-n400 transition hover:text-n900"
               >
                 Cancel
               </.link>

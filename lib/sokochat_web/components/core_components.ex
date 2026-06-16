@@ -206,7 +206,7 @@ defmodule SokochatWeb.CoreComponents do
         {render_slot(@inner_block, f)}
         <div
           :for={action <- @actions}
-          class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6"
+          class="flex flex-wrap items-center justify-end gap-3 border-t border-n300 pt-6"
         >
           {render_slot(action, f)}
         </div>
@@ -235,8 +235,8 @@ defmodule SokochatWeb.CoreComponents do
       type={@type}
       class={[
         "phx-submit-loading:opacity-75 inline-flex items-center justify-center rounded-full",
-        "bg-brand-dark px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition",
-        "hover:bg-brand-mid hover:shadow-[0_4px_12px_rgba(7,94,84,0.25)] active:scale-[0.98]",
+        "bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition",
+        "hover:bg-primary hover:shadow-[0_4px_12px_rgba(7,94,84,0.25)] active:scale-[0.98]",
         "disabled:cursor-not-allowed disabled:opacity-45",
         @class
       ]}
@@ -315,7 +315,7 @@ defmodule SokochatWeb.CoreComponents do
 
     ~H"""
     <div>
-      <label class="flex items-center gap-3 text-sm leading-6 text-ink-muted">
+      <label class="flex items-center gap-3 text-sm leading-6 text-n400">
         <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
         <input
           type="checkbox"
@@ -323,7 +323,7 @@ defmodule SokochatWeb.CoreComponents do
           name={@name}
           value="true"
           checked={@checked}
-          class="h-4 w-4 rounded border-line text-brand-dark focus:ring-brand-mid"
+          class="h-4 w-4 rounded border-n300 text-primary focus:ring-primary"
           {@rest}
         />
         {@label}
@@ -340,7 +340,7 @@ defmodule SokochatWeb.CoreComponents do
       <select
         id={@id}
         name={@name}
-        class="mt-1.5 block w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition focus:border-brand-mid focus:ring-2 focus:ring-brand-mid/15"
+        class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition focus:border-primary focus:ring-2 focus:ring-primary/15"
         multiple={@multiple}
         {@rest}
       >
@@ -360,8 +360,8 @@ defmodule SokochatWeb.CoreComponents do
         id={@id}
         name={@name}
         class={[
-          "mt-1.5 block w-full min-h-[6rem] rounded-lg bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition placeholder:text-ink-faint focus:ring-2",
-          @errors == [] && "border-line focus:border-brand-mid focus:ring-brand-mid/15",
+          "mt-1.5 block w-full min-h-[6rem] rounded-lg bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition placeholder:text-n500 focus:ring-2",
+          @errors == [] && "border-n300 focus:border-primary focus:ring-primary/15",
           @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
         ]}
         {@rest}
@@ -382,8 +382,8 @@ defmodule SokochatWeb.CoreComponents do
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "mt-1.5 block w-full rounded-lg bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm transition placeholder:text-ink-faint focus:ring-2",
-          @errors == [] && "border-line focus:border-brand-mid focus:ring-brand-mid/15",
+          "mt-1.5 block w-full rounded-lg bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition placeholder:text-n500 focus:ring-2",
+          @errors == [] && "border-n300 focus:border-primary focus:ring-primary/15",
           @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
         ]}
         {@rest}
@@ -401,7 +401,7 @@ defmodule SokochatWeb.CoreComponents do
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-[13px] font-semibold leading-6 text-ink">
+    <label for={@for} class="block text-[13px] font-semibold leading-6 text-n900">
       {render_slot(@inner_block)}
     </label>
     """
@@ -434,10 +434,10 @@ defmodule SokochatWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
       <div>
-        <h1 class="text-[22px] font-bold leading-8 tracking-tight text-ink">
+        <h1 class="text-[22px] font-bold leading-8 tracking-tight text-n900">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-ink-muted">
+        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-n400">
           {render_slot(@subtitle)}
         </p>
       </div>
