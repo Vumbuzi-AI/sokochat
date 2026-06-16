@@ -56,7 +56,10 @@ defmodule Sokochat.Meta.SenderTest do
     end
 
     test "website builds a cta_url interactive message" do
-      cta = %{"type" => "website", "payload" => %{"url" => "https://shop.example.com", "title" => "Shop"}}
+      cta = %{
+        "type" => "website",
+        "payload" => %{"url" => "https://shop.example.com", "title" => "Shop"}
+      }
 
       assert [%{interactive: %{type: "cta_url", action: action}}] =
                Sender.build_messages(cta, "Here you go")
@@ -183,7 +186,8 @@ defmodule Sokochat.Meta.SenderTest do
 
       Process.put(:meta_req_options, plug: {Req.Test, __MODULE__.MediaStub})
 
-      assert {:ok, "wamid.RETRY"} = Sender.send_reply(connection, "254700111222", "Here it is", cta)
+      assert {:ok, "wamid.RETRY"} =
+               Sender.send_reply(connection, "254700111222", "Here it is", cta)
     end
 
     test "returns an error tuple on a non-2xx response" do

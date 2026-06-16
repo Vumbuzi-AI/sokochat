@@ -115,8 +115,7 @@ config :sokochat, :openai,
 # WhatsApp Cloud API. Per-workspace credentials (phone number id, WABA id, access
 # token) are configured in the dashboard at /workspaces/:id/meta. Only the Graph
 # API version is global. Confirm the current version in your Meta app's dashboard.
-config :sokochat, :meta,
-  graph_api_version: env_value.("WHATSAPP_GRAPH_API_VERSION") || "v21.0"
+config :sokochat, :meta, graph_api_version: env_value.("WHATSAPP_GRAPH_API_VERSION") || "v21.0"
 
 if config_env() == :prod do
   database_url =

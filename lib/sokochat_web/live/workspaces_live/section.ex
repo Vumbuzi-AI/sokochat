@@ -63,7 +63,9 @@ defmodule SokochatWeb.WorkspacesLive.Section do
             <.icon name="hero-wrench-screwdriver" class="mt-0.5 h-5 w-5 flex-none text-brand-mid" />
             <div>
               <p class="font-medium text-ink">Coming soon</p>
-              <p class="mt-1">The workspace route and ownership checks are in place. Continue from the dashboard once the next setup step is implemented.</p>
+              <p class="mt-1">
+                The workspace route and ownership checks are in place. Continue from the dashboard once the next setup step is implemented.
+              </p>
             </div>
           </div>
 

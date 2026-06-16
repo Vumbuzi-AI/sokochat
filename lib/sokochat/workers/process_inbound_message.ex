@@ -28,7 +28,10 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
 
     case Meta.get_connection(workspace_id) do
       nil ->
-        Logger.warning("No Meta connection for workspace #{workspace_id}; dropping inbound message")
+        Logger.warning(
+          "No Meta connection for workspace #{workspace_id}; dropping inbound message"
+        )
+
         :ok
 
       connection ->

@@ -1,6 +1,4 @@
-<header
-  class="sticky top-0 z-40 h-14 border-b border-black/10 bg-gradient-to-br from-brand-dark to-brand-mid shadow-[0_2px_8px_rgba(7,94,84,0.3)]"
->
+<header class="sticky top-0 z-40 h-14 border-b border-black/10 bg-gradient-to-br from-brand-dark to-brand-mid shadow-[0_2px_8px_rgba(7,94,84,0.3)]">
   <div class="mx-auto flex h-full w-[90%]  items-center justify-between gap-4 ">
     <div class="flex items-center gap-6">
       <.link navigate={~p"/workspaces"} class="flex items-center gap-2.5">
@@ -19,10 +17,7 @@
           >
             Workspaces
           </.link>
-          <.link
-            navigate={~p"/workspaces/new"}
-            class="text-white/80 transition hover:text-white"
-          >
+          <.link navigate={~p"/workspaces/new"} class="text-white/80 transition hover:text-white">
             New workspace
           </.link>
         </nav>
@@ -38,7 +33,10 @@
             {@current_user.name || @current_user.email}
           </span>
         </div>
-        <.link href={~p"/users/settings"} class="text-[13px] text-white/70 transition hover:text-white">
+        <.link
+          href={~p"/users/settings"}
+          class="text-[13px] text-white/70 transition hover:text-white"
+        >
           Settings
         </.link>
         <.link

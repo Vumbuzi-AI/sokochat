@@ -63,7 +63,8 @@ defmodule SokochatWeb.WebhookControllerTest do
       conn: conn,
       workspace: workspace
     } do
-      conn = post(conn, ~p"/webhooks/whatsapp/#{workspace.slug}", inbound_payload("wamid.IN1", "Hi"))
+      conn =
+        post(conn, ~p"/webhooks/whatsapp/#{workspace.slug}", inbound_payload("wamid.IN1", "Hi"))
 
       assert response(conn, 200)
 

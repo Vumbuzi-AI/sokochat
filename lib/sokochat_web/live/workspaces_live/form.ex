@@ -139,7 +139,9 @@ defmodule SokochatWeb.WorkspacesLive.Form do
               >
                 Cancel
               </.link>
-              <.button>{if @live_action == :new, do: "Create workspace", else: "Save changes"}</.button>
+              <.button>
+                {if @live_action == :new, do: "Create workspace", else: "Save changes"}
+              </.button>
             </:actions>
           </.simple_form>
         </div>

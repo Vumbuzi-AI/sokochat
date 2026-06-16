@@ -213,7 +213,9 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
             />
             <p :if={@form[:method].value == "POST"} class="-mt-3 text-[13px] text-ink-muted">
               Use
-              <code class="rounded bg-surface-alt px-1.5 py-0.5 font-mono text-xs text-ink">{"{{query}}"}</code>
+              <code class="rounded bg-surface-alt px-1.5 py-0.5 font-mono text-xs text-ink">
+                {"{{query}}"}
+              </code>
               anywhere in the JSON body where the buyer's query should be inserted.
             </p>
 
@@ -249,7 +251,11 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
         </div>
       </div>
 
-      <details :if={@preview_json} open class="group overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+      <details
+        :if={@preview_json}
+        open
+        class="group overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+      >
         <summary class="flex cursor-pointer list-none items-center justify-between px-5 py-4">
           <span class="text-sm font-semibold text-ink">{@preview_label || "JSON preview"}</span>
           <.icon
