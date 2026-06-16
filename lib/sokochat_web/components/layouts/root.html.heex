@@ -4,12 +4,40 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Sokochat" suffix=" · Phoenix Framework">
+    <meta
+      name="description"
+      content="Sokochat is an AI-powered WhatsApp chatbot SaaS for businesses that want live data answers, no-code setup, and browser testing before launch."
+    />
+    <meta name="robots" content="index,follow" />
+    <meta name="theme-color" content="#0f9c5c" />
+    <link rel="canonical" href={~p"/"} />
+    <link rel="icon" type="image/png" href={~p"/images/logobg.png"} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sokochat" />
+    <meta property="og:title" content="Sokochat · AI-powered WhatsApp chatbot SaaS" />
+    <meta
+      property="og:description"
+      content="Build and test AI WhatsApp chatbots with live data, CTA rules, and browser-based playground testing."
+    />
+    <meta property="og:url" content={~p"/"} />
+    <meta property="og:image" content={~p"/images/logobg.png"} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sokochat · AI-powered WhatsApp chatbot SaaS" />
+    <meta
+      name="twitter:description"
+      content="Build and test AI WhatsApp chatbots with live data, CTA rules, and browser-based playground testing."
+    />
+    <meta name="twitter:image" content={~p"/images/logobg.png"} />
+    <.live_title default="Sokochat" suffix=" · Sokochat">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body class="bg-surface-2 text-ink antialiased">
     {@inner_content}
