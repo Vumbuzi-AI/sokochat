@@ -45,6 +45,29 @@ defmodule Sokochat.EndpointsTest do
       assert hd(data)["id"] == 1
     end
 
+    test "refresh_cached_data/1 stores the latest fetched JSON" do
+      workspace = workspace_fixture(user_fixture())
+
+      Req.Test.expect(__MODULE__.RefreshStub, fn conn ->
+        assert conn.method == "GET"
+
+        Req.Test.json(conn, %{"items" => [%{"name" => "Refreshed item"}]})
+      end)
+
+      Process.put(:endpoint_req_options, plug: {Req.Test, __MODULE__.RefreshStub})
+
+      endpoint =
+        endpoint_fixture(workspace, %{
+          url: "https://catalog.test/products",
+          headers: %{"Authorization" => "Bearer secret-token"},
+          cached_data: %{"items" => [%{"name" => "Old item"}]}
+        })
+
+      assert {:ok, refreshed_endpoint} = Endpoints.refresh_cached_data(endpoint)
+      assert refreshed_endpoint.cached_data == %{"items" => [%{"name" => "Refreshed item"}]}
+      assert refreshed_endpoint.last_fetched_at != nil
+    end
+
     test "POST endpoint substitutes {{query}}" do
       workspace = workspace_fixture(user_fixture())
 

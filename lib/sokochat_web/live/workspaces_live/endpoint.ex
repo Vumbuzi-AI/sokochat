@@ -143,6 +143,10 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
     {:noreply, assign(socket, :active_tab, tab)}
   end
 
+  def handle_event("regenerate_ai_context", _params, socket) do
+    {:noreply, regenerate_ai_context(socket)}
+  end
+
   def handle_event("close_modal", _params, socket) do
     {:noreply,
      socket
@@ -334,6 +338,37 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
     socket
     |> assign(:preview_json, preview_json(preview_data))
     |> assign(:preview_label, "Current ingestion context")
+  end
+
+  defp regenerate_ai_context(socket) do
+    case socket.assigns.workspace.data_source do
+      "api" ->
+        regenerate_live_api_context(socket)
+
+      _ ->
+        socket
+        |> put_flash(:info, "AI context regenerated from the manual catalog.")
+        |> reload_preview()
+    end
+  end
+
+  defp regenerate_live_api_context(socket) do
+    case socket.assigns.endpoint do
+      %Endpoints.Endpoint{} = endpoint ->
+        case Endpoints.refresh_cached_data(endpoint) do
+          {:ok, refreshed_endpoint} ->
+            socket
+            |> assign(:endpoint, refreshed_endpoint)
+            |> put_flash(:info, "AI context regenerated from the live JSON feed.")
+            |> reload_preview()
+
+          {:error, reason} ->
+            put_flash(socket, :error, reason)
+        end
+
+      _ ->
+        put_flash(socket, :error, "Save a JSON API endpoint before regenerating the AI context.")
+    end
   end
 
   defp assign_form(socket, key, %Changeset{} = changeset) do
@@ -536,32 +571,37 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
 
   defp modal_shell(assigns) do
     ~H"""
-    <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-n900/40 p-4 sm:p-6 lg:py-10"
-      phx-window-keydown="close_modal"
-      phx-key="escape"
-    >
-      <div class="absolute inset-0" phx-click="close_modal" aria-hidden="true"></div>
-      <div class={[
-        "relative w-full rounded-2xl border border-n300 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
-        @width
-      ]}>
-        <div class="flex items-start justify-between gap-4 border-b border-n300 px-6 py-5">
-          <div class="space-y-1">
-            <h2 class="text-lg font-semibold text-n900">{@title}</h2>
-            <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
+    <div class="fixed inset-0 z-50" phx-window-keydown="close_modal" phx-key="escape">
+      <div
+        class="fixed inset-0 bg-n900/40 transition-opacity"
+        phx-click="close_modal"
+        aria-hidden="true"
+      >
+      </div>
+      <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 lg:py-10">
+        <div class="flex min-h-full items-start justify-center">
+          <div class={[
+            "relative w-full rounded-2xl border border-n300 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
+            @width
+          ]}>
+            <div class="flex items-start justify-between gap-4 border-b border-n300 px-6 py-5">
+              <div class="space-y-1">
+                <h2 class="text-lg font-semibold text-n900">{@title}</h2>
+                <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
+              </div>
+              <button
+                type="button"
+                phx-click="close_modal"
+                class="-m-2 flex-none rounded-full p-2 text-n400 transition hover:bg-n200 hover:text-n900"
+                aria-label="Close"
+              >
+                <.icon name="hero-x-mark-mini" class="h-5 w-5" />
+              </button>
+            </div>
+            <div class="px-6 py-5">
+              {render_slot(@inner_block)}
+            </div>
           </div>
-          <button
-            type="button"
-            phx-click="close_modal"
-            class="-m-2 flex-none rounded-full p-2 text-n400 transition hover:bg-n200 hover:text-n900"
-            aria-label="Close"
-          >
-            <.icon name="hero-x-mark-mini" class="h-5 w-5" />
-          </button>
-        </div>
-        <div class="px-6 py-5">
-          {render_slot(@inner_block)}
         </div>
       </div>
     </div>
@@ -927,12 +967,22 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
 
           <%!-- AI context preview tab --%>
           <div :if={@active_tab == "preview"} class="space-y-3">
-            <div class="space-y-1.5">
-              <h2 class="text-[18px] font-semibold text-n900">AI context preview</h2>
-              <p class="text-sm leading-6 text-n400">
-                {@preview_label || "The shared business context"} the assistant reads for this
-                workspace.
-              </p>
+            <div class="flex items-start justify-between gap-4">
+              <div class="space-y-1.5">
+                <h2 class="text-[18px] font-semibold text-n900">AI context preview</h2>
+                <p class="text-sm leading-6 text-n400">
+                  {@preview_label || "The shared business context"} the assistant reads for this
+                  workspace.
+                </p>
+              </div>
+              <button
+                type="button"
+                phx-click="regenerate_ai_context"
+                phx-disable-with="Regenerating..."
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm font-medium text-n800 transition hover:border-primary hover:text-primary"
+              >
+                <.icon name="hero-arrow-path" class="h-4 w-4" /> Regenerate AI context
+              </button>
             </div>
             <div
               :if={@preview_json}

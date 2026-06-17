@@ -5,7 +5,9 @@ defmodule Sokochat.AI.ContextBuilder do
 
   @max_endpoint_chars 3000
 
-  def build_system_prompt(workspace, endpoint_data) do
+  def build_system_prompt(workspace, endpoint_data, opts \\ []) do
+    focus_category = Keyword.get(opts, :focus_category)
+
     """
     You are an AI sales assistant for #{workspace_field(workspace, :name)}.
 
@@ -17,8 +19,10 @@ defmodule Sokochat.AI.ContextBuilder do
 
     LANGUAGE: #{language_instruction(workspace_field(workspace, :language))}
 
-    CURRENT DATA FROM THE BUSINESS:
-    #{format_endpoint_data(endpoint_data)}
+    PRODUCT CATEGORIES (complete list — use these for category browsing):
+    #{format_categories(endpoint_data)}
+
+    #{data_section(endpoint_data, focus_category)}
 
     RULES:
     - Answer only from the data provided. If you don't know, say so.
@@ -30,6 +34,7 @@ defmodule Sokochat.AI.ContextBuilder do
     - Use reply buttons for 2-3 short next-step choices.
     - Use a list message for category browsing or a short set of options.
     - When there are many products, guide the buyer through categories first, then show a shorter follow-up list.
+    - When offering categories to browse, use the complete PRODUCT CATEGORIES list above, not only the categories that happen to appear in the data sample below.
     - Avoid filler like "etc." or "and such" in option labels or replies.
     - Option labels should be short, specific, and written exactly how the buyer can tap them.
     - Apply CTA rules first when they match.
@@ -63,6 +68,136 @@ defmodule Sokochat.AI.ContextBuilder do
   end
 
   defp language_instruction(_), do: "Respond in English only."
+
+  defp format_categories(endpoint_data) do
+    case category_counts(endpoint_data) do
+      [] ->
+        "No categories detected in the current data."
+
+      counts ->
+        Enum.map_join(counts, "\n", fn {category, count} -> "- #{category} (#{count})" end)
+    end
+  end
+
+  defp category_counts(endpoint_data) do
+    products = collect_products(endpoint_data)
+
+    extract_categories(endpoint_data)
+    |> Enum.map(fn category ->
+      {category, Enum.count(products, &product_in_category?(&1, category))}
+    end)
+  end
+
+  # Builds the CURRENT DATA section. When the buyer has homed in on a category,
+  # only that category's products are streamed (in full), so detail is never lost
+  # to truncation. Otherwise the whole catalog is dumped (and truncated if large).
+  defp data_section(nil, _focus_category) do
+    "CURRENT DATA FROM THE BUSINESS:\n" <> format_endpoint_data(nil)
+  end
+
+  defp data_section(endpoint_data, focus_category)
+       when is_binary(focus_category) and focus_category != "" do
+    case Enum.filter(collect_products(endpoint_data), &product_in_category?(&1, focus_category)) do
+      [] ->
+        data_section(endpoint_data, nil)
+
+      products ->
+        "CURRENT DATA FROM THE BUSINESS (showing only the \"#{focus_category}\" category — " <>
+          "#{length(products)} product(s)):\n" <> format_endpoint_data(products)
+    end
+  end
+
+  defp data_section(endpoint_data, _focus_category) do
+    "CURRENT DATA FROM THE BUSINESS:\n" <> format_endpoint_data(endpoint_data)
+  end
+
+  @doc """
+  Detects which catalog category the buyer's message is asking about, if any.
+
+  Returns the matching category string (as stored in the data) or `nil`.
+  """
+  def detect_focus_category(endpoint_data, message) when is_binary(message) do
+    normalized = String.downcase(message)
+
+    endpoint_data
+    |> extract_categories()
+    |> Enum.filter(&category_mentioned?(&1, normalized))
+    # Prefer the most specific (longest) matching category name.
+    |> Enum.sort_by(&String.length/1, :desc)
+    |> List.first()
+  end
+
+  def detect_focus_category(_endpoint_data, _message), do: nil
+
+  defp category_mentioned?(category, normalized_message) do
+    category
+    |> category_match_terms()
+    |> Enum.any?(&String.contains?(normalized_message, &1))
+  end
+
+  # A category like "Sports, arts & outdoors" should match "sports", "arts",
+  # or "outdoors", not just the full punctuated string a buyer would never type.
+  defp category_match_terms(category) do
+    full = String.downcase(String.trim(category))
+
+    tokens =
+      full
+      |> String.split(~r/[^\p{L}\p{N}]+/u, trim: true)
+      |> Enum.reject(&(&1 in ~w(and the of with for) or String.length(&1) < 3))
+
+    [full | tokens]
+    |> Enum.uniq()
+  end
+
+  defp collect_products(data) when is_list(data), do: Enum.flat_map(data, &collect_products/1)
+
+  defp collect_products(data) when is_map(data) do
+    nested = data |> Map.values() |> Enum.flat_map(&collect_products/1)
+    if product_category(data), do: [data | nested], else: nested
+  end
+
+  defp collect_products(_data), do: []
+
+  defp product_category(product) when is_map(product) do
+    case Map.get(product, "category") || Map.get(product, :category) do
+      value when is_binary(value) -> value
+      _ -> nil
+    end
+  end
+
+  defp product_category(_), do: nil
+
+  defp product_in_category?(product, category) do
+    case product_category(product) do
+      nil -> false
+      value -> String.downcase(String.trim(value)) == String.downcase(String.trim(category))
+    end
+  end
+
+  @doc false
+  def extract_categories(data) do
+    data
+    |> collect_categories()
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq_by(&String.downcase/1)
+    |> Enum.sort_by(&String.downcase/1)
+  end
+
+  defp collect_categories(data) when is_list(data) do
+    Enum.flat_map(data, &collect_categories/1)
+  end
+
+  defp collect_categories(data) when is_map(data) do
+    own =
+      [Map.get(data, "category"), Map.get(data, :category)]
+      |> Enum.filter(&is_binary/1)
+
+    nested = data |> Map.values() |> Enum.flat_map(&collect_categories/1)
+    own ++ nested
+  end
+
+  defp collect_categories(_data), do: []
 
   defp format_endpoint_data(nil), do: "No business data is available right now."
 

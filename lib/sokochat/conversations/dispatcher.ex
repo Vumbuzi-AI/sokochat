@@ -42,12 +42,10 @@ defmodule Sokochat.Conversations.Dispatcher do
     end
   end
 
-  def dispatch_prepared(
-        %{workspace: workspace, endpoint_data: endpoint_data, system_prompt: system_prompt},
-        phone_number,
-        user_message,
-        source \\ :playground
-      ) do
+  def dispatch_prepared(prepared, phone_number, user_message, source \\ :playground) do
+    %{workspace: workspace, endpoint_data: endpoint_data} = prepared
+    system_prompt = system_prompt_for(prepared, user_message)
+
     with {:ok, conversation} <-
            Conversations.get_or_create_conversation(workspace.id, phone_number, source),
          {:ok, saved_user_message} <-
@@ -68,6 +66,31 @@ defmodule Sokochat.Conversations.Dispatcher do
       {:ok, assistant_message}
     end
   end
+
+  # Re-scope the system prompt to a single category when the buyer's message
+  # names one, so that category's products are streamed in full instead of being
+  # lost to catalog truncation. Falls back to the precomputed broad prompt.
+  defp system_prompt_for(
+         %{
+           workspace: workspace,
+           endpoint_data: endpoint_data,
+           cta_rules: cta_rules,
+           system_prompt: system_prompt
+         },
+         user_message
+       ) do
+    case ContextBuilder.detect_focus_category(endpoint_data, user_message) do
+      nil ->
+        system_prompt
+
+      category ->
+        workspace
+        |> ContextBuilder.build_system_prompt(endpoint_data, focus_category: category)
+        |> CtaInjector.inject_cta_rules(cta_rules)
+    end
+  end
+
+  defp system_prompt_for(%{system_prompt: system_prompt}, _user_message), do: system_prompt
 
   defp endpoint_data_for_dispatch(nil), do: {:ok, nil}
 

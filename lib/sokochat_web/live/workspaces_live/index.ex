@@ -59,12 +59,20 @@ defmodule SokochatWeb.WorkspacesLive.Index do
               <p class="text-[13px] text-n500">
                 Updated {Calendar.strftime(workspace.updated_at, "%b %d, %Y")}
               </p>
-              <.link
-                navigate={~p"/workspaces/#{workspace.id}"}
-                class="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-primary"
-              >
-                Open
-              </.link>
+              <div class="flex items-center gap-2">
+                <.link
+                  navigate={~p"/workspaces/#{workspace.id}/edit"}
+                  class="inline-flex items-center rounded-full border border-n300 bg-n50 px-4 py-2 text-[13px] font-medium text-n900 transition hover:bg-n200"
+                >
+                  Edit
+                </.link>
+                <.link
+                  navigate={~p"/workspaces/#{workspace.id}"}
+                  class="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-primary"
+                >
+                  Open
+                </.link>
+              </div>
             </div>
           </article>
 
