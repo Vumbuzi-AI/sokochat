@@ -26,8 +26,7 @@ defmodule SokochatWeb.HomeLive.Components do
       |> assign(:nav_links, [
         %{label: "Platform", href: "#services"},
         %{label: "Playground", href: "#blog"},
-        %{label: "Pricing", href: "#pricing"},
-        %{label: "Blog", href: "#blog"}
+        %{label: "Pricing", href: "#pricing"}
       ])
       |> assign(:company_links, ["About Us", "Contact", "Book a Demo", "Careers"])
 

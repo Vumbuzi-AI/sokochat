@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -iE \"html|ex$\")"
+      "Bash(grep -iE \"html|ex$\")",
+      "Bash(grep -v \"warning:\\\\|^\\\\s*lib/\\\\|generated\\\\|^$\")"
     ]
   }
 }

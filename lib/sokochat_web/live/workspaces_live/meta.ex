@@ -201,7 +201,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
         <div class="space-y-6 px-8 py-6">
           <div
-            :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
+            :for={
+              alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)
+            }
             role="alert"
             class={[
               "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",

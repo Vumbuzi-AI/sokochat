@@ -7,24 +7,37 @@ defmodule Sokochat.AI.OpenAIClient do
   @max_retries 10
 
   def chat(messages, system_prompt) when is_list(messages) and is_binary(system_prompt) do
+    with {:ok, %{text: text, tokens: tokens}} <-
+           structured_completion(system_prompt, normalize_messages(messages), response_format()) do
+      build_result(text, tokens)
+    end
+  end
+
+  @doc """
+  Runs a single structured completion against the Responses API and returns the
+  decoded `output_text` plus token usage. Callers supply their own
+  `response_format` (a `json_schema` map) and pre-normalized `input` messages.
+  """
+  def structured_completion(instructions, input, response_format)
+      when is_binary(instructions) and is_list(input) and is_map(response_format) do
     openai_config = Application.fetch_env!(:sokochat, :openai)
 
     request_options =
       request_options(openai_config, %{
         model: Keyword.fetch!(openai_config, :model),
         max_output_tokens: Keyword.fetch!(openai_config, :max_output_tokens),
-        instructions: system_prompt,
-        input: normalize_messages(messages),
+        instructions: instructions,
+        input: input,
         reasoning: %{effort: Keyword.fetch!(openai_config, :reasoning_effort)},
         text: %{
           verbosity: Keyword.fetch!(openai_config, :text_verbosity),
-          format: response_format()
+          format: response_format
         }
       })
 
     with {:ok, response} <- Req.post(request_options),
          {:ok, body} <- parse_response(response) do
-      build_result(body)
+      {:ok, %{text: extract_text(body), tokens: token_count(body)}}
     end
   end
 
@@ -52,16 +65,14 @@ defmodule Sokochat.AI.OpenAIClient do
     {:error, "OpenAI API error (HTTP #{status}): #{error_message(body)}"}
   end
 
-  defp build_result(body) when is_map(body) do
-    text = extract_text(body)
-
+  defp build_result(text, tokens) when is_binary(text) do
     case Jason.decode(text) do
       {:ok, %{"reply" => reply} = parsed} ->
         {:ok,
          %{
            reply: reply,
            cta: Map.get(parsed, "cta"),
-           tokens: token_count(body)
+           tokens: tokens
          }}
 
       {:ok, parsed} when is_map(parsed) ->
@@ -69,7 +80,7 @@ defmodule Sokochat.AI.OpenAIClient do
          %{
            reply: Map.get(parsed, "reply", text),
            cta: Map.get(parsed, "cta"),
-           tokens: token_count(body)
+           tokens: tokens
          }}
 
       {:error, _reason} ->
@@ -77,7 +88,7 @@ defmodule Sokochat.AI.OpenAIClient do
          %{
            reply: text,
            cta: nil,
-           tokens: token_count(body)
+           tokens: tokens
          }}
     end
   end

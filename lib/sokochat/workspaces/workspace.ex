@@ -11,6 +11,12 @@ defmodule Sokochat.Workspaces.Workspace do
     field :language, :string
     field :slug, :string
     field :ai_instructions, :string
+    field :data_source, :string, default: "manual"
+    field :company_name, :string
+    field :industry, :string
+    field :location, :string
+    field :phone_number, :string
+    field :about, :string
 
     timestamps(type: :utc_datetime)
   end
@@ -18,11 +24,25 @@ defmodule Sokochat.Workspaces.Workspace do
   @doc false
   def changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:account_id, :name, :slug, :ai_instructions, :language])
+    |> cast(attrs, [
+      :account_id,
+      :name,
+      :slug,
+      :ai_instructions,
+      :language,
+      :data_source,
+      :company_name,
+      :industry,
+      :location,
+      :phone_number,
+      :about
+    ])
     |> validate_required([:account_id, :name, :slug, :language])
     |> validate_length(:name, min: 2, max: 120)
     |> validate_length(:ai_instructions, max: 5000)
+    |> validate_length(:about, max: 2000)
     |> validate_inclusion(:language, ~w(en sw both))
+    |> validate_inclusion(:data_source, ~w(manual api))
     |> foreign_key_constraint(:account_id)
     |> unique_constraint(:slug, name: :workspaces_account_id_slug_index)
   end

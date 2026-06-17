@@ -21,7 +21,11 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
      |> assign(:active_modal, nil)
      |> assign(:preview_json, nil)
      |> assign(:preview_label, nil)
-     |> assign(:test_error, nil)}
+     |> assign(:test_error, nil)
+     |> allow_upload(:item_image,
+       accept: ~w(.jpg .jpeg .png .gif .webp),
+       max_entries: 1
+     )}
   end
 
   @impl true
@@ -115,10 +119,17 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
   end
 
   def handle_event("save_item", %{"item" => item_params}, socket) do
+    item_params =
+      case consume_item_image_upload(socket, socket.assigns.catalog.id) do
+        nil -> item_params
+        image_url -> Map.put(item_params, "image_url", image_url)
+      end
+
     case Catalogs.upsert_item(socket.assigns.catalog, item_params) do
       {:ok, _item} ->
         {:noreply,
          socket
+         |> clear_item_uploads()
          |> put_flash(:info, "Item saved.")
          |> assign(:active_modal, nil)
          |> reload_workspace_state()}
@@ -133,7 +144,10 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
   end
 
   def handle_event("close_modal", _params, socket) do
-    {:noreply, assign(socket, :active_modal, nil)}
+    {:noreply,
+     socket
+     |> clear_item_uploads()
+     |> assign(:active_modal, nil)}
   end
 
   def handle_event("open_model", _params, socket) do
@@ -176,6 +190,7 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
 
     {:noreply,
      socket
+     |> clear_item_uploads()
      |> assign(:selected_item, item)
      |> assign(:item_values, item.metadata || %{})
      |> assign_form(:item_form, Catalogs.change_item(item))
@@ -195,6 +210,7 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
   def handle_event("new_item", _params, socket) do
     {:noreply,
      socket
+     |> clear_item_uploads()
      |> assign_new_item()
      |> assign(:active_modal, :item)}
   end
@@ -380,6 +396,25 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
       status: "active",
       metadata: %{}
     }
+  end
+
+  defp consume_item_image_upload(socket, catalog_id) do
+    consume_uploaded_entries(socket, :item_image, fn %{path: path}, entry ->
+      extension = Path.extname(entry.client_name || "")
+      filename = "#{System.unique_integer([:positive])}#{extension}"
+      relative_path = Path.join(["uploads", "catalogs", to_string(catalog_id), filename])
+      destination = Path.join(Application.app_dir(:sokochat, "priv/static"), relative_path)
+
+      File.mkdir_p!(Path.dirname(destination))
+      File.cp!(path, destination)
+      {:ok, "/" <> relative_path}
+    end)
+    |> List.first()
+  end
+
+  defp clear_item_uploads(socket) do
+    {socket, _uploads} = Phoenix.LiveView.Upload.maybe_cancel_uploads(socket)
+    socket
   end
 
   defp endpoint_cached_data(%{cached_data: cached_data}), do: cached_data
@@ -729,8 +764,7 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
                   <div class="space-y-1.5">
                     <h2 class="text-[18px] font-semibold text-n900">Fields</h2>
                     <p class="text-sm leading-6 text-n400">
-                      Custom fields for this catalog. Core fields like title, price, URL and
-                      image URL are already built in.
+                      Custom fields for this catalog. The core item fields are already built in.
                     </p>
                   </div>
                   <button
@@ -780,6 +814,38 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
                   <p :if={@catalog.fields == []} class="text-sm text-n400">
                     No extra fields yet. Add one to start shaping the manual form.
                   </p>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-n300 bg-white p-6 shadow-sm">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-n400">
+                  Base fields
+                </p>
+                <p class="mt-1 text-sm leading-6 text-n400">
+                  These are always available on every item. Use custom fields for the extra shop-specific details.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Title
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Description
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Price
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Currency
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    URL
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Image
+                  </span>
+                  <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                    Status
+                  </span>
                 </div>
               </div>
 
@@ -930,12 +996,6 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
             required
           />
           <.input
-            field={@field_form[:label]}
-            label="Label"
-            placeholder="Color, Size, Stock status"
-            required
-          />
-          <.input
             field={@field_form[:field_type]}
             type="select"
             label="Field type"
@@ -977,19 +1037,14 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
         title={if @selected_item, do: "Edit item", else: "New item"}
         subtitle="Custom fields are saved separately and included in the AI context."
       >
-        <.simple_form for={@item_form} phx-change="validate_item" phx-submit="save_item">
+        <.simple_form for={@item_form} phx-change="validate_item" phx-submit="save_item" multipart>
           <input type="hidden" name="item[id]" value={(@selected_item && @selected_item.id) || ""} />
 
           <div class="grid gap-4 sm:grid-cols-2">
             <.input field={@item_form[:title]} label="Title" required />
-            <.input field={@item_form[:external_id]} label="External ID" />
             <.input field={@item_form[:price]} type="number" step="any" label="Price" />
             <.input field={@item_form[:currency]} label="Currency" placeholder="KES, USD, etc." />
             <.input field={@item_form[:url]} type="url" label="URL" />
-            <.input field={@item_form[:image_url]} type="url" label="Image URL" />
-            <.input field={@item_form[:phone_number]} label="Phone number" />
-            <.input field={@item_form[:whatsapp_number]} label="WhatsApp number" />
-            <.input field={@item_form[:sort_order]} type="number" label="Sort order" />
             <.input
               field={@item_form[:status]}
               type="select"
@@ -1000,15 +1055,26 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
                 {"Archived", "archived"}
               ]}
             />
+          </div>
+
+          <div class="mt-4 space-y-4 rounded-2xl border border-dashed border-n300 bg-n50/50 p-4">
+            <div>
+              <h3 class="text-sm font-semibold text-n900">Image</h3>
+              <p class="text-xs leading-5 text-n400">
+                Upload a JPG, PNG, GIF, or WEBP file, or paste an image URL below.
+              </p>
+            </div>
+            <div class="rounded-xl border border-n300 bg-white px-4 py-3">
+              <.live_file_input
+                upload={@uploads.item_image}
+                class="block w-full cursor-pointer text-sm text-n600 file:mr-4 file:rounded-full file:border-0 file:bg-primary-light file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary hover:file:text-n50"
+              />
+            </div>
             <.input
-              field={@item_form[:source]}
-              type="select"
-              label="Source"
-              options={[
-                {"Manual", "manual"},
-                {"API", "api"},
-                {"Import", "import"}
-              ]}
+              field={@item_form[:image_url]}
+              type="url"
+              label="Image URL"
+              placeholder="https://example.com/image.jpg"
             />
           </div>
 

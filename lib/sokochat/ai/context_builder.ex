@@ -9,6 +9,9 @@ defmodule Sokochat.AI.ContextBuilder do
     """
     You are an AI sales assistant for #{workspace_field(workspace, :name)}.
 
+    BUSINESS PROFILE:
+    #{business_profile(workspace)}
+
     INSTRUCTIONS:
     #{workspace_field(workspace, :ai_instructions) |> present_or_fallback("No additional instructions provided.")}
 
@@ -35,6 +38,21 @@ defmodule Sokochat.AI.ContextBuilder do
     - When a manual catalog model is present, treat its fields and notes as schema hints for what item data exists and how it should be interpreted.
     """
     |> String.trim()
+  end
+
+  defp business_profile(workspace) do
+    [
+      {"Company", workspace_field(workspace, :company_name)},
+      {"Industry", workspace_field(workspace, :industry)},
+      {"Location", workspace_field(workspace, :location)},
+      {"Phone", workspace_field(workspace, :phone_number)},
+      {"About", workspace_field(workspace, :about)}
+    ]
+    |> Enum.reject(fn {_label, value} -> value in [nil, ""] end)
+    |> case do
+      [] -> "No company profile provided yet."
+      entries -> Enum.map_join(entries, "\n", fn {label, value} -> "- #{label}: #{value}" end)
+    end
   end
 
   defp language_instruction("en"), do: "Respond in English only."

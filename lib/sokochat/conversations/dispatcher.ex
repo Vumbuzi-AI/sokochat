@@ -25,7 +25,8 @@ defmodule Sokochat.Conversations.Dispatcher do
     cta_rules = cta_rules_for(workspace.id)
 
     with {:ok, endpoint_data} <- endpoint_data_for_dispatch(endpoint) do
-      business_context = Catalogs.build_workspace_context(workspace.id, endpoint_data)
+      business_context =
+        Catalogs.build_workspace_context(workspace.id, endpoint_data, workspace.data_source)
 
       {:ok,
        %{

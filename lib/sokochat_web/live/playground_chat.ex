@@ -148,10 +148,7 @@ defmodule SokochatWeb.PlaygroundChat do
         </div>
       </div>
 
-      <div
-        :if={@type == "list_message"}
-        class="overflow-hidden rounded-lg border border-n200 bg-n100"
-      >
+      <div :if={@type == "list_message"} class="overflow-hidden rounded-lg border border-n200 bg-n100">
         <div class="border-b border-n200 px-3 py-2.5">
           <p class="text-sm font-semibold text-n900">
             {payload_value(@payload, "title") || "Browse options"}
@@ -188,10 +185,7 @@ defmodule SokochatWeb.PlaygroundChat do
         </p>
       </div>
 
-      <p
-        :if={@type == "custom"}
-        class="rounded-lg bg-n100 px-3 py-2 text-sm italic text-n500"
-      >
+      <p :if={@type == "custom"} class="rounded-lg bg-n100 px-3 py-2 text-sm italic text-n500">
         {payload_value(@payload, "template")}
       </p>
 

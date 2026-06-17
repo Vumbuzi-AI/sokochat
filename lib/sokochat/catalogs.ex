@@ -129,17 +129,23 @@ defmodule Sokochat.Catalogs do
 
   def delete_item(%Item{} = item), do: Repo.delete(item)
 
-  def build_workspace_context(workspace_id, api_data \\ nil) do
-    catalog = get_catalog(workspace_id)
+  @doc """
+  Builds the business context the assistant reads for a workspace.
 
-    case catalog do
-      nil ->
-        api_data || %{}
+  Only the active `data_source` ("manual" or "api") contributes — the other
+  source is ignored entirely so the AI never mixes the two.
+  """
+  def build_workspace_context(workspace_id, api_data \\ nil, data_source \\ "manual")
 
-      %Catalog{} ->
-        %{}
-        |> maybe_put("api_data", api_data)
-        |> maybe_put("catalog", catalog_context(catalog))
+  def build_workspace_context(_workspace_id, api_data, "api") do
+    %{}
+    |> maybe_put("api_data", api_data)
+  end
+
+  def build_workspace_context(workspace_id, _api_data, _data_source) do
+    case get_catalog(workspace_id) do
+      nil -> %{}
+      %Catalog{} = catalog -> maybe_put(%{}, "catalog", catalog_context(catalog))
     end
   end
 
@@ -264,7 +270,7 @@ defmodule Sokochat.Catalogs do
   defp blank_to_nil(value), do: value
 
   # The label shown to shop owners is derived from the snake_case key so they
-  # only ever fill in one identifier (e.g. "stock_status" -> "Stock status").
+  # only ever fill in one identifier (e.g. "stock_status" -> "Stock Status").
   defp put_field_label(attrs) do
     case blank_to_nil(Map.get(attrs, "key")) do
       nil -> attrs
@@ -275,9 +281,10 @@ defmodule Sokochat.Catalogs do
   defp humanize_key(key) do
     key
     |> to_string()
-    |> String.replace("_", " ")
+    |> String.replace(~r/[_-]+/, " ")
     |> String.trim()
-    |> String.capitalize()
+    |> String.split(~r/\s+/, trim: true)
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp maybe_put(map, _key, nil), do: map

@@ -223,12 +223,13 @@ defmodule Sokochat.Conversations.DispatcherTest do
                "title" => "Classic Hoodie",
                "url" => "https://shop.example.com/products/classic-hoodie"
              }
-             }
+           }
   end
 
   test "dispatch/4 uses manual catalog items when no API endpoint is configured" do
     workspace = workspace_fixture(user_fixture())
     catalog = catalog_fixture(workspace)
+
     item_fixture(catalog, %{
       title: "Classic Hoodie",
       description: "A warm hoodie for cold evenings.",
