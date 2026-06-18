@@ -112,6 +112,13 @@ config :sokochat, :openai,
   text_verbosity: "low",
   max_output_tokens: 1024
 
+# Embeddings power semantic retrieval (RAG) over catalog items. `dimensions`
+# must match the `vector(N)` column in the catalog_items migration.
+config :sokochat, :embeddings,
+  api_key: openai_api_key,
+  model: env_value.("OPENAI_EMBEDDING_MODEL") || "text-embedding-3-small",
+  dimensions: 1536
+
 # WhatsApp Cloud API. Per-workspace credentials (phone number id, WABA id, access
 # token) are configured in the dashboard at /workspaces/:id/meta. Only the Graph
 # API version is global. Confirm the current version in your Meta app's dashboard.

@@ -11,6 +11,10 @@ config :sokochat,
   ecto_repos: [Sokochat.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Register the pgvector Postgrex extension so the `vector` type can be
+# encoded/decoded by Ecto (used for catalog item embeddings / RAG retrieval).
+config :sokochat, Sokochat.Repo, types: Sokochat.PostgrexTypes
+
 config :sokochat, Oban,
   repo: Sokochat.Repo,
   plugins: [
@@ -23,7 +27,7 @@ config :sokochat, Oban,
         args: %{"strategy" => "poll_300s"}, queue: :endpoint_refresh}
      ]}
   ],
-  queues: [default: 10, endpoint_refresh: 5, meta_send: 10]
+  queues: [default: 10, endpoint_refresh: 5, meta_send: 10, embeddings: 5]
 
 # Configures the endpoint
 config :sokochat, SokochatWeb.Endpoint,

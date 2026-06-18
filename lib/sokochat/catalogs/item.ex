@@ -25,6 +25,12 @@ defmodule Sokochat.Catalogs.Item do
     field :sort_order, :integer, default: 0
     field :last_synced_at, :utc_datetime
 
+    # Semantic-search embedding (pgvector). Populated asynchronously by
+    # Sokochat.Workers.EmbedCatalogItem; not set directly via user input.
+    field :embedding, Pgvector.Ecto.Vector
+    field :embedding_source_hash, :string
+    field :embedded_at, :utc_datetime
+
     timestamps(type: :utc_datetime)
   end
 

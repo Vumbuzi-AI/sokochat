@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(grep -iE \"html|ex$\")",
-      "Bash(grep -v \"warning:\\\\|^\\\\s*lib/\\\\|generated\\\\|^$\")"
+      "Bash(grep -v \"warning:\\\\|^\\\\s*lib/\\\\|generated\\\\|^$\")",
+      "Bash(psql --version)"
     ]
   }
 }

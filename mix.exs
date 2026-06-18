@@ -63,6 +63,7 @@ defmodule Sokochat.MixProject do
       {:plug_cowboy, "~> 2.7"},
       {:ex_rated, "~> 2.1"},
       {:dns_cluster, "~> 0.1.1"},
+      {:pgvector, "~> 0.3"},
       {:bandit, "~> 1.5"}
     ]
   end

@@ -6,6 +6,7 @@ defmodule Sokochat.Conversations.Dispatcher do
   alias Sokochat.AI.ContextBuilder
   alias Sokochat.AI.CtaInjector
   alias Sokochat.AI.OpenAIClient
+  alias Sokochat.AI.Retriever
   alias Sokochat.Catalogs
   alias Sokochat.Conversations
   alias Sokochat.Conversations.ProductCTA
@@ -65,6 +66,21 @@ defmodule Sokochat.Conversations.Dispatcher do
       maybe_broadcast_to_playground(workspace.id, source, assistant_message)
       {:ok, assistant_message}
     end
+  end
+
+  # For catalog-backed workspaces, retrieve only the items semantically relevant
+  # to the buyer's message (RAG). The prompt stays a constant size no matter how
+  # large the catalog is, and the bot always sees the right products.
+  defp system_prompt_for(
+         %{workspace: %Workspace{data_source: "manual"} = workspace, cta_rules: cta_rules},
+         user_message
+       ) do
+    retrieved = Retriever.search(workspace.id, user_message)
+    categories = Catalogs.list_item_categories(workspace.id)
+
+    workspace
+    |> ContextBuilder.build_system_prompt(retrieved, all_categories: categories)
+    |> CtaInjector.inject_cta_rules(cta_rules)
   end
 
   # Re-scope the system prompt to a single category when the buyer's message

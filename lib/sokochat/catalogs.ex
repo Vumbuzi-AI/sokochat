@@ -119,13 +119,24 @@ defmodule Sokochat.Catalogs do
         %Item{}
         |> Item.changeset(attrs)
         |> Repo.insert()
+        |> maybe_enqueue_embedding()
 
       id ->
         get_item!(catalog.id, normalize_id(id))
         |> Item.changeset(attrs)
         |> Repo.update()
+        |> maybe_enqueue_embedding()
     end
   end
+
+  # Refresh the item's semantic-search embedding out of band. The worker no-ops
+  # when the embedded text is unchanged, so this is cheap on every save.
+  defp maybe_enqueue_embedding({:ok, %Item{} = item} = result) do
+    _ = Sokochat.Workers.EmbedCatalogItem.enqueue(item.id)
+    result
+  end
+
+  defp maybe_enqueue_embedding(result), do: result
 
   def delete_item(%Item{} = item), do: Repo.delete(item)
 
@@ -151,6 +162,24 @@ defmodule Sokochat.Catalogs do
 
   def catalog_configured?(workspace_id) do
     Repo.exists?(from(catalog in Catalog, where: catalog.workspace_id == ^workspace_id))
+  end
+
+  @doc """
+  Distinct, non-empty item categories for a workspace, computed in the database.
+
+  RAG retrieval only surfaces a slice of items per message, so the AI still needs
+  the *complete* category list to offer browsing. This stays cheap at any catalog
+  size because it's a `SELECT DISTINCT` of one JSON field.
+  """
+  def list_item_categories(workspace_id) do
+    Item
+    |> join(:inner, [i], c in Catalog, on: c.id == i.catalog_id)
+    |> where([i, c], c.workspace_id == ^workspace_id)
+    |> select([i], fragment("?->>'category'", i.metadata))
+    |> distinct(true)
+    |> Repo.all()
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.sort_by(&String.downcase/1)
   end
 
   def item_context(%Item{} = item) do

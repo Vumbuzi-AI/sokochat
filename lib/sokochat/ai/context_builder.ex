@@ -7,6 +7,9 @@ defmodule Sokochat.AI.ContextBuilder do
 
   def build_system_prompt(workspace, endpoint_data, opts \\ []) do
     focus_category = Keyword.get(opts, :focus_category)
+    # When retrieval only surfaces a slice of items (RAG), callers pass the
+    # complete category list explicitly so browsing flows stay accurate.
+    all_categories = Keyword.get(opts, :all_categories)
 
     """
     You are an AI sales assistant for #{workspace_field(workspace, :name)}.
@@ -20,7 +23,7 @@ defmodule Sokochat.AI.ContextBuilder do
     LANGUAGE: #{language_instruction(workspace_field(workspace, :language))}
 
     PRODUCT CATEGORIES (complete list — use these for category browsing):
-    #{format_categories(endpoint_data)}
+    #{format_categories(endpoint_data, all_categories)}
 
     #{data_section(endpoint_data, focus_category)}
 
@@ -68,6 +71,15 @@ defmodule Sokochat.AI.ContextBuilder do
   end
 
   defp language_instruction(_), do: "Respond in English only."
+
+  # When an explicit category list is supplied (RAG path), list those names
+  # directly — the retrieved data slice is too small to derive counts from.
+  defp format_categories(_endpoint_data, categories)
+       when is_list(categories) and categories != [] do
+    Enum.map_join(categories, "\n", fn category -> "- #{category}" end)
+  end
+
+  defp format_categories(endpoint_data, _categories), do: format_categories(endpoint_data)
 
   defp format_categories(endpoint_data) do
     case category_counts(endpoint_data) do
