@@ -56,7 +56,7 @@ commands. Include:
    `ecto.setup` alias if it exists; otherwise spell the steps out).
 4. **How to run the server** and the real local URL/port from `config/dev.exs`.
 5. **Seeded logins** — the credentials the seeds create, in a table (see Task 2).
-6. **Common commands** — test, format, re-run seeds, asset build, plus any
+6. **Common commands** — test, format, Credo (`mix credo`), re-run seeds, asset build, plus any
    destructive aliases that are intentionally blocked and why.
 7. **A "Documentation" section** linking to the deeper docs from Step 1.4, so the
    README stays short while pointing to where the real detail lives.
@@ -222,6 +222,7 @@ Keep it short and practical. Include these sections:
 ## Checklist
 
 - [ ] Ran `mix format`
+- [ ] Ran `mix credo`
 - [ ] Ran `mix test` and tests pass
 - [ ] Added/updated migrations and seeds if the schema changed
 - [ ] Updated `README.md` / docs if setup or behavior changed

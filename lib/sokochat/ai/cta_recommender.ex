@@ -106,7 +106,8 @@ defmodule Sokochat.AI.CtaRecommender do
        })
        when is_binary(trigger) and is_binary(cta_type) and is_binary(payload_json) do
     with true <- cta_type in CTARule.cta_types(),
-         {:ok, payload} when is_map(payload) and map_size(payload) > 0 <- Jason.decode(payload_json) do
+         {:ok, payload} when is_map(payload) and map_size(payload) > 0 <-
+           Jason.decode(payload_json) do
       %{
         "trigger_description" => String.trim(trigger),
         "cta_type" => cta_type,

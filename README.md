@@ -62,6 +62,7 @@ You can override them with `SEED_USER_EMAIL`, `SEED_USER_PASSWORD`, `SEED_REGULA
 ```sh
 mix test
 mix format
+mix credo
 mix ecto.setup
 mix ecto.reset
 mix run priv/repo/seeds.exs
@@ -69,7 +70,7 @@ mix assets.build
 mix assets.deploy
 ```
 
-`mix ecto.reset` is destructive because it drops and recreates the database. There are no intentionally blocked aliases in `mix.exs`.
+`mix credo` runs static analysis using `.credo.exs`. `mix ecto.reset` is destructive because it drops and recreates the database. There are no intentionally blocked aliases in `mix.exs`.
 
 ## Documentation
 

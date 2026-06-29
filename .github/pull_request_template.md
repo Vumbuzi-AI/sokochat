@@ -15,6 +15,7 @@
 ## Checklist
 
 - [ ] Ran `mix format`
+- [ ] Ran `mix credo`
 - [ ] Ran `mix test` and tests pass
 - [ ] Added/updated migrations and seeds if the schema changed
 - [ ] Updated `README.md` / docs if setup or behavior changed
