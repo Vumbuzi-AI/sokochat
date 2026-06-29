@@ -15,6 +15,8 @@ import Ecto.Query
 
 alias Sokochat.Accounts
 alias Sokochat.Accounts.User
+alias Sokochat.Catalogs
+alias Sokochat.Catalogs.{Field, Item}
 alias Sokochat.CTARules
 alias Sokochat.Endpoints
 alias Sokochat.Meta
@@ -66,33 +68,44 @@ end
 
 seed_email = env_value.("SEED_USER_EMAIL", "demo@sokochat.local")
 seed_password = env_value.("SEED_USER_PASSWORD", "password123")
+regular_email = env_value.("SEED_REGULAR_USER_EMAIL", "merchant@sokochat.local")
+regular_password = env_value.("SEED_REGULAR_USER_PASSWORD", "password123")
 workspace_name = env_value.("SEED_WORKSPACE_NAME", "Sokopawa Market")
 workspace_slug = env_value.("WA_WORKSPACE_SLUG", "sokopawa")
 
-seed_user =
-  case Accounts.get_user_by_email(seed_email) do
-    %User{} = user ->
-      user
+ensure_seed_user = fn email, name, password ->
+  user =
+    case Accounts.get_user_by_email(email) do
+      %User{} = user ->
+        user
 
-    nil ->
-      {:ok, user} =
-        Accounts.register_user(%{
-          name: "Sokopawa Demo",
-          email: seed_email,
-          password: seed_password
-        })
+      nil ->
+        {:ok, user} =
+          Accounts.register_user(%{
+            name: name,
+            email: email,
+            password: password
+          })
 
-      user
-  end
+        user
+    end
 
-seed_user =
-  if seed_user.confirmed_at do
-    seed_user
+  user =
+    user
+    |> User.password_changeset(%{password: password})
+    |> Repo.update!()
+
+  if user.confirmed_at do
+    user
   else
-    seed_user
+    user
     |> User.confirm_changeset()
     |> Repo.update!()
   end
+end
+
+seed_user = ensure_seed_user.(seed_email, "Sokopawa Demo", seed_password)
+regular_user = ensure_seed_user.(regular_email, "Merchant User", regular_password)
 
 workspace =
   case Repo.one(
@@ -129,6 +142,13 @@ workspace =
     name: workspace_name,
     slug: workspace_slug,
     language: "both",
+    data_source: "manual",
+    company_name: "Sokopawa Market",
+    industry: "Retail and grocery",
+    location: "Moi Avenue, Nairobi CBD, Kenya",
+    phone_number: "+254700000001",
+    about:
+      "A Nairobi retail shop selling fresh produce, pantry staples, and everyday home goods.",
     ai_instructions: """
     You are Sokopawa's WhatsApp sales assistant for a Nairobi-based shop.
     Answer in a warm, concise way. Keep replies short enough for WhatsApp.
@@ -138,6 +158,44 @@ workspace =
     """
   })
   |> Repo.update!()
+
+regular_workspace =
+  case Repo.one(
+         from w in Workspace,
+           where: w.account_id == ^regular_user.id and w.slug == "mtaa-bakery",
+           limit: 1
+       ) do
+    %Workspace{} = workspace ->
+      workspace
+
+    nil ->
+      {:ok, workspace} =
+        Workspaces.create_workspace(
+          %{
+            name: "Mtaa Bakery",
+            language: "en",
+            ai_instructions:
+              "You are a helpful WhatsApp assistant for a neighborhood bakery. Share menu details and guide customers to call for custom cake orders."
+          },
+          regular_user.id
+        )
+
+      workspace
+  end
+
+regular_workspace
+|> Workspace.changeset(%{
+  name: "Mtaa Bakery",
+  slug: "mtaa-bakery",
+  language: "en",
+  data_source: "manual",
+  company_name: "Mtaa Bakery",
+  industry: "Bakery",
+  location: "Kilimani, Nairobi, Kenya",
+  phone_number: "+254700000003",
+  about: "A neighborhood bakery for breads, cakes, and snacks."
+})
+|> Repo.update!()
 
 catalog_data = %{
   "shop" => %{
@@ -209,6 +267,88 @@ catalog_data = %{
     "cached_data" => catalog_data,
     "last_fetched_at" => DateTime.utc_now() |> DateTime.truncate(:second)
   })
+
+{:ok, catalog} =
+  Catalogs.upsert_catalog(workspace.id, %{
+    "name" => "Sokopawa product catalog",
+    "entity_label" => "product",
+    "context_notes" =>
+      "Use category, stock_status, delivery_notes, and SKU metadata to answer product questions."
+  })
+
+fields = [
+  %{
+    "key" => "category",
+    "label" => "Category",
+    "field_type" => "text",
+    "required" => true,
+    "help_text" => "Buyer-facing product category",
+    "position" => 1
+  },
+  %{
+    "key" => "stock_status",
+    "label" => "Stock status",
+    "field_type" => "text",
+    "required" => true,
+    "help_text" => "Availability shown in replies",
+    "position" => 2
+  },
+  %{
+    "key" => "delivery_notes",
+    "label" => "Delivery notes",
+    "field_type" => "textarea",
+    "required" => false,
+    "help_text" => "Delivery promise or limitation for this item",
+    "position" => 3
+  }
+]
+
+Enum.each(fields, fn attrs ->
+  attrs =
+    case Repo.get_by(Field, catalog_id: catalog.id, key: attrs["key"]) do
+      nil -> attrs
+      %Field{id: id} -> Map.put(attrs, "id", id)
+    end
+
+  {:ok, _field} = Catalogs.upsert_field(catalog, attrs)
+end)
+
+catalog_items =
+  catalog_data["items"]
+  |> Enum.with_index()
+  |> Enum.map(fn {item, index} ->
+    metadata =
+      item
+      |> Map.take(["category", "stock_status"])
+      |> Map.put("delivery_notes", catalog_data["shop"]["delivery"])
+      |> Map.put("sku", item["id"])
+
+    %{
+      "external_id" => item["id"],
+      "title" => item["title"],
+      "description" => item["description"],
+      "price" => item["price"],
+      "currency" => item["currency"],
+      "image_url" => item["image_url"],
+      "url" => item["url"],
+      "phone_number" => item["phone"],
+      "whatsapp_number" => item["whatsapp_number"],
+      "metadata" => metadata,
+      "source" => "manual",
+      "status" => "active",
+      "sort_order" => index + 1
+    }
+  end)
+
+Enum.each(catalog_items, fn attrs ->
+  attrs =
+    case Repo.get_by(Item, catalog_id: catalog.id, external_id: attrs["external_id"]) do
+      nil -> attrs
+      %Item{id: id} -> Map.put(attrs, "id", id)
+    end
+
+  {:ok, _item} = Catalogs.upsert_item(catalog, attrs)
+end)
 
 rules = [
   %{
@@ -334,17 +474,20 @@ meta_path = "/workspaces/#{workspace.id}/meta"
 
 IO.puts("""
 
-✅ Sokochat demo data ready
+Sokochat demo data ready
 
   Owner email:     #{seed_user.email}
   Owner password:  #{seed_password}
+  User email:      #{regular_user.email}
+  User password:   #{regular_password}
   Workspace:       #{workspace.name} (id: #{workspace.id})
   Workspace slug:  #{workspace.slug}
+  Second workspace: #{regular_workspace.name} (id: #{regular_workspace.id})
   Dashboard:       #{dashboard_path}
   Meta page:       #{meta_path}
   Endpoint URL:    #{endpoint.url}
   CTA rules:       #{length(rules)} seeded
-  Catalog items:   #{length(catalog_data["items"])}
+  Catalog items:   #{length(catalog_items)}
 """)
 
 case connection_result do
@@ -356,7 +499,7 @@ case connection_result do
 
     Next on Meta:
       1. Open #{meta_path}
-      2. Copy the Callback URL and Verify token into Meta → WhatsApp → Configuration
+      2. Copy the Callback URL and Verify token into Meta > WhatsApp > Configuration
       3. Subscribe to the messages field and verify the webhook
     """)
 

@@ -1,125 +1,82 @@
-# WhatsappBot
+# Sokochat
 
-## What is this?
+Sokochat is a Phoenix LiveView application for building AI-powered WhatsApp sales assistants. A workspace owner signs in, creates a business workspace, connects either a manual product catalog or a JSON API, defines CTA rules, tests replies in a browser playground, and then connects Meta WhatsApp Cloud API credentials.
 
-WhatsappBot is a Phoenix LiveView application that lets any business create and run
-an AI-powered WhatsApp chatbot without writing code. A business owner signs up,
-connects their own data source, and gets a bot that can answer buyer questions
-around the clock — in English or Swahili — directly inside WhatsApp.
+Major areas:
 
-The whole thing is built around three ideas: your data stays yours (the bot reads
-from your own API or endpoint), the AI stays current (it fetches live data on every
-conversation), and you can test everything before going live (the playground simulates
-the full WhatsApp experience in the browser).
+- Public marketing home page at `/`
+- Email/password account registration, login, confirmation, reset, and settings
+- Authenticated workspace setup and management under `/workspaces`
+- Product data ingestion through manual catalogs or JSON endpoints
+- CTA rule configuration and AI-assisted CTA recommendations
+- Browser playground for WhatsApp-style testing
+- Meta webhook verification and inbound WhatsApp processing
+- Development dashboard and mailbox under `/dev` when `dev_routes` is enabled
 
----
+## Prerequisites
 
-## The problem it solves
+- Elixir `~> 1.14` as declared in `mix.exs`
+- Erlang/OTP compatible with your installed Elixir version
+- PostgreSQL with the `citext` and `vector` extensions available
+- No `.tool-versions`, Dockerfile, or `docker-compose.yml` is committed
+- Node is not required by a `package.json`; assets use Phoenix-managed esbuild and Tailwind binaries
 
-Most small and medium businesses in Kenya and across East Africa run their sales
-through WhatsApp. Buyers message to ask about prices, availability, and location.
-Sellers spend hours every day answering the same questions manually.
+## Setup
 
-WhatsappBot handles those conversations automatically. A buyer messages the business
-number, the AI reads the latest product data, and replies instantly with the right
-answer — including a direct link to the website, a click-to-call button, or the
-seller's WhatsApp number depending on what makes sense.
+```sh
+mix setup
+```
 
----
+That command gets dependencies, creates and migrates the database, runs `priv/repo/seeds.exs`, installs esbuild/Tailwind if missing, and builds assets.
 
-## Who it is for
+Development database defaults from `config/dev.exs`:
 
-- **Marketplace operators** like Sokopawa who want to give their member sellers a
-  ready-made AI sales presence on WhatsApp
-- **Individual merchants** who want to automate buyer enquiries without hiring staff
-- **Any business** that already has a product catalogue, pricing sheet, or inventory
-  API and wants to surface it conversationally
+- username: `postgres`
+- password: `postgres`
+- host: `localhost`
+- database: `sokochat_dev`
 
----
+Override those with `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, and `DB_NAME` if needed.
 
-## How it works
+## Run
 
-### 1. Create an account
+```sh
+mix phx.server
+```
 
-Sign up with an email and password. Each account can manage multiple bots
-(called workspaces) — one per business or product line.
+Open http://localhost:4000.
 
-### 2. Connect your data
+## Seeded Logins
 
-Paste the URL of any endpoint that returns JSON. This could be your own API,
-a Google Sheets export, an Airtable base, or anything similar. The bot fetches
-this data and uses it to answer questions. When your prices change, the bot
-automatically knows.
+The seed script creates confirmed users and resets these seed account passwords each time it runs.
 
-### 3. Write your instructions
+| Use | Email | Password |
+| --- | --- | --- |
+| Demo workspace owner | `demo@sokochat.local` | `password123` |
+| Regular workspace owner | `merchant@sokochat.local` | `password123` |
 
-Tell the bot who it is and how to behave in a few plain-English sentences —
-something like "You are the sales assistant for Sokopawa. Be friendly and concise.
-Always respond in the same language the buyer uses."
+You can override them with `SEED_USER_EMAIL`, `SEED_USER_PASSWORD`, `SEED_REGULAR_USER_EMAIL`, and `SEED_REGULAR_USER_PASSWORD`.
 
-### 4. Configure your CTAs
+## Common Commands
 
-A CTA (Call to Action) is what happens at the end of a bot reply. You define
-rules in plain English: "If the buyer wants to buy, show them a link to the
-checkout page." The bot evaluates these rules at runtime and attaches the right
-button or link to its response. Supported CTA types include:
+```sh
+mix test
+mix format
+mix ecto.setup
+mix ecto.reset
+mix run priv/repo/seeds.exs
+mix assets.build
+mix assets.deploy
+```
 
-- Link to a website or product page
-- Click-to-call a phone number
-- Open a specific WhatsApp number (e.g. connect buyer directly to a seller)
-- A map pin with the business location
-- Quick-reply buttons for common choices
-- A scrollable list of products or options
+`mix ecto.reset` is destructive because it drops and recreates the database. There are no intentionally blocked aliases in `mix.exs`.
 
-### 5. Test in the Playground
+## Documentation
 
-Before connecting to real WhatsApp, test everything in the browser. The Playground
-is a chat interface that looks and behaves like WhatsApp. Type messages as if you
-are a buyer and see exactly what the bot replies, including how buttons and lists
-render. Adjust your instructions and CTA rules until it feels right.
-
-### 6. Go live on WhatsApp
-
-Enter your Meta WhatsApp Business credentials (Phone Number ID, Business Account ID,
-access token). Copy the webhook URL shown on screen and paste it into the Meta
-Developer Console. The system verifies the connection automatically. From that point,
-real buyer messages are handled by the same AI engine the playground tested.
-
----
-
-## Tech stack
-
-Built with Elixir and Phoenix LiveView, PostgreSQL for storage, Oban for background
-jobs, and Anthropic's Claude as the AI model. All sensitive credentials (API keys,
-access tokens) are encrypted at rest. The Meta webhook integration uses the official
-WhatsApp Business Cloud API.
-
----
-
-## Key design decisions
-
-**One WhatsApp number, one bot, one data source per workspace.** Keeping the scope
-tight means the setup is fast and the behaviour is predictable. Multi-source and
-multi-number support can come later.
-
-**The AI reads live data, not a static knowledge base.** There is no training step
-and no manual sync. The bot is always as current as the endpoint it points at.
-
-**The playground is not an afterthought.** It is the primary way owners tune their
-bot. Everything that works in the playground works identically in production. There
-are no surprises when you go live.
-
-**CTA rules are written in plain English.** Owners should not need to understand
-JSON or regular expressions to configure when a phone button appears. The AI
-interprets the rules at runtime.
-
----
-
-## What is not in v1
-
-- Payments or checkout processing
-- Human agent handoff (taking over a conversation from the bot)
-- Voice message handling
-- Image recognition from buyer-sent photos
-- Analytics and reporting dashboard
-- Team members or role-based access
+- [Architecture](docs/ARCHITECTURE.md)
+- [Domains](docs/DOMAINS.md)
+- [Portals and Routes](docs/PORTALS.md)
+- [Authentication](docs/AUTH.md)
+- [Data Model](docs/DATA_MODEL.md)
+- [Workflows](docs/WORKFLOWS.md)
+- [Environment](docs/ENVIRONMENT.md)
