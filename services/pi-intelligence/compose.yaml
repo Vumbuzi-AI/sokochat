@@ -18,11 +18,13 @@ services:
       PI_HOST: 0.0.0.0
       PI_PORT: "4100"
       PI_DATA_DIR: /var/lib/sokochat-pi
-      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in Coolify}
+      # Coolify parses Compose during image builds with runtime secrets omitted.
+      # The service validates required credentials when its container starts.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.5}
       PI_THINKING_LEVEL: ${PI_THINKING_LEVEL:-off}
-      PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?Set the same PI_SERVICE_TOKEN in Phoenix and Pi}
-      SOKOCHAT_INTERNAL_URL: ${SOKOCHAT_INTERNAL_URL:?Set the HTTPS SokoChat origin}
+      PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:-}
+      SOKOCHAT_INTERNAL_URL: ${SOKOCHAT_INTERNAL_URL:-}
       PI_WORKSPACE_DAILY_TURN_LIMIT: ${PI_WORKSPACE_DAILY_TURN_LIMIT:-1000}
     expose:
       - "4100"

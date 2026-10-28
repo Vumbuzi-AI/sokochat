@@ -48,6 +48,11 @@ Use a new production service token shared only by Phoenix and Pi. An operator ca
 generate one with `openssl rand -hex 32` and save it directly in both resources.
 Do not put keys in Git, build arguments, screenshots, or chat.
 
+Keep these variables runtime-only in Coolify. Compose permits empty values while
+Coolify parses the build definition without runtime secrets; Pi fails startup if
+the provider key, shared token, or production callback origin is missing. This
+keeps credentials out of image build arguments and layers.
+
 On the Phoenix resource, configure:
 
 ```dotenv

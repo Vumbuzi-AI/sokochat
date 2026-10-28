@@ -15,6 +15,9 @@ const modelId = process.env.PI_MODEL || process.env.OPENAI_MODEL || 'gpt-5.5';
 const generationThinking = thinkingLevel(modelId, process.env.PI_THINKING_LEVEL);
 if (!token || token.length < 32) throw new Error('Set PI_SERVICE_TOKEN to at least 32 random characters');
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is required by the local Pi provider');
+if (process.env.NODE_ENV === 'production' && !process.env.SOKOCHAT_INTERNAL_URL?.trim()) {
+  throw new Error('SOKOCHAT_INTERNAL_URL is required in production');
+}
 const expectedAuth = createHash('sha256').update(`Bearer ${token}`).digest();
 await mkdir(data, { recursive: true, mode: 0o700 });
 
