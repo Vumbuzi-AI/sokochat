@@ -1,0 +1,37 @@
+ARG BUILDER_IMAGE=hexpm/elixir:1.20.2-erlang-29.0.2-debian-bookworm-20260623-slim
+ARG RUNNER_IMAGE=debian:bookworm-20260623-slim
+
+FROM ${BUILDER_IMAGE} AS build
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV MIX_ENV=prod
+RUN mix local.hex --force && mix local.rebar --force
+COPY mix.exs mix.lock ./
+COPY config/config.exs config/prod.exs config/
+RUN mix deps.get --only prod && mix deps.compile
+COPY lib lib
+COPY priv priv
+COPY assets assets
+RUN mix compile && mix assets.setup && mix assets.deploy
+COPY config/runtime.exs config/
+COPY rel rel
+RUN mix release
+
+FROM ${RUNNER_IMAGE} AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 openssl libncurses6 ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 app \
+    && mkdir -p /var/lib/sokochat/uploads && chown -R app:app /var/lib/sokochat
+ENV LANG=C.UTF-8 MIX_ENV=prod PHX_SERVER=true PORT=4000
+WORKDIR /app
+COPY --from=build --chown=app:app /app/_build/prod/rel/sokochat ./
+RUN for static in /app/lib/sokochat-*/priv/static; do \
+      ln -s /var/lib/sokochat/uploads "$static/uploads"; \
+    done
+USER app
+EXPOSE 4000
+VOLUME /var/lib/sokochat/uploads
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/app/bin/server"]
