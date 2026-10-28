@@ -70,7 +70,7 @@ defmodule SokochatWeb.MetaLiveTest do
     {:ok, _view, html} =
       conn
       |> log_in_user(user)
-      |> live(~p"/workspaces/#{workspace.id}?step=meta")
+      |> live(~p"/workspaces/#{workspace.id}/connection")
 
     assert html =~ "Meta Verification Pipeline"
     assert html =~ "Pre-Live Stage Validated"

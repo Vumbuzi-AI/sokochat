@@ -1,13 +1,12 @@
 defmodule SokochatWeb.WorkspacesLive.Setup do
   @moduledoc """
-  Unified "Live-Build" workspace setup experience: a three-step stepper
-  (Products → CTA Rules → Meta) on the left, with a persistent WhatsApp
-  playground simulator docked on the right that exercises the live workspace
-  context as each step is configured.
+  Unified workspace setup. Business, products, CTA rules, and Meta each
+  live on their own page inside the workspace shell. The WhatsApp playground
+  and analytics are separate tabs.
   """
   use SokochatWeb, :live_view
 
-  import SokochatWeb.PlaygroundChat
+  import SokochatWeb.WorkspaceShell
 
   alias Ecto.Changeset
   alias Sokochat.AI.CtaRecommender
@@ -23,18 +22,22 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   alias Sokochat.Meta
   alias Sokochat.Workspaces
 
-  @steps [:business, :products, :cta, :meta]
+  @variant_slots 4
 
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, "Workspace setup")
+     |> assign(:page_title, "Workspace")
      |> assign(:workspace, nil)
      |> assign(:active_step, :business)
      |> assign(:active_tab, "manual")
      |> assign(:active_modal, nil)
      |> assign(:lang, "EN")
+     |> assign(:variant_drafts, empty_variant_slots())
+     |> assign(:category_draft, "")
+     |> assign(:category_query, "")
+     |> assign(:details_open, false)
      # products / data ingestion
      |> assign(:endpoint, nil)
      |> assign(:catalog, nil)
@@ -55,7 +58,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:data_ingestion_configured, false)
      |> assign(:cta_rules_configured, false)
      |> assign(:meta_configured, false)
-     # playground
+     # playground leftovers kept so existing message handlers still compile
      |> assign(:conversation, nil)
      |> assign(:phone_number, nil)
      |> assign(:subscribed_workspace_id, nil)
@@ -65,21 +68,28 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:active_dispatch_ref, nil)
      |> assign_message_form("")
      |> stream(:messages, [])
-     |> allow_upload(:item_image,
-       accept: ~w(.jpg .jpeg .png .gif .webp),
-       max_entries: 1
-     )}
+     |> allow_upload(:cover,
+       accept: ~w(.jpg .jpeg .png .webp),
+       max_entries: 1,
+       max_file_size: 8_000_000
+     )
+     |> allow_upload(:extras,
+       accept: ~w(.jpg .jpeg .png .webp),
+       max_entries: 4,
+       max_file_size: 8_000_000
+     ), layout: false}
   end
 
   @impl true
-  def handle_params(%{"id" => id} = params, _uri, socket) do
+  def handle_params(%{"id" => id}, _uri, socket) do
     case fetch_workspace(id, socket) do
       {:ok, workspace} ->
         {:noreply,
          socket
          |> maybe_subscribe(workspace.id)
          |> load_workspace(workspace)
-         |> apply_step(params)}
+         |> assign(:active_step, step_from_action(socket.assigns.live_action))
+         |> assign(:page_title, step_title(socket.assigns.live_action))}
 
       :error ->
         {:noreply,
@@ -89,31 +99,15 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     end
   end
 
-  defp apply_step(socket, params) do
-    case params["step"] do
-      step when step in ["business", "products", "cta", "meta"] ->
-        assign(socket, :active_step, String.to_existing_atom(step))
+  defp step_from_action(action) when action in [:business, :products, :cta, :meta], do: action
+  defp step_from_action(_action), do: :business
 
-      _ ->
-        socket
-    end
-  end
-
-  # --- step navigation ----------------------------------------------------
+  defp step_title(:products), do: "Products"
+  defp step_title(:cta), do: "CTA Rules"
+  defp step_title(:meta), do: "Meta"
+  defp step_title(_), do: "Business"
 
   @impl true
-  def handle_event("goto_step", %{"step" => step}, socket) do
-    {:noreply, assign(socket, :active_step, to_step(step))}
-  end
-
-  def handle_event("next_step", _params, socket) do
-    {:noreply, assign(socket, :active_step, step_offset(socket.assigns.active_step, 1))}
-  end
-
-  def handle_event("prev_step", _params, socket) do
-    {:noreply, assign(socket, :active_step, step_offset(socket.assigns.active_step, -1))}
-  end
-
   def handle_event("set_lang", %{"lang" => lang}, socket) do
     {:noreply, assign(socket, :lang, lang)}
   end
@@ -205,6 +199,28 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     {:noreply, assign_form(socket, :catalog_form, changeset)}
   end
 
+  def handle_event("filter_categories", %{"category" => %{"query" => query}}, socket) do
+    {:noreply, assign(socket, :category_query, query)}
+  end
+
+  def handle_event("add_category", %{"name" => name}, socket) do
+    add_shop_category(socket, name)
+  end
+
+  def handle_event("add_category", %{"category" => %{"query" => query}}, socket) do
+    add_shop_category(socket, query)
+  end
+
+  def handle_event("remove_category", %{"name" => name}, socket) do
+    case Catalogs.remove_category(socket.assigns.catalog, name) do
+      {:ok, _catalog} ->
+        {:noreply, reload_products_state(socket, clear_selected_item: false)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Could not remove that category.")}
+    end
+  end
+
   def handle_event("save_model", %{"catalog" => catalog_params}, socket) do
     case Catalogs.upsert_catalog(socket.assigns.workspace.id, catalog_params) do
       {:ok, _catalog} ->
@@ -286,36 +302,113 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       |> Catalogs.change_item(item_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign_form(socket, :item_form, changeset)}
+    drafts = drafts_from(item_params["variants"])
+
+    values =
+      case item_params["metadata"] do
+        metadata when is_map(metadata) -> metadata
+        _ -> socket.assigns.item_values
+      end
+
+    {:noreply,
+     socket
+     |> assign(:variant_drafts, drafts)
+     |> assign(:category_draft, item_params["category"] || "")
+     |> assign(:item_values, values)
+     |> assign(
+       :details_open,
+       socket.assigns.details_open or product_basics?(item_params["title"], drafts)
+     )
+     |> assign_form(:item_form, changeset)}
   end
 
   def handle_event("save_item", %{"item" => item_params}, socket) do
-    item_params =
-      case consume_item_image_upload(socket, socket.assigns.catalog.id) do
-        nil -> item_params
-        image_url -> Map.put(item_params, "image_url", image_url)
-      end
+    variants = parse_variants(item_params["variants"])
+    existing = socket.assigns.selected_item
 
-    case Catalogs.upsert_item(socket.assigns.catalog, item_params) do
-      {:ok, _item} ->
+    cond do
+      variants == [] ->
         {:noreply,
-         socket
-         |> clear_item_uploads()
-         |> put_flash(:info, "Item saved.")
-         |> assign(:active_modal, nil)
-         |> reload_products_state()}
+         put_flash(socket, :error, "Add at least one variant with a name and a KES price.")}
 
-      {:error, %Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, :item_form, Map.put(changeset, :action, :validate))}
+      is_nil(Catalogs.normalize_category_name(item_params["category"])) ->
+        {:noreply, put_flash(socket, :error, "Pick a category.")}
+
+      true ->
+        case store_product_images(socket, socket.assigns.catalog.id, existing) do
+          {:ok, socket, cover, extras} ->
+            metadata =
+              ((existing && existing.metadata) || %{})
+              |> Map.put("variants", variants)
+              |> Map.put("images", extras)
+              |> Map.put("category", blank_to_nil(item_params["category"]))
+              |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
+              |> Map.new()
+
+            attrs = %{
+              "id" => item_params["id"],
+              "title" => item_params["title"],
+              "description" => item_params["description"],
+              "currency" => "KES",
+              "price" => variant_floor(variants),
+              "image_url" => cover,
+              "status" => item_params["status"] || "active",
+              "source" => "manual",
+              "metadata" => metadata
+            }
+
+            case Catalogs.upsert_item(socket.assigns.catalog, attrs) do
+              {:ok, _item} ->
+                {:noreply,
+                 socket
+                 |> clear_item_uploads()
+                 |> put_flash(:info, "Product saved.")
+                 |> assign(:active_modal, nil)
+                 |> reload_products_state()}
+
+              {:error, %Changeset{} = changeset} ->
+                {:noreply,
+                 assign_form(socket, :item_form, Map.put(changeset, :action, :validate))}
+            end
+
+          {:error, socket, message} ->
+            {:noreply, put_flash(socket, :error, message)}
+        end
     end
   end
 
+  def handle_event("add_variant", _params, socket) do
+    drafts = socket.assigns.variant_drafts
+
+    drafts =
+      if length(drafts) < @variant_slots do
+        drafts ++ [%{"label" => "", "price" => ""}]
+      else
+        drafts
+      end
+
+    {:noreply, assign(socket, :variant_drafts, drafts)}
+  end
+
+  def handle_event("remove_variant", %{"index" => index}, socket) do
+    index = String.to_integer(index)
+    drafts = List.delete_at(socket.assigns.variant_drafts, index)
+    drafts = if drafts == [], do: empty_variant_slots(), else: drafts
+
+    {:noreply, assign(socket, :variant_drafts, drafts)}
+  end
+
   def handle_event("new_item", _params, socket) do
+    categories = Catalogs.shop_categories(socket.assigns.catalog)
+
     {:noreply,
      socket
      |> clear_item_uploads()
      |> assign(:selected_item, nil)
      |> assign(:item_values, %{})
+     |> assign(:variant_drafts, empty_variant_slots())
+     |> assign(:category_draft, if(match?([_], categories), do: hd(categories), else: ""))
+     |> assign(:details_open, false)
      |> assign_form(:item_form, Catalogs.change_item(blank_item(socket.assigns.catalog.id)))
      |> assign(:active_modal, :item)}
   end
@@ -328,6 +421,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> clear_item_uploads()
      |> assign(:selected_item, item)
      |> assign(:item_values, item.metadata || %{})
+     |> assign(:variant_drafts, slots_from_item(item))
+     |> assign(:details_open, product_basics?(item.title, slots_from_item(item)))
+     |> assign(:category_draft, category_of(item))
      |> assign_form(:item_form, Catalogs.change_item(item))
      |> assign(:active_modal, :item)}
   end
@@ -596,146 +692,31 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   @impl true
   def render(assigns) do
-    assigns =
-      assigns
-      |> assign(:custom_fields, custom_fields(assigns[:catalog]))
-      |> assign(:step_number, step_index(assigns.active_step))
+    assigns = assign(assigns, :custom_fields, custom_fields(assigns[:catalog]))
 
     ~H"""
-    <section :if={@workspace} class="space-y-5">
-      <nav class="flex items-center gap-1.5 text-[13px] text-n500">
-        <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
-        <span>/</span>
-        <span class="text-n400">{@workspace.name}</span>
-      </nav>
-
-      <div class="flex min-h-[680px] overflow-hidden rounded-2xl border border-n300 bg-n200 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-        <%!-- LEFT: guided configuration workspace --%>
-        <main class="flex-1 overflow-y-auto p-4 max-h-[calc(100vh-150px)]">
-          <div class="mx-auto w-[100%]">
-            <%!-- sticky progress workflow header --%>
-            <div class="mb-8 flex flex-col gap-4 border-b border-n300 pb-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                  <.icon name="hero-swatch-mini" class="h-4 w-4" />
-                  <span>Workspace Engine Construction</span>
-                </div>
-                <h1 class="mt-1 text-3xl font-bold text-n900">{@workspace.name}</h1>
-              </div>
-
-              <div class="flex items-center gap-4 rounded-lg border border-n100 bg-n50 p-3 text-sm text-n500 shadow-sm">
-                <div class="text-right">
-                  <span class="block font-semibold text-primary">Step {@step_number} of 4</span>
-                  <span class="text-xs font-light text-n400">{step_caption(@active_step)}</span>
-                </div>
-                <div class="relative h-3 w-28 overflow-hidden rounded-full bg-n300">
-                  <div
-                    class="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                    style={"width: #{round(@step_number / 4 * 100)}%"}
-                  >
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <%!-- step tabs --%>
-            <div class="mb-6 flex flex-wrap items-center gap-2">
-              <.step_pill step={:business} active={@active_step} index="1" label="Business" />
-              <.step_chevron />
-              <.step_pill step={:products} active={@active_step} index="2" label="Products" />
-              <.step_chevron />
-              <.step_pill step={:cta} active={@active_step} index="3" label="CTA Rules" />
-              <.step_chevron />
-              <.step_pill step={:meta} active={@active_step} index="4" label="Meta" />
-            </div>
-
-            <%!-- active content card --%>
-            <div class="rounded-lg border border-n100 bg-n50 p-6 shadow-[0_8px_24px_rgba(0,0,0,0.04)] lg:p-8">
-              <.business_step :if={@active_step == :business} {assigns} />
-              <.products_step :if={@active_step == :products} {assigns} />
-              <.cta_step :if={@active_step == :cta} {assigns} />
-              <.meta_step :if={@active_step == :meta} {assigns} />
-
-              <%!-- workflow actions --%>
-              <div class="mt-10 flex items-center justify-between border-t border-n300 pt-6">
-                <button
-                  type="button"
-                  phx-click="prev_step"
-                  disabled={@active_step == :business}
-                  class="inline-flex items-center gap-2 rounded-lg border border-n100 bg-n50 px-4 py-2 text-sm font-medium text-n800 shadow-[0_4px_8px_rgba(0,0,0,0.06)] transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <.icon name="hero-arrow-left-mini" class="h-4 w-4" />
-                  <span>Back</span>
-                </button>
-
-                <button
-                  :if={@active_step != :meta}
-                  type="button"
-                  phx-click="next_step"
-                  class="inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-n50 transition hover:opacity-90"
-                >
-                  <span>{next_label(@active_step)}</span>
-                  <.icon name="hero-arrow-right-mini" class="h-4 w-4" />
-                </button>
-
-                <.link
-                  :if={@active_step == :meta}
-                  navigate={~p"/workspaces"}
-                  class="inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-n50 transition hover:opacity-90"
-                >
-                  <span>Finish setup</span>
-                  <.icon name="hero-check-mini" class="h-4 w-4" />
-                </.link>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <%!-- RIGHT: persistent live playground sidebar --%>
-        <.playground_panel {assigns} />
+    <.shell
+      :if={@workspace}
+      workspace={@workspace}
+      current_user={@current_user}
+      tab={@active_step}
+      title={@page_title}
+      flash={@flash}
+    >
+      <div class="mx-auto w-full max-w-5xl">
+        <div class="rounded-lg border border-n100 bg-n50 p-6 shadow-[0_8px_24px_rgba(0,0,0,0.04)] lg:p-8">
+          <.business_step :if={@active_step == :business} {assigns} />
+          <.products_step :if={@active_step == :products} {assigns} />
+          <.cta_step :if={@active_step == :cta} {assigns} />
+          <.meta_step :if={@active_step == :meta} {assigns} />
+        </div>
       </div>
 
       <.catalog_model_modal :if={@active_modal == :model} {assigns} />
       <.field_modal :if={@active_modal == :field} {assigns} />
       <.item_modal :if={@active_modal == :item} {assigns} />
       <.cta_rule_modal :if={@active_modal == :cta_rule} {assigns} />
-    </section>
-    """
-  end
-
-  # --- stepper chrome -----------------------------------------------------
-
-  attr :step, :atom, required: true
-  attr :active, :atom, required: true
-  attr :index, :string, required: true
-  attr :label, :string, required: true
-
-  defp step_pill(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click="goto_step"
-      phx-value-step={@step}
-      class={[
-        "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
-        (@active == @step && "border-primary bg-primary-light text-primary") ||
-          "border-n300 bg-n50 text-n500 hover:border-primary/40 hover:text-n800"
-      ]}
-    >
-      <span class={[
-        "flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold",
-        (@active == @step && "bg-primary text-n50") || "bg-n200 text-n500"
-      ]}>
-        {@index}
-      </span>
-      {@label}
-    </button>
-    """
-  end
-
-  defp step_chevron(assigns) do
-    ~H"""
-    <.icon name="hero-chevron-right-mini" class="h-4 w-4 text-n400" />
+    </.shell>
     """
   end
 
@@ -784,7 +765,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         />
 
         <:actions>
-          <.button>Save business profile</.button>
+          <.button disabled={business_unchanged?(@business_form)}>
+            Save business profile
+          </.button>
         </:actions>
       </.simple_form>
     </div>
@@ -796,37 +779,19 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   defp products_step(assigns) do
     ~H"""
     <div class="space-y-6">
-      <div>
-        <h3 class="text-xl font-semibold text-n900">Product Data Ingestion</h3>
-        <p class="mt-1 text-sm text-n400">
-          Curate products manually, or connect a live JSON feed. Mark one as the active source —
-          the AI reads only that source as its business context.
-        </p>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 class="text-xl font-semibold text-n900">Products</h3>
+          <p class="mt-1 text-sm text-n400">
+            Set the categories you sell first, then add products. Each product picks one category, needs a cover image, and at least one variant priced in KES.
+          </p>
+        </div>
+        <.button :if={@catalog.id} type="button" phx-click="new_item">
+          <.icon name="hero-plus" class="h-4 w-4" /> Add product
+        </.button>
       </div>
 
-      <div class="flex gap-6 border-b border-n300">
-        <.tab_button
-          tab="manual"
-          active={@active_tab}
-          label="Manual Catalog"
-          icon="hero-squares-2x2-mini"
-        />
-        <.tab_button
-          tab="api"
-          active={@active_tab}
-          label="Live Sync (JSON API)"
-          icon="hero-bolt-mini"
-        />
-        <.tab_button
-          tab="preview"
-          active={@active_tab}
-          label="AI Context"
-          icon="hero-code-bracket-mini"
-        />
-      </div>
-
-      <%!-- Manual catalog --%>
-      <div :if={@active_tab == "manual"} class="space-y-6">
+      <div class="space-y-6">
         <.source_banner source="manual" active={@workspace.data_source} />
         <div :if={!@catalog.id} class="space-y-6">
           <.empty_state
@@ -834,17 +799,15 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             title="Set up your catalog model"
             body="Define a reusable schema for this shop, then add fields and items one by one without touching JSON."
           >
-            <button
-              type="button"
-              phx-click="open_model"
-              class="inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-n50 transition hover:opacity-90"
-            >
+            <.button type="button" phx-click="open_model">
               <.icon name="hero-sparkles-mini" class="h-4 w-4" /> Set up catalog model
-            </button>
+            </.button>
           </.empty_state>
         </div>
 
         <div :if={@catalog.id} class="space-y-6">
+          <.categories_panel categories={Catalogs.shop_categories(@catalog)} query={@category_query} />
+
           <%!-- fields --%>
           <div class="rounded-lg border border-n300 bg-n100/40 p-4">
             <div class="flex items-center justify-between">
@@ -861,7 +824,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             </div>
             <div class="mt-3 flex flex-wrap gap-2">
               <span
-                :for={field <- @catalog.fields || []}
+                :for={field <- custom_fields(@catalog)}
                 class="group inline-flex items-center gap-1.5 rounded-full border border-n300 bg-n50 px-3 py-1 text-xs text-n800"
               >
                 <span class="font-medium">{field.label}</span>
@@ -884,7 +847,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
                   <.icon name="hero-x-mark-mini" class="h-3.5 w-3.5" />
                 </button>
               </span>
-              <span :if={@catalog.fields == []} class="text-xs text-n400">
+              <span :if={@custom_fields == []} class="text-xs text-n400">
                 No extra fields yet. Core fields are already built in, and custom fields stay optional.
               </span>
             </div>
@@ -900,6 +863,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             <div class="mt-3 flex flex-wrap gap-2">
               <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
                 Title
+              </span>
+              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+                Category
               </span>
               <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
                 Description
@@ -940,9 +906,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
                 </div>
                 <div class="min-w-0">
                   <h4 class="truncate text-sm font-semibold text-n900">{item.title}</h4>
-                  <p class="truncate font-mono text-xs text-n400">
-                    {item.currency || "—"}{if item.price, do: " #{item.price}", else: ""}
-                  </p>
+                  <p class="truncate font-mono text-xs text-n400">{variant_summary(item)}</p>
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-1">
@@ -968,20 +932,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
                 </button>
               </div>
             </div>
-
-            <%!-- add item card --%>
-            <button
-              type="button"
-              phx-click="new_item"
-              class="group flex items-center justify-center gap-3 rounded-lg border border-dashed border-n400 bg-n100/50 p-4 transition-all duration-300 hover:border-primary/50 hover:bg-primary-light/40"
-            >
-              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-n50 text-n500 transition-all group-hover:bg-primary group-hover:text-n50">
-                <.icon name="hero-plus-mini" class="h-4 w-4" />
-              </span>
-              <span class="text-sm font-medium text-n600 transition-colors group-hover:text-primary">
-                Append New Catalog Item
-              </span>
-            </button>
           </div>
         </div>
       </div>
@@ -1039,14 +989,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           />
 
           <:actions>
-            <button
-              type="submit"
-              name="endpoint[action]"
-              value="test"
-              class="inline-flex items-center justify-center rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:border-primary"
-            >
+            <.button type="submit" name="endpoint[action]" value="test" variant="secondary">
               Test connection
-            </button>
+            </.button>
             <.button name="endpoint[action]" value="save">Save endpoint</.button>
           </:actions>
         </.simple_form>
@@ -1089,6 +1034,85 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     """
   end
 
+  attr :categories, :list, required: true
+  attr :query, :string, required: true
+
+  defp categories_panel(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :suggestions,
+        Catalogs.filter_suggested_categories(assigns.query, assigns.categories)
+      )
+
+    ~H"""
+    <div class="rounded-lg border border-n300 bg-n50 p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-n400">Categories</p>
+          <p class="mt-1 text-sm text-n500">
+            Choose what you sell. Products pick from this list once.
+          </p>
+        </div>
+      </div>
+
+      <form
+        id="shop-categories"
+        phx-change="filter_categories"
+        phx-submit="add_category"
+        class="mt-3 flex gap-2"
+      >
+        <div class="relative min-w-0 flex-1">
+          <input
+            type="search"
+            name="category[query]"
+            value={@query}
+            autocomplete="off"
+            placeholder="Search or type a category"
+            class="block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+          />
+          <div
+            :if={String.trim(@query) != "" and @suggestions != []}
+            class="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-n300 bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+          >
+            <button
+              :for={name <- @suggestions}
+              type="button"
+              phx-click="add_category"
+              phx-value-name={name}
+              class="block w-full px-3.5 py-2 text-left text-sm text-n900 hover:bg-n100"
+            >
+              {name}
+            </button>
+          </div>
+        </div>
+        <.button type="submit" variant="secondary">Add</.button>
+      </form>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <span
+          :for={name <- @categories}
+          class="inline-flex items-center gap-1.5 rounded-full border border-n300 bg-n100 px-3 py-1 text-xs font-medium text-n800"
+        >
+          {name}
+          <button
+            type="button"
+            phx-click="remove_category"
+            phx-value-name={name}
+            aria-label={"Remove #{name}"}
+            class="text-n400 hover:text-red-600"
+          >
+            <.icon name="hero-x-mark-mini" class="h-3.5 w-3.5" />
+          </button>
+        </span>
+        <span :if={@categories == []} class="text-xs text-n400">
+          No categories yet. Search the list or type your own, then add.
+        </span>
+      </div>
+    </div>
+    """
+  end
+
   # --- step 3: cta rules --------------------------------------------------
 
   defp cta_step(assigns) do
@@ -1103,13 +1127,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         </div>
         <div :if={@cta_rules != []} class="flex shrink-0 items-center gap-2">
           <.recommend_button recommending={@recommending} variant="secondary" />
-          <button
-            type="button"
-            phx-click="open_add_rule"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-n50 transition hover:opacity-90"
-          >
+          <.button type="button" phx-click="open_add_rule">
             <.icon name="hero-plus-mini" class="h-4 w-4" /> Add rule
-          </button>
+          </.button>
         </div>
       </div>
 
@@ -1123,13 +1143,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       >
         <div class="flex flex-wrap items-center justify-center gap-2">
           <.recommend_button recommending={@recommending} variant="primary" />
-          <button
-            type="button"
-            phx-click="open_add_rule"
-            class="inline-flex items-center gap-2 rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:border-primary"
-          >
+          <.button type="button" variant="secondary" phx-click="open_add_rule">
             <.icon name="hero-plus-mini" class="h-4 w-4" /> Add manually
-          </button>
+          </.button>
         </div>
       </.empty_state>
 
@@ -1198,22 +1214,13 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp recommend_button(assigns) do
     ~H"""
-    <button
-      type="button"
-      phx-click="recommend_ctas"
-      disabled={@recommending}
-      class={[
-        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
-        (@variant == "primary" && "border border-primary bg-primary text-n50 hover:opacity-90") ||
-          "border border-primary bg-primary-light text-primary hover:bg-primary hover:text-n50"
-      ]}
-    >
+    <.button type="button" variant={@variant} phx-click="recommend_ctas" disabled={@recommending}>
       <.icon
         name={if @recommending, do: "hero-arrow-path-mini", else: "hero-sparkles-mini"}
         class={"h-4 w-4 #{if @recommending, do: "animate-spin"}"}
       />
       {if @recommending, do: "Generating...", else: "Recommend based on my product"}
-    </button>
+    </.button>
     """
   end
 
@@ -1375,102 +1382,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     """
   end
 
-  # --- right playground sidebar -------------------------------------------
-
-  defp playground_panel(assigns) do
-    ~H"""
-    <aside class="flex max-h-[calc(100vh-150px)] w-96 min-w-0 shrink-0 flex-col overflow-hidden border-l border-n300 bg-n50 shadow-[-6px_0_24px_rgba(0,0,0,0.03)]">
-      <div class="flex items-center justify-between border-b border-n200 bg-n100 p-4">
-        <div class="flex min-w-0 items-center gap-3">
-          <div class="relative flex h-6 w-6">
-            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75">
-            </span>
-            <span class="relative inline-flex h-6 w-6 rounded-full bg-primary"></span>
-          </div>
-          <div class="min-w-0">
-            <p class="truncate text-sm font-semibold text-n900">Whatsapp Simulator</p>
-            <p class="truncate text-xs font-light text-n400">
-              Connected to: {endpoint_label(@endpoint)}
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-1">
-          <button
-            type="button"
-            phx-click="clear_chat"
-            aria-label="Clear chat"
-            title="Clear chat"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-n400 transition hover:bg-n200 hover:text-n900"
-          >
-            <.icon name="hero-trash-mini" class="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div
-        id="playground-scroll-region"
-        phx-hook="PlaygroundScroll"
-        data-message-count={MapSet.size(@message_ids)}
-        data-pending={to_string(not is_nil(@pending_user_message) or @assistant_pending)}
-        class="flex-1 space-y-3 overflow-y-auto p-4"
-        style="background-color: #ECE5DD; background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 20px 20px;"
-      >
-        <div class="flex justify-start">
-          <div class="relative max-w-[85%] rounded-lg border border-n100 bg-n50 p-3 text-sm text-n800 shadow-sm">
-            <p class="mb-1 text-xs font-medium text-primary">Sokochat System</p>
-            Add products or rules on the left, then type a message here to test live parsing logic.
-          </div>
-        </div>
-
-        <div id="playground-messages" phx-update="stream" class="space-y-2.5">
-          <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
-            <.message_bubble message={message} assistant_pending={@assistant_pending} />
-          </div>
-        </div>
-
-        <div :if={@pending_user_message} class="mt-2.5 flex justify-end">
-          <div class="max-w-[80%] rounded-[12px_12px_0_12px] bg-primary px-3.5 py-2.5 text-sm text-n50 opacity-80">
-            <p class="whitespace-pre-wrap break-words leading-6">{@pending_user_message.content}</p>
-            <div class="mt-1 flex items-center justify-end gap-2 text-[11px] text-n50/70">
-              <span>Sending...</span>
-            </div>
-          </div>
-        </div>
-
-        <.typing_indicator :if={@assistant_pending} />
-      </div>
-
-      <div class="border-t border-n200 bg-n50 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
-        <.form
-          for={@message_form}
-          as={:playground}
-          phx-submit="send_message"
-          class="relative flex items-center"
-        >
-          <input
-            type="text"
-            name={@message_form[:message].name}
-            id={@message_form[:message].id}
-            value={@message_form[:message].value}
-            placeholder="Type customer text..."
-            autocomplete="off"
-            disabled={@assistant_pending}
-            class="w-full rounded-lg border border-n300 bg-n50 px-4 py-3 pr-12 text-sm text-n800 outline-none transition placeholder:text-n400 focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-          <button
-            type="submit"
-            aria-label="Send message"
-            disabled={@assistant_pending}
-            class="absolute right-2.5 rounded-md p-1.5 text-primary transition hover:bg-primary-light disabled:opacity-50"
-          >
-            <.icon name="hero-paper-airplane-mini" class="h-5 w-5" />
-          </button>
-        </.form>
-      </div>
-    </aside>
-    """
-  end
-
   # --- shared small components --------------------------------------------
 
   attr :icon, :string, required: true
@@ -1488,29 +1399,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       <p class="mx-auto mt-1 max-w-sm text-xs text-n400">{@body}</p>
       <div class="mt-6">{render_slot(@inner_block)}</div>
     </div>
-    """
-  end
-
-  attr :tab, :string, required: true
-  attr :active, :string, required: true
-  attr :label, :string, required: true
-  attr :icon, :string, required: true
-
-  defp tab_button(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click="switch_tab"
-      phx-value-tab={@tab}
-      class={[
-        "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition",
-        (@active == @tab && "border-primary text-n900") ||
-          "border-transparent text-n400 hover:text-n900"
-      ]}
-    >
-      <.icon name={@icon} class="h-4 w-4" />
-      {@label}
-    </button>
     """
   end
 
@@ -1536,14 +1424,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         <.icon name="hero-eye-slash-mini" class="h-4 w-4 flex-none" />
         Not the active source — the AI ignores this data right now.
       </span>
-      <button
-        type="button"
-        phx-click="set_data_source"
-        phx-value-source={@source}
-        class="inline-flex flex-none items-center gap-1.5 rounded-md border border-primary bg-primary px-3 py-1.5 text-xs font-semibold text-n50 transition hover:opacity-90"
-      >
+      <.button type="button" size="sm" phx-click="set_data_source" phx-value-source={@source}>
         <.icon name="hero-bolt-mini" class="h-3.5 w-3.5" /> Set as AI source
-      </button>
+      </.button>
     </div>
     """
   end
@@ -1606,28 +1489,27 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         aria-hidden="true"
       >
       </div>
-      <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 lg:py-10">
-        <div class="flex min-h-full items-start justify-center">
-          <div class={[
-            "relative w-full rounded-2xl border border-n300 bg-n50 shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
-            @width
-          ]}>
-            <div class="flex items-start justify-between gap-4 border-b border-n300 px-6 py-5">
-              <div class="space-y-1">
-                <h2 class="text-lg font-semibold text-n900">{@title}</h2>
-                <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
-              </div>
-              <button
-                type="button"
-                phx-click="close_modal"
-                class="-m-2 flex-none rounded-full p-2 text-n400 transition hover:bg-n200 hover:text-n900"
-                aria-label="Close"
-              >
-                <.icon name="hero-x-mark-mini" class="h-5 w-5" />
-              </button>
+      <div class="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
+        <div class={[
+          "relative flex max-h-[calc(100dvh-48px)] w-full flex-col overflow-hidden rounded-2xl border border-n300 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
+          @width
+        ]}>
+          <div class="flex shrink-0 items-start justify-between gap-4 border-b border-n300 px-6 py-4">
+            <div class="min-w-0 space-y-1">
+              <h2 class="text-lg font-semibold text-n900">{@title}</h2>
+              <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
             </div>
-            <div class="px-6 py-5">{render_slot(@inner_block)}</div>
+            <.button
+              type="button"
+              variant="ghost"
+              size="icon"
+              phx-click="close_modal"
+              aria-label="Close"
+            >
+              <.icon name="hero-x-mark" class="h-4 w-4" />
+            </.button>
           </div>
+          <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">{render_slot(@inner_block)}</div>
         </div>
       </div>
     </div>
@@ -1654,13 +1536,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           placeholder="Tell the AI what the catalog means and how to read it."
         />
         <:actions>
-          <button
-            type="button"
-            phx-click="close_modal"
-            class="inline-flex items-center justify-center rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:bg-n200"
-          >
+          <.button type="button" variant="secondary" phx-click="close_modal">
             Cancel
-          </button>
+          </.button>
           <.button>Save model</.button>
         </:actions>
       </.simple_form>
@@ -1704,13 +1582,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           placeholder="Optional guidance for the shop owner"
         />
         <:actions>
-          <button
-            type="button"
-            phx-click="close_modal"
-            class="inline-flex items-center justify-center rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:bg-n200"
-          >
+          <.button type="button" variant="secondary" phx-click="close_modal">
             Cancel
-          </button>
+          </.button>
           <.button>{if @selected_field, do: "Update field", else: "Add field"}</.button>
         </:actions>
       </.simple_form>
@@ -1719,76 +1593,159 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   end
 
   defp item_modal(assigns) do
+    assigns = assign(assigns, :can_save, product_can_save?(assigns))
+
     ~H"""
     <.modal_shell
       width="max-w-2xl"
-      title={if @selected_item, do: "Edit item", else: "New item"}
-      subtitle="Custom fields are saved separately and included in the AI context."
+      title={if @selected_item, do: "Edit product", else: "New product"}
+      subtitle="Name, one cover image, and variant prices in KES. Extra images are optional."
     >
-      <.simple_form for={@item_form} phx-change="validate_item" phx-submit="save_item" multipart>
+      <.form
+        for={@item_form}
+        phx-change="validate_item"
+        phx-submit="save_item"
+        phx-debounce="200"
+        multipart
+        class="space-y-5"
+      >
         <input type="hidden" name="item[id]" value={(@selected_item && @selected_item.id) || ""} />
-        <div class="grid gap-4 sm:grid-cols-2">
-          <.input field={@item_form[:title]} label="Title" required />
-          <.input field={@item_form[:price]} type="number" step="any" label="Price" />
-          <.input field={@item_form[:currency]} label="Currency" placeholder="KES, USD, etc." />
-          <.input field={@item_form[:url]} type="url" label="URL" />
-          <.input
-            field={@item_form[:status]}
-            type="select"
-            label="Status"
-            options={[{"Active", "active"}, {"Draft", "draft"}, {"Archived", "archived"}]}
-          />
-        </div>
-
-        <div class="mt-4 space-y-4 rounded-2xl border border-dashed border-n300 bg-n50/50 p-4">
-          <div>
-            <h3 class="text-sm font-semibold text-n900">Image</h3>
-            <p class="text-xs leading-5 text-n400">
-              Upload a JPG, PNG, GIF, or WEBP file, or paste an image URL below.
-            </p>
-          </div>
-          <div class="rounded-xl border border-n300 bg-white px-4 py-3">
-            <.live_file_input
-              upload={@uploads.item_image}
-              class="block w-full cursor-pointer text-sm text-n600 file:mr-4 file:rounded-full file:border-0 file:bg-primary-light file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary hover:file:text-n50"
-            />
-          </div>
-          <.input
-            field={@item_form[:image_url]}
-            type="url"
-            label="Image URL"
-            placeholder="https://example.com/image.jpg"
-          />
-        </div>
-
-        <.input field={@item_form[:description]} type="textarea" label="Description" class="mt-4" />
-
-        <div
-          :if={@custom_fields != []}
-          class="mt-6 space-y-4 rounded-2xl border border-dashed border-n300 bg-n50/50 p-4"
-        >
-          <div>
-            <h3 class="text-sm font-semibold text-n900">Custom fields</h3>
-            <p class="text-xs leading-5 text-n400">
-              These come from the model definition and are stored in the item metadata.
-            </p>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <.custom_field :for={field <- @custom_fields} field={field} values={@item_values} />
-          </div>
-        </div>
-
-        <:actions>
-          <button
-            type="button"
-            phx-click="close_modal"
-            class="inline-flex items-center justify-center rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:bg-n200"
+        <input type="hidden" name="item[status]" value="active" />
+        <.input field={@item_form[:title]} label="Name" required />
+        <.input field={@item_form[:description]} type="textarea" label="Description" rows="3" />
+        <div>
+          <label class="block text-[13px] font-semibold leading-6 text-n900">
+            Category<span class="text-danger" aria-hidden="true"> *</span>
+          </label>
+          <select
+            name="item[category]"
+            required
+            class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
           >
-            Cancel
-          </button>
-          <.button>{if @selected_item, do: "Update item", else: "Add item"}</.button>
-        </:actions>
-      </.simple_form>
+            <option value="">Select a category</option>
+            <option
+              :for={name <- category_options(@catalog, @category_draft)}
+              value={name}
+              selected={name == @category_draft}
+            >
+              {name}
+            </option>
+          </select>
+          <p :if={Catalogs.shop_categories(@catalog) == []} class="mt-1.5 text-xs leading-5 text-n400">
+            Add categories on the Products page first.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold text-n900">
+                Variants<span class="text-danger" aria-hidden="true"> *</span>
+              </h3>
+              <p class="text-xs leading-5 text-n400">At least one. Prices are in KES.</p>
+            </div>
+            <.button
+              type="button"
+              variant="secondary"
+              size="sm"
+              phx-click="add_variant"
+              disabled={length(@variant_drafts) >= 4}
+            >
+              <.icon name="hero-plus" class="h-4 w-4" /> Add variant
+            </.button>
+          </div>
+          <div :for={{slot, index} <- Enum.with_index(@variant_drafts)} class="flex items-end gap-2">
+            <input type="hidden" name={"item[variants][#{index}][slot]"} value={index} />
+            <div class="min-w-0 flex-1">
+              <label class="block text-[13px] font-semibold leading-6 text-n900">
+                Name<span class="text-danger" aria-hidden="true"> *</span>
+              </label>
+              <input
+                type="text"
+                name={"item[variants][#{index}][label]"}
+                value={slot["label"]}
+                aria-required="true"
+                class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+            <div class="w-32 shrink-0">
+              <label class="block text-[13px] font-semibold leading-6 text-n900">
+                KES<span class="text-danger" aria-hidden="true"> *</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                name={"item[variants][#{index}][price]"}
+                value={slot["price"]}
+                aria-required="true"
+                class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+            <.button
+              type="button"
+              variant="ghost"
+              size="icon"
+              phx-click="remove_variant"
+              phx-value-index={index}
+              disabled={length(@variant_drafts) == 1}
+              aria-label="Remove variant"
+            >
+              <.icon name="hero-x-mark" class="h-4 w-4" />
+            </.button>
+          </div>
+        </div>
+
+        <div :if={@details_open} class="form-reveal space-y-5">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <h3 class="text-sm font-semibold text-n900">
+                Cover image<span class="text-danger" aria-hidden="true"> *</span>
+              </h3>
+              <p class="text-xs leading-5 text-n400">JPG, PNG, or WEBP.</p>
+              <img
+                :if={@selected_item && @selected_item.image_url}
+                src={@selected_item.image_url}
+                alt=""
+                class="h-16 w-16 rounded-lg object-cover"
+              />
+              <.live_file_input upload={@uploads.cover} class={file_input_class()} />
+            </div>
+            <div class="space-y-2">
+              <h3 class="text-sm font-semibold text-n900">Extra images</h3>
+              <p class="text-xs leading-5 text-n400">Optional. Up to four.</p>
+              <div :if={extra_images(@selected_item) != []} class="flex flex-wrap gap-2">
+                <img
+                  :for={url <- extra_images(@selected_item)}
+                  src={url}
+                  alt=""
+                  class="h-16 w-16 rounded-lg object-cover"
+                />
+              </div>
+              <.live_file_input upload={@uploads.extras} class={file_input_class()} />
+            </div>
+          </div>
+
+          <div :if={@custom_fields != []} class="space-y-3">
+            <div>
+              <h3 class="text-sm font-semibold text-n900">Custom fields</h3>
+              <p class="text-xs leading-5 text-n400">
+                Stored with the product and included in replies.
+              </p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <.custom_field :for={field <- @custom_fields} field={field} values={@item_values} />
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-6 -mb-5 flex items-center justify-end gap-2 border-t border-n300 px-6 py-4">
+          <.button type="button" variant="secondary" phx-click="close_modal">Cancel</.button>
+          <.button disabled={not @can_save}>
+            {if @selected_item, do: "Update product", else: "Add product"}
+          </.button>
+        </div>
+      </.form>
     </.modal_shell>
     """
   end
@@ -1888,13 +1845,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         <% end %>
 
         <:actions>
-          <button
-            type="button"
-            phx-click="close_modal"
-            class="inline-flex items-center justify-center rounded-lg border border-n300 bg-n50 px-4 py-2 text-sm font-medium text-n800 transition hover:bg-n200"
-          >
+          <.button type="button" variant="secondary" phx-click="close_modal">
             Cancel
-          </button>
+          </.button>
           <.button>{if @editing_rule, do: "Save changes", else: "Create rule"}</.button>
         </:actions>
       </.simple_form>
@@ -1908,11 +1861,14 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   defp custom_field(assigns) do
     ~H"""
     <div class="space-y-1.5">
-      <label class="block text-sm font-medium text-n900">{@field.label}</label>
+      <label class="block text-sm font-medium text-n900">
+        {@field.label}<span :if={@field.required} class="text-danger" aria-hidden="true"> *</span>
+      </label>
       <%= case @field.field_type do %>
         <% "textarea" -> %>
           <textarea
             name={"item[metadata][#{@field.key}]"}
+            required={@field.required}
             class="min-h-[110px] w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
           ><%= Map.get(@values, @field.key, "") %></textarea>
         <% "boolean" -> %>
@@ -1933,6 +1889,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             step="any"
             name={"item[metadata][#{@field.key}]"}
             value={Map.get(@values, @field.key, "")}
+            required={@field.required}
             class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
           />
         <% type when type in ["url", "image_url"] -> %>
@@ -1940,6 +1897,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             type="url"
             name={"item[metadata][#{@field.key}]"}
             value={Map.get(@values, @field.key, "")}
+            required={@field.required}
             class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
           />
         <% _ -> %>
@@ -1947,6 +1905,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             type="text"
             name={"item[metadata][#{@field.key}]"}
             value={Map.get(@values, @field.key, "")}
+            required={@field.required}
             class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
           />
       <% end %>
@@ -1961,7 +1920,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp load_workspace(socket, workspace) do
     endpoint = Endpoints.get_endpoint(workspace.id) || default_endpoint(workspace.id)
-    catalog = Catalogs.get_catalog(workspace.id) || default_catalog(workspace.id)
+    catalog = ensure_catalog(workspace)
     cta_rules = CTARules.list_cta_rules(workspace.id)
     connection = Meta.get_connection_or_new(workspace.id)
 
@@ -2351,52 +2310,271 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   defp form_name(:item_form), do: :item
   defp form_name(:meta_form), do: :connection
 
-  defp to_step("business"), do: :business
-  defp to_step("products"), do: :products
-  defp to_step("cta"), do: :cta
-  defp to_step("meta"), do: :meta
-  defp to_step(_), do: :business
-
-  defp step_index(step), do: Enum.find_index(@steps, &(&1 == step)) + 1
-
-  defp step_offset(step, offset) do
-    index = Enum.find_index(@steps, &(&1 == step)) + offset
-    Enum.at(@steps, max(0, min(index, length(@steps) - 1)))
-  end
-
-  defp step_caption(:business), do: "Describing your business"
-  defp step_caption(:products), do: "Configuring product data"
-  defp step_caption(:cta), do: "Configuring interaction CTAs"
-  defp step_caption(:meta), do: "Securing the live connection"
-
-  defp next_label(:business), do: "Next: Products"
-  defp next_label(:products), do: "Next: CTA Rules"
-  defp next_label(:cta), do: "Next: Meta Connection"
-  defp next_label(_), do: "Next"
+  defp business_unchanged?(%{source: %Ecto.Changeset{changes: changes}}), do: changes == %{}
+  defp business_unchanged?(_form), do: true
 
   defp custom_fields(nil), do: []
 
   defp custom_fields(catalog) do
-    Enum.reject(catalog.fields || [], fn field -> field.key in Catalogs.canonical_item_keys() end)
+    hidden = Catalogs.canonical_item_keys() ++ Catalogs.reserved_item_keys()
+    Enum.reject(catalog.fields || [], fn field -> field.key in hidden end)
   end
 
-  defp consume_item_image_upload(socket, catalog_id) do
-    consume_uploaded_entries(socket, :item_image, fn %{path: path}, entry ->
-      extension = Path.extname(entry.client_name || "")
-      filename = "#{System.unique_integer([:positive])}#{extension}"
-      relative_path = Path.join(["uploads", "catalogs", to_string(catalog_id), filename])
-      destination = Path.join(Application.app_dir(:sokochat, "priv/static"), relative_path)
+  defp store_product_images(socket, catalog_id, existing) do
+    with {:ok, covers} <- consume_images(socket, :cover, catalog_id),
+         {:ok, extras} <- consume_images(socket, :extras, catalog_id) do
+      cover =
+        case covers do
+          [url | _] -> url
+          [] -> existing && existing.image_url
+        end
 
-      File.mkdir_p!(Path.dirname(destination))
-      File.cp!(path, destination)
-      {:ok, "/" <> relative_path}
+      extra_urls =
+        case extras do
+          [] -> extra_images(existing)
+          urls -> urls
+        end
+
+      if is_binary(cover) and cover != "" do
+        {:ok, socket, cover, extra_urls}
+      else
+        {:error, socket, "Add a cover image."}
+      end
+    else
+      {:error, message} -> {:error, socket, message}
+    end
+  end
+
+  defp consume_images(socket, name, catalog_id) do
+    results =
+      consume_uploaded_entries(socket, name, fn %{path: path}, entry ->
+        extension = Path.extname(entry.client_name || "") |> String.downcase()
+        key = "catalogs/#{catalog_id}/#{System.unique_integer([:positive])}#{extension}"
+
+        case Sokochat.Storage.Images.put_file(path, key, entry.client_type) do
+          {:ok, url} -> {:ok, url}
+          {:error, reason} -> {:postpone, {:error, image_error(reason)}}
+        end
+      end)
+
+    case Enum.find(results, &match?({:error, _}, &1)) do
+      {:error, message} -> {:error, message}
+      nil -> {:ok, results}
+    end
+  rescue
+    ArgumentError ->
+      {:error, "Wait for the image upload to finish, then save again."}
+  end
+
+  defp image_error(reason) when is_binary(reason), do: reason
+
+  defp empty_variant_slots, do: [%{"label" => "", "price" => ""}]
+
+  defp product_can_save?(assigns) do
+    product_basics?(assigns.item_form[:title].value, assigns.variant_drafts) and
+      cover_ready?(assigns) and
+      category_ready?(assigns) and
+      required_fields_filled?(assigns.custom_fields, assigns.item_values)
+  end
+
+  defp category_ready?(assigns) do
+    name = Catalogs.normalize_category_name(assigns.category_draft)
+    name != nil and name in category_options(assigns.catalog, assigns.category_draft)
+  end
+
+  defp category_options(catalog, draft) do
+    names = Catalogs.shop_categories(catalog)
+
+    cond do
+      draft in [nil, ""] -> names
+      draft in names -> names
+      true -> names ++ [draft]
+    end
+  end
+
+  defp product_basics?(title, drafts) when is_binary(title) do
+    String.trim(title) != "" and Enum.any?(drafts, &complete_variant?/1)
+  end
+
+  defp product_basics?(_title, _drafts), do: false
+
+  defp complete_variant?(%{"label" => label, "price" => price}) do
+    String.trim(to_string(label || "")) != "" and is_number(parse_price(price))
+  end
+
+  defp complete_variant?(_slot), do: false
+
+  defp cover_ready?(assigns) do
+    existing =
+      case assigns.selected_item do
+        %{image_url: url} when is_binary(url) and url != "" -> true
+        _ -> false
+      end
+
+    existing or assigns.uploads.cover.entries != []
+  end
+
+  defp required_fields_filled?(fields, values) do
+    Enum.all?(fields || [], fn field ->
+      not field.required or custom_filled?(field, values || %{})
     end)
-    |> List.first()
+  end
+
+  defp custom_filled?(%{field_type: "boolean"} = field, values) do
+    truthy?(Map.get(values, field.key))
+  end
+
+  defp custom_filled?(field, values) do
+    values |> Map.get(field.key) |> to_string() |> String.trim() != ""
+  end
+
+  defp file_input_class do
+    "block w-full text-sm text-n500 file:mr-3 file:inline-flex file:h-8 file:cursor-pointer file:items-center file:rounded-md file:border-0 file:bg-[#efefef] file:px-2.5 file:text-sm file:font-medium file:text-[#161616]"
+  end
+
+  defp slots_from_item(item) do
+    existing =
+      item
+      |> variants_of()
+      |> Enum.map(fn variant ->
+        %{"label" => variant["label"] || "", "price" => format_kes(variant["price"])}
+      end)
+      |> Enum.take(@variant_slots)
+
+    if existing == [], do: empty_variant_slots(), else: existing
+  end
+
+  defp drafts_from(nil), do: empty_variant_slots()
+
+  defp drafts_from(variants) when is_map(variants) do
+    parsed =
+      variants
+      |> Enum.sort_by(fn {key, _} ->
+        case Integer.parse(to_string(key)) do
+          {number, _} -> number
+          :error -> 0
+        end
+      end)
+      |> Enum.map(fn {_key, row} ->
+        %{"label" => row["label"] || "", "price" => row["price"] || ""}
+      end)
+      |> Enum.take(@variant_slots)
+
+    if parsed == [], do: empty_variant_slots(), else: parsed
+  end
+
+  defp parse_variants(variants) do
+    drafts_from(variants)
+    |> Enum.map(fn slot ->
+      label = String.trim(slot["label"] || "")
+      price = parse_price(slot["price"])
+      if label == "" or is_nil(price), do: nil, else: %{"label" => label, "price" => price}
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp parse_price(value) when is_integer(value), do: value * 1.0
+  defp parse_price(value) when is_float(value), do: value
+
+  defp parse_price(value) when is_binary(value) do
+    case Float.parse(String.trim(value)) do
+      {number, _} when number >= 0 -> number
+      _ -> nil
+    end
+  end
+
+  defp parse_price(_value), do: nil
+
+  defp variant_floor(variants) do
+    variants |> Enum.map(& &1["price"]) |> Enum.min()
+  end
+
+  defp variants_of(nil), do: []
+
+  defp variants_of(%{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, "variants") || Map.get(metadata, :variants) || []
+  end
+
+  defp variants_of(_), do: []
+
+  defp extra_images(nil), do: []
+
+  defp extra_images(%{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, "images") || Map.get(metadata, :images) || []
+  end
+
+  defp extra_images(_), do: []
+
+  defp category_of(%{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, "category") || Map.get(metadata, :category) || ""
+  end
+
+  defp category_of(_), do: ""
+
+  defp variant_summary(item) do
+    case variants_of(item) do
+      [] ->
+        if item.price, do: "KES #{format_kes(item.price)}", else: "No price"
+
+      variants ->
+        floor = variants |> Enum.map(& &1["price"]) |> Enum.reject(&is_nil/1) |> Enum.min()
+        count = length(variants)
+        label = if count == 1, do: "variant", else: "variants"
+        "KES #{format_kes(floor)} · #{count} #{label}"
+    end
+  end
+
+  defp format_kes(nil), do: ""
+  defp format_kes(price) when is_integer(price), do: Integer.to_string(price)
+
+  defp format_kes(price) when is_float(price) do
+    if price == trunc(price) * 1.0 do
+      Integer.to_string(trunc(price))
+    else
+      :erlang.float_to_binary(price, decimals: 2)
+    end
+  end
+
+  defp format_kes(price) when is_binary(price), do: price
+
+  defp blank_to_nil(value) when value in [nil, ""], do: nil
+  defp blank_to_nil(value) when is_binary(value), do: String.trim(value)
+  defp blank_to_nil(value), do: value
+
+  defp ensure_catalog(workspace) do
+    case Catalogs.get_catalog(workspace.id) do
+      %Catalog{} = catalog ->
+        catalog
+
+      nil ->
+        {:ok, _catalog} =
+          Catalogs.upsert_catalog(workspace.id, %{
+            "name" => "Products",
+            "entity_label" => "product",
+            "context_notes" =>
+              "Quote only the KES prices stored on each variant. Never invent a price."
+          })
+
+        Catalogs.get_catalog(workspace.id)
+    end
   end
 
   defp clear_item_uploads(socket) do
-    {socket, _uploads} = Phoenix.LiveView.Upload.maybe_cancel_uploads(socket)
-    socket
+    Enum.reduce([:cover, :extras], socket, &clear_upload/2)
+  end
+
+  defp clear_upload(name, socket) do
+    entries = socket.assigns.uploads[name].entries
+
+    Enum.reduce(entries, socket, fn entry, socket ->
+      try do
+        cancel_upload(socket, name, entry.ref)
+      catch
+        :exit, _ ->
+          conf = socket.assigns.uploads[name]
+          Phoenix.LiveView.Upload.drop_upload_entries(socket, conf, [entry.ref])
+      end
+    end)
   end
 
   defp sort_rules(rules) do
@@ -2427,9 +2605,36 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       name: "Product catalog",
       entity_label: "item",
       context_notes: "",
+      categories: [],
       fields: [],
       items: []
     }
+  end
+
+  defp add_shop_category(socket, name) do
+    catalog = socket.assigns.catalog
+    taken = Catalogs.shop_categories(catalog)
+
+    case Catalogs.normalize_category_name(name) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Enter a category name.")}
+
+      name ->
+        if Enum.any?(taken, &(String.downcase(&1) == String.downcase(name))) do
+          {:noreply, assign(socket, :category_query, "")}
+        else
+          case Catalogs.add_category(catalog, name) do
+            {:ok, _catalog} ->
+              {:noreply,
+               socket
+               |> assign(:category_query, "")
+               |> reload_products_state(clear_selected_item: false)}
+
+            {:error, _changeset} ->
+              {:noreply, put_flash(socket, :error, "Could not add that category.")}
+          end
+        end
+    end
   end
 
   defp blank_field(catalog_id) do
@@ -2474,11 +2679,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp catalog_configured?(%{id: id}) when not is_nil(id), do: true
   defp catalog_configured?(_), do: false
-
-  defp endpoint_label(nil), do: "not configured"
-  defp endpoint_label(%{url: nil}), do: "not configured"
-  defp endpoint_label(%{url: url}), do: URI.parse(url).host || url
-  defp endpoint_label(_), do: "not configured"
 
   # --- cta presentation ---------------------------------------------------
 

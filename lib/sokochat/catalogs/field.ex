@@ -5,6 +5,7 @@ defmodule Sokochat.Catalogs.Field do
   alias Sokochat.Catalogs.Catalog
 
   @field_types ~w(text textarea number url image_url boolean json)
+  @reserved_keys ~w(category variants images)
 
   schema "catalog_fields" do
     belongs_to :catalog, Catalog
@@ -28,6 +29,7 @@ defmodule Sokochat.Catalogs.Field do
     |> validate_length(:key, min: 1, max: 80)
     |> validate_length(:label, min: 1, max: 120)
     |> validate_format(:key, ~r/^[a-z][a-z0-9_]*$/, message: "must use lowercase snake_case")
+    |> validate_exclusion(:key, @reserved_keys, message: "is already built in")
     |> validate_inclusion(:field_type, @field_types)
     |> validate_number(:position, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:catalog_id)
@@ -35,6 +37,7 @@ defmodule Sokochat.Catalogs.Field do
   end
 
   def field_types, do: @field_types
+  def reserved_keys, do: @reserved_keys
 
   defp normalize_string_fields(changeset, fields) do
     Enum.reduce(fields, changeset, fn field, acc ->

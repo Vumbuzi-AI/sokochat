@@ -21,6 +21,7 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+import {DashboardShell} from "./dashboard-shell.js"
 
 let Hooks = {}
 
@@ -91,6 +92,8 @@ Hooks.PlaygroundScroll = {
 }
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+Hooks.DashboardShell = DashboardShell
+
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,
   longPollFallbackMs: 2500,
@@ -101,6 +104,33 @@ let liveSocket = new LiveSocket("/live", Socket, {
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+
+document.addEventListener("phx:push", (event) => {
+  const button = event.target
+  if (!(button instanceof HTMLButtonElement)) return
+
+  button.setAttribute("aria-busy", "true")
+  const done = event.detail && event.detail.loadingComplete
+  if (done && typeof done.then === "function") {
+    done.finally(() => button.removeAttribute("aria-busy"))
+  }
+})
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-password-toggle]")
+  if (!button) return
+
+  const input = document.getElementById(button.getAttribute("aria-controls"))
+  if (!input) return
+
+  const showing = input.type === "password"
+  input.type = showing ? "text" : "password"
+  button.setAttribute("aria-pressed", showing ? "true" : "false")
+  button.setAttribute("aria-label", showing ? "Hide password" : "Show password")
+  button.querySelector("[data-icon='show']")?.classList.toggle("hidden", !showing)
+  button.querySelector("[data-icon='hide']")?.classList.toggle("hidden", showing)
+  input.focus()
+})
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

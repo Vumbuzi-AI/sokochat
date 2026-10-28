@@ -44,7 +44,8 @@ defmodule Sokochat.AI.Retriever do
       item.title,
       item.description,
       category_of(item),
-      currency_price(item)
+      currency_price(item),
+      variant_text(item)
     ]
     |> Enum.reject(&(&1 in [nil, ""]))
     |> Enum.join("\n")
@@ -70,6 +71,38 @@ defmodule Sokochat.AI.Retriever do
     |> limit(^k)
     |> Repo.all()
   end
+
+  def upsells(workspace_id, retrieved) when is_list(retrieved) do
+    case retrieved do
+      [%{"id" => id, "title" => title} = first | _] ->
+        category = first["category"]
+        probe = Enum.join(Enum.reject([title, category], &(&1 in [nil, ""])), " ")
+
+        workspace_id
+        |> search(probe, k: 6)
+        |> Enum.reject(&(&1["id"] == id))
+        |> Enum.filter(fn item -> category in [nil, ""] or item["category"] == category end)
+        |> Enum.take(2)
+
+      _ ->
+        []
+    end
+  end
+
+  defp variant_text(%Item{metadata: metadata}) when is_map(metadata) do
+    variants = Map.get(metadata, "variants") || Map.get(metadata, :variants) || []
+
+    if is_list(variants) do
+      variants
+      |> Enum.map_join("\n", fn variant ->
+        label = variant["label"] || variant[:label]
+        price = variant["price"] || variant[:price]
+        "Variant #{label}: KES #{price}"
+      end)
+    end
+  end
+
+  defp variant_text(_item), do: nil
 
   defp category_of(%Item{metadata: metadata}) when is_map(metadata) do
     Map.get(metadata, "category") || Map.get(metadata, :category)

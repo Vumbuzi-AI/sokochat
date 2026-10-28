@@ -29,6 +29,8 @@ config :sokochat, Oban,
   ],
   queues: [default: 10, endpoint_refresh: 5, meta_send: 10, embeddings: 5]
 
+config :sokochat, Sokochat.Storage, adapter: :local
+
 # Configures the endpoint
 config :sokochat, SokochatWeb.Endpoint,
   url: [host: "localhost"],

@@ -5,7 +5,7 @@ defmodule SokochatWeb.HomeLive.Components do
     ~H"""
     <div class="bg-n50 text-n800">
       <.landing_header current_user={@current_user} />
-      <.hero />
+      <.hero current_user={@current_user} />
       <.services />
       <.accordion_showcase />
       <.boost_conversions />
@@ -80,14 +80,10 @@ defmodule SokochatWeb.HomeLive.Components do
             >
               {@current_user.email}
             </a>
-            <a
-              href="/users/log_out"
-              data-method="delete"
-              rel="nofollow"
-              class="btn btn-secondary btn-sm"
-            >
+            <a href="/workspaces" class="btn btn-primary btn-sm">Workspaces</a>
+            <.link href={~p"/users/log_out"} method="delete" class="btn btn-secondary btn-sm">
               Log out
-            </a>
+            </.link>
           <% else %>
             <a href="/users/log_in" class="btn btn-secondary btn-sm">Login</a>
             <a href="/users/register" class="btn btn-primary btn-sm">Get Started</a>
@@ -133,14 +129,10 @@ defmodule SokochatWeb.HomeLive.Components do
               <a href="/users/settings" class="btn btn-secondary btn-sm w-full">
                 {@current_user.email}
               </a>
-              <a
-                href="/users/log_out"
-                data-method="delete"
-                rel="nofollow"
-                class="btn btn-secondary btn-sm w-full"
-              >
+              <a href="/workspaces" class="btn btn-primary btn-sm w-full">Workspaces</a>
+              <.link href={~p"/users/log_out"} method="delete" class="btn btn-secondary btn-sm w-full">
                 Log out
-              </a>
+              </.link>
             <% else %>
               <a href="/users/log_in" class="btn btn-secondary btn-sm w-full">Login</a>
               <a href="/users/register" class="btn btn-primary btn-sm w-full">Get Started</a>
@@ -205,7 +197,11 @@ defmodule SokochatWeb.HomeLive.Components do
               Built for merchants, marketplaces, and growing teams across East Africa. Sokochat lets any business create and run an AI-powered WhatsApp chatbot without code.
             </p>
             <div class="flex w-full flex-wrap items-center justify-center gap-x-6 gap-y-4 lg:justify-start">
-              <a href="#pricing" class="btn btn-primary btn-lg">Get Started</a>
+              <%= if @current_user do %>
+                <a href="/workspaces" class="btn btn-primary btn-lg">Go to workspaces</a>
+              <% else %>
+                <a href="#pricing" class="btn btn-primary btn-lg">Get Started</a>
+              <% end %>
               <a href="#services" class="btn btn-secondary btn-lg">See Playground</a>
             </div>
           </div>

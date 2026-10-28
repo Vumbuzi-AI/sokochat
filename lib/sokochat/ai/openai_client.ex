@@ -68,29 +68,25 @@ defmodule Sokochat.AI.OpenAIClient do
   defp build_result(text, tokens) when is_binary(text) do
     case Jason.decode(text) do
       {:ok, %{"reply" => reply} = parsed} ->
-        {:ok,
-         %{
-           reply: reply,
-           cta: Map.get(parsed, "cta"),
-           tokens: tokens
-         }}
+        {:ok, reply_payload(reply, parsed, tokens)}
 
       {:ok, parsed} when is_map(parsed) ->
-        {:ok,
-         %{
-           reply: Map.get(parsed, "reply", text),
-           cta: Map.get(parsed, "cta"),
-           tokens: tokens
-         }}
+        {:ok, reply_payload(Map.get(parsed, "reply", text), parsed, tokens)}
 
       {:error, _reason} ->
-        {:ok,
-         %{
-           reply: text,
-           cta: nil,
-           tokens: tokens
-         }}
+        {:ok, reply_payload(text, %{}, tokens)}
     end
+  end
+
+  defp reply_payload(reply, parsed, tokens) do
+    policy = Map.get(parsed, "policy") || Map.get(parsed, :policy) || "ok"
+
+    %{
+      reply: reply,
+      cta: Map.get(parsed, "cta"),
+      tokens: tokens,
+      policy: if(policy in ["ok", "refuse"], do: policy, else: "ok")
+    }
   end
 
   defp extract_text(%{"output_text" => text}) when is_binary(text), do: text
@@ -187,9 +183,10 @@ defmodule Sokochat.AI.OpenAIClient do
       schema: %{
         type: "object",
         additionalProperties: false,
-        required: ["reply", "cta"],
+        required: ["reply", "cta", "policy"],
         properties: %{
           reply: %{type: "string"},
+          policy: %{type: "string", enum: ["ok", "refuse"]},
           cta: %{
             anyOf: [
               %{type: "null"},

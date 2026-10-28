@@ -12,7 +12,8 @@ defmodule SokochatWeb.CoreComponents do
   See the [Tailwind CSS documentation](https://tailwindcss.com) to learn
   how to customize them or feel free to swap in another framework altogether.
 
-  Icons are provided by [heroicons](https://heroicons.com). See `icon/1` for usage.
+  Icons are provided by [Phosphor](https://phosphoricons.com) through
+  `phosphor_live_view`. See `icon/1` for usage.
   """
   use Phoenix.Component
   use Gettext, backend: SokochatWeb.Gettext
@@ -216,15 +217,23 @@ defmodule SokochatWeb.CoreComponents do
   end
 
   @doc """
-  Renders a button.
+  Renders an action button.
+
+  `variant` is `primary`, `secondary`, `muted`, `ghost`, or `danger`.
+  `size` is `sm`, `md`, or `icon`. Inside a form the type defaults to submit.
+  Pass `navigate` to render a LiveView navigation link with the same styling.
 
   ## Examples
 
-      <.button>Send!</.button>
-      <.button phx-click="go" class="ml-2">Send!</.button>
+      <.button>Save</.button>
+      <.button variant="secondary" type="button" phx-click="close">Cancel</.button>
+      <.button variant="ghost" size="icon" aria-label="Close menu">...</.button>
   """
+  attr :variant, :string, default: "primary", values: ~w(primary secondary muted ghost danger)
+  attr :size, :string, default: "md", values: ~w(sm md icon)
   attr :type, :string, default: nil
-  attr :class, :string, default: nil
+  attr :navigate, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(disabled form name value)
 
   slot :inner_block, required: true
@@ -232,20 +241,33 @@ defmodule SokochatWeb.CoreComponents do
   def button(assigns) do
     ~H"""
     <button
+      :if={is_nil(@navigate)}
       type={@type}
-      class={[
-        "phx-submit-loading:opacity-75 inline-flex items-center justify-center rounded-full",
-        "bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition",
-        "hover:bg-primary hover:shadow-[0_4px_12px_rgba(7,94,84,0.25)] active:scale-[0.98]",
-        "disabled:cursor-not-allowed disabled:opacity-45",
-        @class
-      ]}
+      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
       {@rest}
     >
       {render_slot(@inner_block)}
     </button>
+    <.link
+      :if={@navigate}
+      navigate={@navigate}
+      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
     """
   end
+
+  defp button_variant("primary"), do: "dash-btn-primary"
+  defp button_variant("secondary"), do: "dash-btn-secondary"
+  defp button_variant("muted"), do: "dash-btn-muted"
+  defp button_variant("ghost"), do: "dash-btn-ghost"
+  defp button_variant("danger"), do: "dash-btn-danger"
+
+  defp button_size("sm"), do: "dash-btn-sm"
+  defp button_size("md"), do: "dash-btn-md"
+  defp button_size("icon"), do: "dash-btn-icon"
 
   @doc """
   Renders an input with label and error messages.
@@ -336,7 +358,7 @@ defmodule SokochatWeb.CoreComponents do
   def input(%{type: "select"} = assigns) do
     ~H"""
     <div>
-      <.label for={@id}>{@label}</.label>
+      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
       <select
         id={@id}
         name={@name}
@@ -355,7 +377,7 @@ defmodule SokochatWeb.CoreComponents do
   def input(%{type: "textarea"} = assigns) do
     ~H"""
     <div>
-      <.label for={@id}>{@label}</.label>
+      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
       <textarea
         id={@id}
         name={@name}
@@ -375,7 +397,7 @@ defmodule SokochatWeb.CoreComponents do
   def input(assigns) do
     ~H"""
     <div>
-      <.label for={@id}>{@label}</.label>
+      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
       <input
         type={@type}
         name={@name}
@@ -397,12 +419,13 @@ defmodule SokochatWeb.CoreComponents do
   Renders a label.
   """
   attr :for, :string, default: nil
+  attr :required, :boolean, default: false
   slot :inner_block, required: true
 
   def label(assigns) do
     ~H"""
     <label for={@for} class="block text-[13px] font-semibold leading-6 text-n900">
-      {render_slot(@inner_block)}
+      {render_slot(@inner_block)}<span :if={@required} class="text-danger" aria-hidden="true"> *</span>
     </label>
     """
   end
@@ -576,17 +599,16 @@ defmodule SokochatWeb.CoreComponents do
   end
 
   @doc """
-  Renders a [Heroicon](https://heroicons.com).
+  Renders a Phosphor icon.
 
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
+  Existing `-solid` and `-mini` names are retained as semantic aliases,
+  but every icon uses Phosphor's `regular` weight for now.
 
   You can customize the size and colors of the icons by setting
   width, height, and background color classes.
 
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in your `assets/tailwind.config.js`.
+  Phosphor icons are rendered as compile-time SVG components instead of being
+  bundled into the Tailwind stylesheet.
 
   ## Examples
 
@@ -595,10 +617,59 @@ defmodule SokochatWeb.CoreComponents do
   """
   attr :name, :string, required: true
   attr :class, :string, default: nil
+  attr :rest, :global
 
-  def icon(%{name: "hero-" <> _} = assigns) do
+  @icon_map %{
+    "hero-arrow-left-solid" => {"arrow-left", "regular"},
+    "hero-arrow-left-mini" => {"arrow-left", "regular"},
+    "hero-arrow-path" => {"arrow-clockwise", "regular"},
+    "hero-arrow-path-mini" => {"arrow-clockwise", "regular"},
+    "hero-arrow-right-on-rectangle" => {"sign-out", "regular"},
+    "hero-bars-3" => {"list", "regular"},
+    "hero-bolt" => {"lightning", "regular"},
+    "hero-bolt-mini" => {"lightning", "regular"},
+    "hero-building-storefront" => {"storefront", "regular"},
+    "hero-chart-bar" => {"chart-bar", "regular"},
+    "hero-chat-bubble-left-right" => {"chats", "regular"},
+    "hero-chat-bubble-left-right-mini" => {"chats", "regular"},
+    "hero-check-badge-mini" => {"seal-check", "regular"},
+    "hero-check-circle-mini" => {"check-circle", "regular"},
+    "hero-code-bracket-mini" => {"code", "regular"},
+    "hero-cursor-arrow-rays" => {"cursor", "regular"},
+    "hero-cursor-arrow-rays-mini" => {"cursor", "regular"},
+    "hero-document-duplicate-mini" => {"copy", "regular"},
+    "hero-eye-slash-mini" => {"eye-slash", "regular"},
+    "hero-exclamation-circle-mini" => {"x-circle", "regular"},
+    "hero-exclamation-triangle-mini" => {"warning", "regular"},
+    "hero-globe-alt-mini" => {"globe", "regular"},
+    "hero-information-circle-mini" => {"info", "regular"},
+    "hero-list-bullet-mini" => {"list-bullets", "regular"},
+    "hero-map-pin-mini" => {"map-pin", "regular"},
+    "hero-minus-circle-mini" => {"minus-circle", "regular"},
+    "hero-pencil-square-mini" => {"pencil-simple", "regular"},
+    "hero-phone-mini" => {"phone", "regular"},
+    "hero-photo" => {"image", "regular"},
+    "hero-plus" => {"plus", "regular"},
+    "hero-plus-mini" => {"plus", "regular"},
+    "hero-shield-check-mini" => {"shield-check", "regular"},
+    "hero-signal" => {"broadcast", "regular"},
+    "hero-sparkles-mini" => {"sparkle", "regular"},
+    "hero-squares-2x2" => {"squares-four", "regular"},
+    "hero-squares-2x2-mini" => {"squares-four", "regular"},
+    "hero-trash-mini" => {"trash", "regular"},
+    "hero-wrench-screwdriver" => {"wrench", "regular"},
+    "hero-x-mark" => {"x", "regular"},
+    "hero-x-mark-mini" => {"x", "regular"},
+    "hero-x-mark-solid" => {"x", "regular"}
+  }
+
+  def icon(assigns) do
+    {name, weight} = Map.get(@icon_map, assigns.name, {assigns.name, "regular"})
+
+    assigns = assign(assigns, phosphor_name: name, phosphor_weight: weight)
+
     ~H"""
-    <span class={[@name, @class]} />
+    <Phosphor.icon name={@phosphor_name} weight={@phosphor_weight} class={@class} {@rest} />
     """
   end
 

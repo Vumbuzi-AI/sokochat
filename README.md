@@ -57,6 +57,20 @@ The seed script creates confirmed users and resets these seed account passwords 
 
 You can override them with `SEED_USER_EMAIL`, `SEED_USER_PASSWORD`, `SEED_REGULAR_USER_EMAIL`, and `SEED_REGULAR_USER_PASSWORD`.
 
+The seed also creates **Soko Shoes**, owned by `shoes@sokochat.local` with password
+`password123` (override with `SEED_SHOES_EMAIL` and `SEED_SHOES_PASSWORD`). Run only
+this demo with `mix run priv/repo/seeds_shoes.exs`. It contains Adidas Spezial,
+Nike Shox, and Onitsuka Tigers with public R2 images and fictional KES prices,
+EU sizes, and stock. Rerunning updates these fixtures without deleting other products.
+New images uploaded to R2 must also be added as products in the dashboard or seed.
+
+For live replies, set `OPENAI_API_KEY` in `.env` and restart `mix phx.server`.
+The same server-side key powers replies, CTA suggestions, and embeddings; no key
+entry is required in the dashboard. In the workspace playground, try “Show me
+Adidas Spezial” or “What sizes and prices do you have for Nike Shox?” A specific
+product reply can display its image card; broad browsing uses product buttons.
+These local catalog IDs are not connected to a Meta Commerce catalog.
+
 ## Common Commands
 
 ```sh

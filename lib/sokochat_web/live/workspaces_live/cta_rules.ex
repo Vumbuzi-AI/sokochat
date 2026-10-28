@@ -537,13 +537,9 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
               <% end %>
 
               <:actions>
-                <button
-                  type="button"
-                  phx-click="close_rule_form"
-                  class="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
-                >
+                <.button type="button" variant="secondary" phx-click="close_rule_form">
                   Cancel
-                </button>
+                </.button>
                 <.button>{if @editing_rule, do: "Save changes", else: "Create rule"}</.button>
               </:actions>
             </.simple_form>

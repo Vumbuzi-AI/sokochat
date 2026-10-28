@@ -138,6 +138,14 @@ defmodule Sokochat.Conversations do
     Phoenix.PubSub.subscribe(@pubsub, conversation_topic(conversation_id))
   end
 
+  def increment_policy_strikes(%Conversation{} = conversation) do
+    strikes = conversation.policy_strikes || 0
+
+    conversation
+    |> Ecto.Changeset.change(policy_strikes: strikes + 1)
+    |> Repo.update()
+  end
+
   def subscribe_playground(workspace_id) do
     Phoenix.PubSub.subscribe(@pubsub, playground_topic(workspace_id))
   end

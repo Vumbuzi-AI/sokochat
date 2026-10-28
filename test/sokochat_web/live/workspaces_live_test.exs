@@ -99,20 +99,28 @@ defmodule SokochatWeb.WorkspacesLiveTest do
       |> live(~p"/workspaces/#{workspace.id}")
 
     assert html =~ "Business Profile"
+    assert has_element?(view, "button[disabled]", "Save business profile")
+
+    params = %{
+      company_name: "Acme Ltd",
+      industry: "Electronics",
+      location: "Nairobi",
+      phone_number: "+254700000000",
+      about: "We sell gadgets."
+    }
 
     view
-    |> form("form[phx-submit=\"save_business\"]",
-      workspace: %{
-        company_name: "Acme Ltd",
-        industry: "Electronics",
-        location: "Nairobi",
-        phone_number: "+254700000000",
-        about: "We sell gadgets."
-      }
-    )
+    |> form("form[phx-submit=\"save_business\"]", workspace: params)
+    |> render_change()
+
+    refute has_element?(view, "button[disabled]", "Save business profile")
+
+    view
+    |> form("form[phx-submit=\"save_business\"]", workspace: params)
     |> render_submit()
 
     assert render(view) =~ "Business profile saved."
+    assert has_element?(view, "button[disabled]", "Save business profile")
 
     updated = Sokochat.Workspaces.get_workspace!(workspace.id, user.id)
     assert updated.company_name == "Acme Ltd"

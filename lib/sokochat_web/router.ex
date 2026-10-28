@@ -90,8 +90,12 @@ defmodule SokochatWeb.Router do
       on_mount: [{SokochatWeb.UserAuth, :ensure_authenticated}] do
       live "/workspaces", WorkspacesLive.Index, :index
       live "/workspaces/new", WorkspacesLive.Form, :new
-      live "/workspaces/:id", WorkspacesLive.Setup, :setup
+      live "/workspaces/:id", WorkspacesLive.Setup, :business
       live "/workspaces/:id/edit", WorkspacesLive.Form, :edit
+      live "/workspaces/:id/products", WorkspacesLive.Setup, :products
+      live "/workspaces/:id/cta", WorkspacesLive.Setup, :cta
+      live "/workspaces/:id/connection", WorkspacesLive.Setup, :meta
+      live "/workspaces/:id/analytics", WorkspacesLive.Analytics, :show
       live "/workspaces/:id/endpoint", WorkspacesLive.Endpoint, :show
       live "/workspaces/:id/cta_rules", WorkspacesLive.CTARules, :show
       live "/workspaces/:id/playground", PlaygroundLive, :show

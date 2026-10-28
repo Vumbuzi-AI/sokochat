@@ -11,51 +11,43 @@ defmodule SokochatWeb.PlaygroundChat do
   attr :assistant_pending, :boolean, default: false
 
   def message_bubble(assigns) do
+    assigns = assign(assigns, :outgoing, assigns.message.role == "user")
+
     ~H"""
-    <div class={[
-      "animate-bubble-in flex",
-      @message.role == "user" && "justify-end",
-      @message.role != "user" && "justify-start"
-    ]}>
-      <div class={[
-        "space-y-2",
-        @message.role == "user" && "max-w-[80%]",
-        @message.role != "user" && "max-w-[85%]"
-      ]}>
-        <div class={[
-          "px-3.5 py-2.5 text-sm",
-          @message.role == "user" && "rounded-[12px_12px_0_12px] bg-primary text-n50",
-          @message.role != "user" &&
-            "rounded-[12px_12px_12px_0] bg-n50 border border-n100 text-n800 shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
-        ]}>
-          <p class="whitespace-pre-wrap break-words leading-6">{@message.content}</p>
-          <.cta_block
-            :if={@message.role == "assistant" && @message.cta}
-            cta={@message.cta}
-            assistant_pending={@assistant_pending}
-          />
-          <div class={[
-            "mt-1 flex items-center justify-end gap-2 text-[11px]",
-            @message.role == "user" && "text-n50/70",
-            @message.role != "user" && "text-n400"
-          ]}>
-            <button
-              :if={@message.role == "assistant"}
-              id={"copy-reply-#{@message.id}"}
-              type="button"
-              phx-hook="ClipboardCopy"
-              data-copy={@message.content}
-              class="inline-flex items-center rounded-full p-1 text-n400 transition hover:bg-n200 hover:text-n900"
-              title="Copy last reply"
-            >
-              <.icon name="hero-document-duplicate-mini" class="h-4 w-4" />
-            </button>
-            <span>{message_time(@message.inserted_at)}</span>
-            <span :if={@message.role == "user"} class="text-n50/70" aria-hidden="true">✓✓</span>
-          </div>
-        </div>
+    <div class={["wa-turn", @outgoing && "wa-turn-out"]}>
+      <div class={["wa-bubble", @outgoing && "wa-outgoing", not @outgoing && "wa-incoming"]}>
+        <span class="wa-copy">{@message.content}</span>
+        <span class="wa-meta">
+          {message_time(@message.inserted_at)}
+          <.wa_glyph :if={@outgoing} name="read" />
+        </span>
       </div>
+      <.cta_block
+        :if={@message.role == "assistant" && @message.cta}
+        cta={@message.cta}
+        assistant_pending={@assistant_pending}
+      />
     </div>
+    """
+  end
+
+  attr :name, :string, required: true
+
+  def wa_glyph(assigns) do
+    assigns = assign(assigns, :d, glyph_path(assigns.name))
+
+    ~H"""
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d={@d} />
+    </svg>
     """
   end
 
@@ -69,128 +61,92 @@ defmodule SokochatWeb.PlaygroundChat do
       |> assign(:payload, cta_payload(assigns.cta))
 
     ~H"""
-    <div class="mt-2 space-y-2 border-t border-n200 pt-2">
+    <div class="wa-cta">
       <div
-        :if={cta_preview?(@type, @payload)}
-        class="overflow-hidden rounded-[10px] border border-n200 bg-n50"
+        :if={@type in ["website", "phone", "whatsapp"] or cta_preview?(@type, @payload)}
+        class="wa-catalog-message"
       >
-        <img
-          :if={payload_value(@payload, "image_url")}
-          src={payload_value(@payload, "image_url")}
-          alt={payload_value(@payload, "title") || "Product image"}
-          class="aspect-video w-full object-cover"
-        />
-        <div class="space-y-0.5 px-3 py-2.5">
-          <p :if={payload_value(@payload, "title")} class="text-sm font-semibold text-n900">
-            {payload_value(@payload, "title")}
-          </p>
-          <p :if={payload_value(@payload, "body")} class="text-[13px] text-n400">
+        <div :if={payload_value(@payload, "image_url")} class="wa-product-photo">
+          <img
+            src={payload_value(@payload, "image_url")}
+            alt={payload_value(@payload, "title") || ""}
+          />
+        </div>
+        <div
+          :if={payload_value(@payload, "title") || payload_value(@payload, "body")}
+          class="wa-product-info"
+        >
+          <strong :if={payload_value(@payload, "title")}>{payload_value(@payload, "title")}</strong>
+          <span :if={payload_value(@payload, "body")} class="wa-product-price">
             {payload_value(@payload, "body")}
-          </p>
+          </span>
         </div>
+        <a
+          :if={@type == "website"}
+          href={payload_value(@payload, "url")}
+          target="_blank"
+          rel="noreferrer"
+          class="catalog-action"
+        >
+          <.wa_glyph name="bag" /> View catalog
+        </a>
+        <a
+          :if={@type == "phone"}
+          href={"tel:#{payload_value(@payload, "number")}"}
+          class="catalog-action"
+        >
+          <.wa_glyph name="phone" /> Call {payload_value(@payload, "number")}
+        </a>
+        <a
+          :if={@type == "whatsapp"}
+          href={"https://wa.me/#{digits_only(payload_value(@payload, "number"))}"}
+          target="_blank"
+          rel="noreferrer"
+          class="catalog-action"
+        >
+          <.wa_glyph name="phone" /> WhatsApp
+        </a>
       </div>
 
-      <a
-        :if={@type == "website"}
-        href={payload_value(@payload, "url")}
-        target="_blank"
-        rel="noreferrer"
-        class="flex items-center justify-between rounded-lg border border-n200 bg-n50 px-4 py-2.5 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary-light"
-      >
-        <span class="inline-flex items-center gap-2">
-          <.icon name="hero-link-mini" class="h-4 w-4" /> Open link
-        </span>
-        <span class="truncate text-xs text-n500">{payload_value(@payload, "url")}</span>
-      </a>
-
-      <a
-        :if={@type == "phone"}
-        href={"tel:#{payload_value(@payload, "number")}"}
-        class="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1faa54]"
-      >
-        <.icon name="hero-phone-mini" class="h-4 w-4" /> Call {payload_value(@payload, "number")}
-      </a>
-
-      <a
-        :if={@type == "whatsapp"}
-        href={"https://wa.me/#{digits_only(payload_value(@payload, "number"))}"}
-        target="_blank"
-        rel="noreferrer"
-        class="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1faa54]"
-      >
-        <.icon name="hero-chat-bubble-left-right-mini" class="h-4 w-4" /> Message on WhatsApp
-      </a>
-
-      <div
-        :if={@type == "reply_buttons"}
-        class="overflow-hidden rounded-lg border border-n200 bg-n100"
-      >
-        <div class="border-b border-n200 px-3 py-2.5">
-          <p class="text-sm font-semibold text-n900">
-            {payload_value(@payload, "title") || "Quick replies"}
-          </p>
-          <p class="mt-0.5 text-xs text-n400">
-            {payload_value(@payload, "body") || "Tap an option to send it instantly."}
-          </p>
-        </div>
-        <div class="space-y-1.5 px-3 py-3">
-          <button
-            :for={button <- payload_buttons(@payload)}
-            id={"reply-button-#{slugify_value(button)}"}
-            type="button"
-            phx-click="send_interactive_message"
-            phx-value-message={cta_prompt(button)}
-            disabled={@assistant_pending}
-            class="w-full rounded-lg border border-n200 bg-n50 px-4 py-2.5 text-center text-sm font-medium text-primary transition hover:border-primary hover:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {button}
-          </button>
-        </div>
+      <div :if={@type == "reply_buttons"} class="wa-replies">
+        <button
+          :for={button <- payload_buttons(@payload)}
+          id={"reply-button-#{slugify_value(button)}"}
+          type="button"
+          phx-click="send_interactive_message"
+          phx-value-message={cta_prompt(button)}
+          disabled={@assistant_pending}
+          class="catalog-action"
+        >
+          {button}
+        </button>
       </div>
 
-      <div :if={@type == "list_message"} class="overflow-hidden rounded-lg border border-n200 bg-n100">
-        <div class="border-b border-n200 px-3 py-2.5">
-          <p class="text-sm font-semibold text-n900">
-            {payload_value(@payload, "title") || "Browse options"}
-          </p>
-          <p class="mt-0.5 text-xs text-n400">
-            {payload_value(@payload, "body") || "Tap an option to send it like a WhatsApp selection."}
-          </p>
-        </div>
-        <div class="space-y-2 px-3 py-3">
-          <button
-            :for={item <- payload_items(@payload)}
-            id={"list-item-#{slugify_value(payload_value(item, "title"))}"}
-            type="button"
-            phx-click="send_interactive_message"
-            phx-value-message={cta_prompt(item)}
-            disabled={@assistant_pending}
-            class="block w-full rounded-lg bg-n50 px-3 py-2 text-left shadow-[0_1px_1px_rgba(17,27,33,0.08)] transition hover:ring-2 hover:ring-primary/60 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <p class="text-sm font-semibold text-n900">{payload_value(item, "title")}</p>
-            <p class="mt-1 text-xs text-n400">{payload_value(item, "description")}</p>
-          </button>
-        </div>
+      <div :if={@type == "list_message"} class="wa-replies">
+        <button
+          :for={item <- payload_items(@payload)}
+          id={"list-item-#{slugify_value(payload_value(item, "title"))}"}
+          type="button"
+          phx-click="send_interactive_message"
+          phx-value-message={cta_prompt(item)}
+          disabled={@assistant_pending}
+          class="wa-list-item"
+        >
+          <strong>{payload_value(item, "title")}</strong>
+          <span>{payload_value(item, "description")}</span>
+        </button>
       </div>
 
-      <div
-        :if={@type == "location"}
-        class="rounded-lg border border-n200 bg-n100 px-3 py-2 text-sm text-n900"
-      >
-        <div class="flex items-center gap-2 font-semibold">
-          <.icon name="hero-map-pin-mini" class="h-4 w-4 text-primary" /> Location pin
-        </div>
-        <p class="mt-1 text-xs text-n400">
+      <div :if={@type == "location"} class="wa-replies">
+        <p class="wa-note">
           {payload_value(@payload, "latitude")}, {payload_value(@payload, "longitude")}
         </p>
       </div>
 
-      <p :if={@type == "custom"} class="rounded-lg bg-n100 px-3 py-2 text-sm italic text-n500">
-        {payload_value(@payload, "template")}
-      </p>
+      <p :if={@type == "custom"} class="wa-replies wa-note">{payload_value(@payload, "template")}</p>
 
-      <p :if={@type == "catalog"} class="rounded-lg bg-n100 px-3 py-2 text-sm text-n900">
-        Catalog item: <span class="font-semibold">{payload_value(@payload, "product_id")}</span>
+      <p :if={@type == "catalog"} class="wa-replies wa-note">
+        {payload_value(@payload, "product_id")}
       </p>
     </div>
     """
@@ -281,6 +237,18 @@ defmodule SokochatWeb.PlaygroundChat do
   rescue
     ArgumentError -> nil
   end
+
+  defp glyph_path("microphone"),
+    do: "M9 5a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0Zm-3 7v1a6 6 0 0 0 12 0v-1M12 19v3"
+
+  defp glyph_path("bag"), do: "M5 7h14l1 14H4ZM8 8V6a4 4 0 0 1 8 0v2"
+
+  defp glyph_path("phone"),
+    do:
+      "M5.8 3.3c.5-.5 1.3-.5 1.7.1l2.4 3.7c.3.5.3 1.1-.1 1.5l-1.4 1.7c1.1 2.3 2.9 4.1 5.3 5.3l1.7-1.5c.4-.3 1-.4 1.5-.1l3.7 2.4c.6.4.7 1.2.2 1.7l-1.8 2c-.7.8-1.8 1.1-2.8.8-6.6-2.1-11.6-7.1-13.7-13.7-.3-1 .1-2.1.8-2.8Z"
+
+  defp glyph_path("read"), do: "m2 12 4 4L16 6m-4 9 2 2L24 7"
+  defp glyph_path(_name), do: "m5 12 4 4L19 6"
 
   def digits_only(nil), do: ""
   def digits_only(value), do: Regex.replace(~r/[^\d]/, to_string(value), "")

@@ -26,6 +26,51 @@ defmodule Sokochat.Catalogs do
     sort_order
   )
 
+  @reserved_item_keys ~w(category variants images)
+
+  @suggested_categories [
+    "Agriculture",
+    "Apparel",
+    "Automotive",
+    "Baby & kids",
+    "Bags",
+    "Bakery",
+    "Beauty & personal care",
+    "Beverages",
+    "Books",
+    "Building materials",
+    "Cleaning",
+    "Computers & office",
+    "Dairy",
+    "Electronics",
+    "Farm inputs",
+    "Fashion",
+    "Fresh produce",
+    "Fruit",
+    "Furniture",
+    "Gifts",
+    "Groceries",
+    "Hardware & tools",
+    "Health & wellness",
+    "Home & living",
+    "Jewelry",
+    "Kitchen & dining",
+    "Livestock",
+    "Meat & poultry",
+    "Office supplies",
+    "Pets",
+    "Phones & accessories",
+    "Services",
+    "Shoes",
+    "Snacks",
+    "Sports & outdoors",
+    "Stationery",
+    "Textiles",
+    "Toys",
+    "Training",
+    "Vegetables"
+  ]
+
   def get_catalog(workspace_id) do
     Catalog
     |> where([catalog], catalog.workspace_id == ^workspace_id)
@@ -172,15 +217,72 @@ defmodule Sokochat.Catalogs do
   size because it's a `SELECT DISTINCT` of one JSON field.
   """
   def list_item_categories(workspace_id) do
-    Item
-    |> join(:inner, [i], c in Catalog, on: c.id == i.catalog_id)
-    |> where([i, c], c.workspace_id == ^workspace_id)
-    |> select([i], fragment("?->>'category'", i.metadata))
-    |> distinct(true)
-    |> Repo.all()
+    shop_categories =
+      Catalog
+      |> where([c], c.workspace_id == ^workspace_id)
+      |> select([c], c.categories)
+      |> Repo.one()
+      |> List.wrap()
+      |> List.flatten()
+
+    item_categories =
+      Item
+      |> join(:inner, [i], c in Catalog, on: c.id == i.catalog_id)
+      |> where([i, c], c.workspace_id == ^workspace_id)
+      |> select([i], fragment("?->>'category'", i.metadata))
+      |> distinct(true)
+      |> Repo.all()
+
+    (shop_categories ++ item_categories)
     |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.uniq_by(&String.downcase(String.trim(&1)))
     |> Enum.sort_by(&String.downcase/1)
   end
+
+  def shop_categories(%Catalog{categories: categories}) when is_list(categories), do: categories
+  def shop_categories(_), do: []
+
+  def suggested_categories, do: @suggested_categories
+
+  def filter_suggested_categories(query, taken \\ []) do
+    taken_keys = MapSet.new(taken, &String.downcase/1)
+    query = query |> to_string() |> String.trim() |> String.downcase()
+
+    @suggested_categories
+    |> Enum.reject(&(String.downcase(&1) in taken_keys))
+    |> Enum.filter(fn name -> query == "" or String.contains?(String.downcase(name), query) end)
+    |> Enum.take(8)
+  end
+
+  def add_category(%Catalog{} = catalog, name) do
+    case normalize_category_name(name) do
+      nil ->
+        {:error, :blank}
+
+      name ->
+        catalog
+        |> Catalog.changeset(%{"categories" => shop_categories(catalog) ++ [name]})
+        |> Repo.update()
+    end
+  end
+
+  def remove_category(%Catalog{} = catalog, name) do
+    remaining =
+      catalog
+      |> shop_categories()
+      |> Enum.reject(&(String.downcase(&1) == String.downcase(to_string(name || ""))))
+
+    catalog
+    |> Catalog.changeset(%{"categories" => remaining})
+    |> Repo.update()
+  end
+
+  def normalize_category_name(value) when is_binary(value) do
+    name = value |> String.trim() |> String.replace(~r/\s+/, " ")
+    if name == "", do: nil, else: name
+  end
+
+  def normalize_category_name(_), do: nil
 
   def item_context(%Item{} = item) do
     item
@@ -199,6 +301,7 @@ defmodule Sokochat.Catalogs do
   def field_input_type(_), do: :text
 
   def canonical_item_keys, do: @canonical_item_keys
+  def reserved_item_keys, do: @reserved_item_keys
 
   defp catalog_context(nil), do: nil
 
@@ -207,6 +310,7 @@ defmodule Sokochat.Catalogs do
       "name" => catalog.name,
       "entity_label" => catalog.entity_label,
       "context_notes" => catalog.context_notes,
+      "categories" => shop_categories(catalog),
       "fields" => Enum.map(catalog.fields || [], &field_context/1),
       "items" => Enum.map(catalog.items || [], &item_context/1)
     }

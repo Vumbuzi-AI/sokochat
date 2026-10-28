@@ -11,89 +11,111 @@ defmodule SokochatWeb.WorkspacesLive.Index do
      |> assign(:workspaces, Workspaces.list_workspaces(socket.assigns.current_user.id))}
   end
 
-  defp language_label("en"), do: "English only"
-  defp language_label("sw"), do: "Swahili only"
+  defp language_label("en"), do: "English"
+  defp language_label("sw"), do: "Swahili"
   defp language_label(_), do: "English + Swahili"
+
+  defp data_source_label("api"), do: "JSON API"
+  defp data_source_label(_), do: "Manual catalog"
 
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="space-y-8">
-      <div class="space-y-2">
-        <p class="text-[11px] font-bold uppercase tracking-[1.2px] text-primary">Workspaces</p>
-        <h1 class="text-[30px] font-bold tracking-tight text-n900">Your bots</h1>
-        <p class="max-w-2xl text-[15px] leading-6 text-n400">
-          Each bot connects one business to WhatsApp — its own data source, rules, and AI instructions.
-        </p>
-      </div>
+    <section class="workspace-picker" aria-labelledby="workspaces-title">
+      <header class="workspace-picker-header">
+        <div class="workspace-picker-heading">
+          <p class="workspace-picker-eyebrow">Sokochat</p>
+          <h1 id="workspaces-title">Workspaces</h1>
+          <p class="workspace-picker-description">
+            Manage your businesses and their WhatsApp assistants.
+          </p>
+        </div>
+        <.button :if={@workspaces != []} navigate={~p"/workspaces/new"} variant="secondary">
+          <.icon name="hero-plus" class="h-4 w-4" /> New workspace
+        </.button>
+      </header>
 
       <%= if @workspaces == [] do %>
-        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <.new_workspace_card />
+        <div class="workspace-picker-empty">
+          <div class="workspace-picker-empty-mark" aria-hidden="true">S</div>
+          <h2>Your first workspace starts here</h2>
+          <p>Add your business, connect your products, and set up your WhatsApp assistant.</p>
+          <.button navigate={~p"/workspaces/new"}>
+            <.icon name="hero-plus" class="h-4 w-4" /> New workspace
+          </.button>
         </div>
       <% else %>
-        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <article
-            :for={workspace <- @workspaces}
-            class="group flex h-full flex-col rounded-lg border border-n300 bg-n50 p-6 shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition duration-[180ms] ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-          >
-            <div class="flex items-center gap-2">
-              <span class="rounded-full border border-[#B3D4F5] bg-[#EAF4FF] px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.3px] text-[#0A6EBD]">
-                {language_label(workspace.language)}
-              </span>
-            </div>
-
-            <h2 class="mt-2.5 text-[17px] font-semibold text-n900">{workspace.name}</h2>
-            <p class="mt-1">
-              <span class="rounded bg-n200 px-1.5 py-0.5 font-mono text-xs text-n500">
-                /{workspace.slug}
-              </span>
-            </p>
-            <p class="mt-2 line-clamp-2 text-sm leading-6 text-n400">
-              {workspace.ai_instructions || "No AI instructions added yet."}
-            </p>
-
-            <div class="my-4 border-t border-n300"></div>
-
-            <div class="mt-auto flex items-center justify-between">
-              <p class="text-[13px] text-n500">
-                Updated {Calendar.strftime(workspace.updated_at, "%b %d, %Y")}
-              </p>
-              <div class="flex items-center gap-2">
-                <.link
-                  navigate={~p"/workspaces/#{workspace.id}/edit"}
-                  class="inline-flex items-center rounded-full border border-n300 bg-n50 px-4 py-2 text-[13px] font-medium text-n900 transition hover:bg-n200"
-                >
-                  Edit
-                </.link>
-                <.link
-                  navigate={~p"/workspaces/#{workspace.id}"}
-                  class="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-primary"
-                >
-                  Open
-                </.link>
+        <div class="workspace-picker-collection">
+          <p class="workspace-picker-count">
+            {length(@workspaces)} {if length(@workspaces) == 1, do: "workspace", else: "workspaces"}
+          </p>
+          <div class="workspace-picker-grid">
+            <article
+              :for={workspace <- @workspaces}
+              class="workspace-picker-card"
+              aria-labelledby={"workspace-name-#{workspace.id}"}
+            >
+              <div class="workspace-picker-identity">
+                <span class="workspace-picker-avatar" aria-hidden="true">
+                  {workspace.name |> String.first() |> String.upcase()}
+                </span>
+                <div class="workspace-picker-name">
+                  <h2 id={"workspace-name-#{workspace.id}"}>{workspace.name}</h2>
+                  <p>/{workspace.slug}</p>
+                </div>
               </div>
-            </div>
-          </article>
 
-          <.new_workspace_card />
+              <dl class="workspace-picker-meta">
+                <div>
+                  <dt>Language</dt>
+                  <dd>{language_label(workspace.language)}</dd>
+                </div>
+                <div>
+                  <dt>Product source</dt>
+                  <dd>{data_source_label(workspace.data_source)}</dd>
+                </div>
+              </dl>
+
+              <details
+                :if={workspace.ai_instructions not in [nil, ""]}
+                class="workspace-picker-instructions"
+              >
+                <summary>AI instructions</summary>
+                <p>{workspace.ai_instructions}</p>
+              </details>
+              <p :if={workspace.ai_instructions in [nil, ""]} class="workspace-picker-no-instructions">
+                No AI instructions added yet.
+              </p>
+
+              <footer class="workspace-picker-footer">
+                <p>
+                  Updated
+                  <time datetime={DateTime.to_iso8601(workspace.updated_at)}>
+                    {Calendar.strftime(workspace.updated_at, "%b %-d, %Y")}
+                  </time>
+                </p>
+                <div class="workspace-picker-actions">
+                  <.button
+                    navigate={~p"/workspaces/#{workspace.id}/edit"}
+                    variant="ghost"
+                    aria-label={"Edit #{workspace.name}"}
+                  >
+                    Edit
+                  </.button>
+                  <.button
+                    navigate={~p"/workspaces/#{workspace.id}"}
+                    variant="primary"
+                    aria-label={"Open #{workspace.name}"}
+                  >
+                    Open workspace
+                  </.button>
+                </div>
+              </footer>
+            </article>
+          </div>
         </div>
       <% end %>
     </section>
-    """
-  end
-
-  defp new_workspace_card(assigns) do
-    ~H"""
-    <.link
-      navigate={~p"/workspaces/new"}
-      class="group flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-n300 bg-n50/40 p-6 text-center transition duration-[180ms] hover:border-primary"
-    >
-      <span class="text-3xl font-light text-n500 transition group-hover:text-primary">+</span>
-      <span class="text-sm font-medium text-n400 transition group-hover:text-primary">
-        New workspace
-      </span>
-    </.link>
     """
   end
 end

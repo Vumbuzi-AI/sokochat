@@ -10,6 +10,7 @@ defmodule Sokochat.Conversations.Conversation do
 
     field :phone_number, :string
     field :source, :string
+    field :policy_strikes, :integer, default: 0
 
     has_many :messages, Message
 

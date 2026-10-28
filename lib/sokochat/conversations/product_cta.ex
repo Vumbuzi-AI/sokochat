@@ -13,7 +13,10 @@ defmodule Sokochat.Conversations.ProductCTA do
   @whatsapp_keys ~w(whatsapp whatsapp_number whatsappNumber seller_whatsapp sellerWhatsapp contact_whatsapp contactWhatsapp)
 
   def attach(reply_text, user_message, endpoint_data, cta) do
-    case best_product(endpoint_data, [reply_text, user_message]) do
+    product =
+      best_product(endpoint_data, [user_message]) || best_product(endpoint_data, [reply_text])
+
+    case product do
       nil -> cta
       product -> maybe_build_or_enrich(cta, product)
     end
@@ -55,6 +58,12 @@ defmodule Sokochat.Conversations.ProductCTA do
 
       product_phone(product) ->
         %{"type" => "phone", "payload" => Map.put(preview, "number", product_phone(product))}
+
+      product_image(product) ->
+        %{
+          "type" => "catalog",
+          "payload" => Map.put(preview, "product_id", first_present(product, ~w(external_id id)))
+        }
 
       true ->
         nil

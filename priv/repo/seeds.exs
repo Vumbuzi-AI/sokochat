@@ -11,6 +11,8 @@
 #
 # It is intentionally idempotent, so you can re-run it safely while iterating.
 
+Code.eval_file("seeds_shoes.exs", __DIR__)
+
 import Ecto.Query
 
 alias Sokochat.Accounts
@@ -258,18 +260,15 @@ catalog_data = %{
     "name" => "GS1 Kenya service catalog",
     "entity_label" => "product",
     "context_notes" =>
-      "Use category, stock_status, delivery_notes, and SKU metadata to answer product questions."
+      "Use category, stock_status, delivery_notes, and SKU metadata to answer product questions.",
+    "categories" => ["Barcodes", "Training"]
   })
 
+Repo.delete_all(
+  from(field in Field, where: field.catalog_id == ^catalog.id and field.key == "category")
+)
+
 fields = [
-  %{
-    "key" => "category",
-    "label" => "Category",
-    "field_type" => "text",
-    "required" => true,
-    "help_text" => "Buyer-facing product category",
-    "position" => 1
-  },
   %{
     "key" => "stock_status",
     "label" => "Stock status",
@@ -340,8 +339,13 @@ end)
     "name" => "Shamba Ikonet vegetable catalog",
     "entity_label" => "vegetable",
     "context_notes" =>
-      "Prices are in Kenyan shillings per stated unit. Use category, stock status, unit, and delivery notes when helping customers."
+      "Prices are in Kenyan shillings per stated unit. Use category, stock status, unit, and delivery notes when helping customers.",
+    "categories" => ["Vegetables", "Leafy Vegetables"]
   })
+
+Repo.delete_all(
+  from(field in Field, where: field.catalog_id == ^shamba_catalog.id and field.key == "category")
+)
 
 Enum.each(fields, fn attrs ->
   attrs =

@@ -1019,13 +1019,9 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           />
 
           <:actions>
-            <button
-              type="button"
-              phx-click="close_modal"
-              class="inline-flex items-center justify-center rounded-full border border-n300 bg-n50 px-5 py-2.5 text-sm font-medium text-n900 transition hover:bg-n200"
-            >
+            <.button type="button" variant="secondary" phx-click="close_modal">
               Cancel
-            </button>
+            </.button>
             <.button>Save model</.button>
           </:actions>
         </.simple_form>
@@ -1068,13 +1064,9 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           />
 
           <:actions>
-            <button
-              type="button"
-              phx-click="close_modal"
-              class="inline-flex items-center justify-center rounded-full border border-n300 bg-n50 px-5 py-2.5 text-sm font-medium text-n900 transition hover:bg-n200"
-            >
+            <.button type="button" variant="secondary" phx-click="close_modal">
               Cancel
-            </button>
+            </.button>
             <.button>{if @selected_field, do: "Update field", else: "Add field"}</.button>
           </:actions>
         </.simple_form>
@@ -1151,13 +1143,9 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           </div>
 
           <:actions>
-            <button
-              type="button"
-              phx-click="close_modal"
-              class="inline-flex items-center justify-center rounded-full border border-n300 bg-n50 px-5 py-2.5 text-sm font-medium text-n900 transition hover:bg-n200"
-            >
+            <.button type="button" variant="secondary" phx-click="close_modal">
               Cancel
-            </button>
+            </.button>
             <.button>{if @selected_item, do: "Update item", else: "Add item"}</.button>
           </:actions>
         </.simple_form>

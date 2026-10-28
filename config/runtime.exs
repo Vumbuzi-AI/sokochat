@@ -218,4 +218,17 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  if bucket = System.get_env("S3_BUCKET") do
+    config :sokochat, Sokochat.Storage,
+      adapter: :s3,
+      bucket: bucket,
+      access_key_id: System.fetch_env!("S3_ACCESS_KEY_ID"),
+      secret_access_key: System.fetch_env!("S3_SECRET_ACCESS_KEY"),
+      scheme: System.get_env("S3_SCHEME", "http"),
+      host: System.fetch_env!("S3_HOST"),
+      port: String.to_integer(System.get_env("S3_PORT", "9000")),
+      region: System.get_env("S3_REGION", "us-east-1"),
+      public_base_url: System.fetch_env!("S3_PUBLIC_BASE_URL")
+  end
 end

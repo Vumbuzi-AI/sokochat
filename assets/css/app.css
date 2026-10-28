@@ -1,6 +1,9 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+@import "./dashboard-shell.css";
+@import "./workspace-picker.css";
+@import "./whatsapp-phone.css";
 
 @layer base {
   body {

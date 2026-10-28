@@ -1,0 +1,474 @@
+/* WhatsApp playground phone. Geometry matches the warpcart landing mock:
+   a 390 × 844 iPhone canvas scaled from the frame width. */
+
+.wa-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100dvh - 112px);
+  min-height: 0;
+}
+
+.wa-phone {
+  position: relative;
+  width: min(390px, 100%, calc((100dvh - 112px) * 390 / 844));
+  padding: 7px;
+  border: 1px solid #696969;
+  border-radius: 49px;
+  background: #171717;
+  box-shadow:
+    0 28px 60px rgb(0 0 0 / 0.24),
+    inset 0 0 0 2px #343434;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  color: #111b21;
+}
+
+.wa-phone::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 110px;
+  width: 2px;
+  height: 55px;
+  border-radius: 2px;
+  background: #747474;
+  box-shadow: 0 66px #747474;
+}
+
+.wa-phone::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 140px;
+  width: 2px;
+  height: 65px;
+  border-radius: 2px;
+  background: #747474;
+}
+
+.wa-phone .phone-screen {
+  --u: calc(100cqw / 390);
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 390 / 844;
+  overflow: hidden;
+  border-radius: 40px;
+  background: #efeae2;
+  font-size: calc(var(--u) * 16);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.3;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wa-phone .ios-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(var(--u) * 59);
+  padding: calc(var(--u) * 10) calc(var(--u) * 26) 0;
+  background: #f7f7f7;
+}
+
+.wa-phone .ios-time {
+  font-size: calc(var(--u) * 16);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.wa-phone .dynamic-island {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--u) * 11);
+  width: calc(var(--u) * 122);
+  height: calc(var(--u) * 35);
+  transform: translateX(-50%);
+  border-radius: calc(var(--u) * 22);
+  background: #050505;
+}
+
+.wa-phone .dynamic-island > span {
+  position: absolute;
+  right: calc(var(--u) * 13);
+  top: calc(var(--u) * 11);
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  border-radius: 50%;
+  background: #0d1015;
+  box-shadow: inset 0 0 0 2px #11131b;
+}
+
+.wa-phone .ios-indicators {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+}
+
+.wa-phone .ios-cellular {
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 14);
+}
+
+.wa-phone .ios-wifi {
+  width: calc(var(--u) * 17);
+  height: calc(var(--u) * 13);
+}
+
+.wa-phone .ios-battery {
+  width: calc(var(--u) * 27);
+  height: calc(var(--u) * 14);
+}
+
+.wa-phone .wa-chat {
+  position: absolute;
+  top: calc(var(--u) * 59);
+  bottom: calc(var(--u) * 83);
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 8);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: calc(var(--u) * 12) calc(var(--u) * 14);
+  background: #efeae2 url("/images/whatsapp-chat-pattern.svg") center / calc(var(--u) * 300);
+  scrollbar-width: none;
+}
+
+.wa-phone .wa-chat::-webkit-scrollbar {
+  display: none;
+}
+
+.wa-phone .wa-messages {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 10);
+  width: 100%;
+  min-width: 0;
+}
+
+.wa-phone .wa-date {
+  align-self: center;
+  padding: calc(var(--u) * 4) calc(var(--u) * 10);
+  border-radius: calc(var(--u) * 7);
+  background: rgb(255 255 255 / 0.94);
+  color: #53616b;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08);
+  font-size: calc(var(--u) * 11);
+}
+
+.wa-phone .wa-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 8);
+  width: 100%;
+}
+
+.wa-phone .wa-turn-out {
+  align-items: flex-end;
+}
+
+.wa-phone .wa-bubble {
+  position: relative;
+  max-width: 86%;
+  padding: calc(var(--u) * 7) calc(var(--u) * 9) calc(var(--u) * 5);
+  border-radius: calc(var(--u) * 8);
+  font-size: calc(var(--u) * 15.5);
+  line-height: 1.32;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.09);
+}
+
+.wa-phone .wa-incoming {
+  background: #fff;
+  border-start-start-radius: 0;
+}
+
+.wa-phone .wa-outgoing {
+  background: #d9fdd3;
+  border-start-end-radius: 0;
+}
+
+.wa-phone .wa-bubble::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 12);
+  background: inherit;
+}
+
+.wa-phone .wa-incoming::before {
+  left: calc(var(--u) * -6);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.wa-phone .wa-outgoing::before {
+  right: calc(var(--u) * -6);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.wa-phone .wa-copy {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wa-phone .wa-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  float: right;
+  margin: calc(var(--u) * 4) 0 calc(var(--u) * -1) calc(var(--u) * 9);
+  font-size: calc(var(--u) * 10);
+  line-height: calc(var(--u) * 14);
+  color: #667781;
+}
+
+.wa-phone .wa-meta svg {
+  width: calc(var(--u) * 17);
+  height: calc(var(--u) * 13);
+  color: #53bdeb;
+  stroke-width: 1.6;
+}
+
+.wa-phone .wa-pending {
+  opacity: 0.8;
+}
+
+.wa-phone .wa-cta {
+  width: 100%;
+  min-width: 0;
+}
+
+.wa-phone .wa-catalog-message,
+.wa-phone .wa-replies {
+  position: relative;
+  width: 81%;
+  background: #fff;
+  border-radius: calc(var(--u) * 8);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.09);
+}
+
+.wa-phone .wa-catalog-message {
+  padding: calc(var(--u) * 3);
+}
+
+.wa-phone .wa-product-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: calc(var(--u) * 154);
+  overflow: hidden;
+  border-radius: calc(var(--u) * 5);
+  background: #e6e9df;
+}
+
+.wa-phone .wa-product-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wa-phone .wa-product-info {
+  display: flow-root;
+  padding: calc(var(--u) * 7) calc(var(--u) * 8) calc(var(--u) * 5);
+}
+
+.wa-phone .wa-product-info strong {
+  display: block;
+  font-size: calc(var(--u) * 15);
+  font-weight: 600;
+}
+
+.wa-phone .wa-product-price {
+  font-size: calc(var(--u) * 14);
+}
+
+.wa-phone .wa-product-info p {
+  margin-top: calc(var(--u) * 3);
+  font-size: calc(var(--u) * 12);
+  color: #667781;
+}
+
+.wa-phone .catalog-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 7);
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #e9edef;
+  padding: calc(var(--u) * 9) 0;
+  background: transparent;
+  color: #008069;
+  font: inherit;
+  font-size: calc(var(--u) * 14);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wa-phone .catalog-action svg {
+  width: calc(var(--u) * 17);
+  height: calc(var(--u) * 17);
+}
+
+.wa-phone .wa-replies .catalog-action:first-child {
+  border-top: 0;
+}
+
+.wa-phone .wa-replies .catalog-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.wa-phone .wa-list-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #e9edef;
+  padding: calc(var(--u) * 9) calc(var(--u) * 12);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wa-phone .wa-list-item:first-child {
+  border-top: 0;
+}
+
+.wa-phone .wa-list-item strong {
+  display: block;
+  color: #008069;
+  font-size: calc(var(--u) * 14);
+  font-weight: 500;
+}
+
+.wa-phone .wa-list-item span {
+  display: block;
+  margin-top: calc(var(--u) * 2);
+  color: #667781;
+  font-size: calc(var(--u) * 12);
+}
+
+.wa-phone .wa-note {
+  padding: calc(var(--u) * 8) calc(var(--u) * 10);
+  color: #111b21;
+  font-size: calc(var(--u) * 13);
+}
+
+.wa-phone .wa-dots {
+  display: inline-flex;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 4) 0;
+}
+
+.wa-phone .wa-dots span {
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  border-radius: 50%;
+  background: #8d9aa3;
+  animation: wa-dot 1s infinite;
+}
+
+.wa-phone .wa-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.wa-phone .wa-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes wa-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.wa-phone .wa-bottom-chrome {
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  background: #f7f7f7;
+}
+
+.wa-phone .wa-compose {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 14);
+  height: calc(var(--u) * 49);
+  padding-inline: calc(var(--u) * 14);
+}
+
+.wa-phone .wa-send svg {
+  width: calc(var(--u) * 25);
+  height: calc(var(--u) * 25);
+  flex-shrink: 0;
+  color: #151515;
+}
+
+.wa-phone .wa-send {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.wa-phone .wa-send:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.wa-phone .compose-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  height: calc(var(--u) * 33);
+  min-width: 0;
+  padding-inline: calc(var(--u) * 7);
+  border: 1px solid #d7dbdd;
+  border-radius: calc(var(--u) * 18);
+  background: #fff;
+}
+
+.wa-phone .compose-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #111b21;
+  font: inherit;
+  font-size: calc(var(--u) * 16);
+}
+
+.wa-phone .ios-bottom-safe {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: calc(var(--u) * 34);
+  padding-bottom: calc(var(--u) * 8);
+}
+
+.wa-phone .home-indicator {
+  width: calc(var(--u) * 134);
+  height: calc(var(--u) * 5);
+  border-radius: calc(var(--u) * 3);
+  background: #111;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-phone .wa-dots span {
+    animation: none;
+  }
+}

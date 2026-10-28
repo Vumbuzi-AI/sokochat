@@ -62,8 +62,9 @@ defmodule Sokochat.Conversations.Dispatcher do
              endpoint_snapshot: endpoint_data
            ),
          messages <- Conversations.build_messages(conversation.id, user_message),
-         {:ok, reply} <- OpenAIClient.chat(messages, system_prompt),
-         final_cta = ProductCTA.attach(reply.reply, user_message, cta_context, reply.cta),
+         {:ok, reply} <- complete_reply(conversation, messages, system_prompt),
+         reply = enforce_policy(conversation, reply),
+         final_cta = maybe_attach_cta(reply, user_message, cta_context),
          {:ok, assistant_message} <-
            Conversations.add_message(conversation, :assistant, reply.reply,
              cta: final_cta,
@@ -74,6 +75,42 @@ defmodule Sokochat.Conversations.Dispatcher do
       maybe_broadcast_to_playground(workspace.id, source, assistant_message)
       {:ok, assistant_message}
     end
+  end
+
+  defp complete_reply(conversation, messages, prompt) when is_map(conversation) do
+    if strikes(conversation) >= 2 do
+      {:ok, refusal_reply()}
+    else
+      case OpenAIClient.chat(messages, prompt) do
+        {:ok, reply} -> {:ok, Map.put_new(reply, :policy, "ok")}
+        other -> other
+      end
+    end
+  end
+
+  defp enforce_policy(conversation, %{policy: "refuse"} = reply) do
+    if strikes(conversation) < 2, do: Conversations.increment_policy_strikes(conversation)
+    %{reply | cta: nil}
+  end
+
+  defp enforce_policy(_conversation, reply), do: Map.put_new(reply, :policy, "ok")
+
+  defp strikes(%{policy_strikes: strikes}) when is_integer(strikes), do: strikes
+  defp strikes(_conversation), do: 0
+
+  defp refusal_reply do
+    %{
+      reply: "I can only help with this shop. Ask about a product when you're ready.",
+      cta: nil,
+      tokens: 0,
+      policy: "refuse"
+    }
+  end
+
+  defp maybe_attach_cta(%{policy: "refuse"}, _message, _context), do: nil
+
+  defp maybe_attach_cta(reply, user_message, cta_context) do
+    ProductCTA.attach(reply.reply, user_message, cta_context, reply.cta)
   end
 
   # For catalog-backed workspaces, retrieve only the items semantically relevant
@@ -89,9 +126,13 @@ defmodule Sokochat.Conversations.Dispatcher do
        ) do
     retrieved = Retriever.search(workspace.id, user_message)
     categories = Catalogs.list_item_categories(workspace.id)
+    upsells = Retriever.upsells(workspace.id, retrieved)
 
     workspace
-    |> ContextBuilder.build_system_prompt(retrieved, all_categories: categories)
+    |> ContextBuilder.build_system_prompt(retrieved,
+      all_categories: categories,
+      upsells: upsells
+    )
     |> CtaInjector.inject_cta_rules(cta_rules)
   end
 

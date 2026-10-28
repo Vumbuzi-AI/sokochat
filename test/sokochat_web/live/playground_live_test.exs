@@ -80,16 +80,16 @@ defmodule SokochatWeb.PlaygroundLiveTest do
     pending_html = render(view)
 
     assert pending_html =~ "Do you have tomatoes?"
-    assert pending_html =~ "Sending..."
-    assert pending_html =~ "Bot is typing..."
+    assert pending_html =~ "wa-pending"
+    assert pending_html =~ "Typing"
 
     send(openai_waiter, :continue_openai)
 
     html = render_async(view, 1_000)
 
     assert html =~ "Tomatoes are available today."
-    refute html =~ "Sending..."
-    refute html =~ "Bot is typing..."
+    refute html =~ "wa-pending"
+    refute html =~ "Typing"
   end
 
   test "cta appears in the assistant bubble when the reply includes one", %{conn: conn} do
@@ -122,7 +122,7 @@ defmodule SokochatWeb.PlaygroundLiveTest do
     html = render_async(view, 1_000)
 
     assert html =~ "You can order tomatoes now."
-    assert html =~ "Open link"
+    assert html =~ "View catalog"
     assert html =~ "https://shop.example.com/checkout"
   end
 
@@ -201,7 +201,7 @@ defmodule SokochatWeb.PlaygroundLiveTest do
 
     refute html =~ "Hi, welcome back"
     refute html =~ "Hello there"
-    assert html =~ "Send a message to test your bot"
+    assert html =~ "Today"
 
     assert Conversations.get_conversation(
              workspace.id,

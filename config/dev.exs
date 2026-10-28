@@ -18,7 +18,6 @@ config :sokochat, Sokochat.Repo,
 # to bundle .js and .css sources.
 # Binding to loopback ipv4 address prevents access from other machines.
 config :sokochat, SokochatWeb.Endpoint,
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: 4000],
   check_origin: false,
   code_reloader: true,
@@ -28,6 +27,12 @@ config :sokochat, SokochatWeb.Endpoint,
     esbuild: {Esbuild, :install_and_run, [:sokochat, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:sokochat, ~w(--watch)]}
   ]
+
+# Product images. `:local` writes under priv/static/uploads so the form works
+# without a container runtime. The MinIO spike is `adapter: :s3` plus
+# `docker compose -f compose.minio.yml up -d` (console on :9001, API on :9000,
+# user/password sokochat/sokochatsecret, public URL http://127.0.0.1:9000/sokochat).
+config :sokochat, Sokochat.Storage, adapter: :local
 
 # ## SSL Support
 #
