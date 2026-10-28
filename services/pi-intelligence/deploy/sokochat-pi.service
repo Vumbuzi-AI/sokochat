@@ -1,0 +1,37 @@
+[Unit]
+Description=SokoChat Pi Durable intelligence service
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=sokochat-pi
+Group=sokochat-pi
+WorkingDirectory=/opt/sokochat/services/pi-intelligence
+EnvironmentFile=/etc/sokochat/pi.env
+Environment=NODE_ENV=production
+Environment=PI_HOST=127.0.0.1
+Environment=PI_DATA_DIR=/var/lib/sokochat-pi
+ExecStart=/usr/bin/node /opt/sokochat/services/pi-intelligence/src/server.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=210
+KillSignal=SIGTERM
+UMask=0077
+StateDirectory=sokochat-pi
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/sokochat-pi
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+LimitNOFILE=4096
+MemoryMax=1G
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

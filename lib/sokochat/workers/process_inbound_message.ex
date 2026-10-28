@@ -35,21 +35,31 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
         :ok
 
       connection ->
-        with {:ok, assistant_message} <-
-               Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp),
-             {:ok, _id} <-
-               Sender.send_reply(
-                 connection,
-                 phone_number,
-                 assistant_message.content,
-                 assistant_message.cta
+        if Sokochat.AI.Intelligence.agentic?() do
+          case Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp,
+                 wait: false,
+                 source_key: "whatsapp:#{args["whatsapp_message_id"]}"
                ) do
-          :ok
+            {:ok, _turn} -> :ok
+            {:error, reason} -> {:error, reason}
+          end
         else
-          {:error, reason} ->
-            _ = Meta.mark_error(connection, reason)
-            Logger.error("Failed to handle inbound WhatsApp message: #{inspect(reason)}")
-            {:error, reason}
+          with {:ok, assistant_message} <-
+                 Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp),
+               {:ok, _id} <-
+                 Sender.send_reply(
+                   connection,
+                   phone_number,
+                   assistant_message.content,
+                   assistant_message.cta
+                 ) do
+            :ok
+          else
+            {:error, reason} ->
+              _ = Meta.mark_error(connection, reason)
+              Logger.error("Failed to handle inbound WhatsApp message: #{inspect(reason)}")
+              {:error, reason}
+          end
         end
     end
   end

@@ -29,6 +29,10 @@ defmodule SokochatWeb.Router do
     pipe_through :api
 
     get "/test/products", ProductController, :index
+
+    get "/intelligence/workspaces/:workspace_id/conversations/:conversation_id/tools/:tool",
+        IntelligenceToolController,
+        :show
   end
 
   scope "/webhooks", SokochatWeb do

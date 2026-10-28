@@ -115,3 +115,10 @@ sarah/fix-prescription-validation
 - [Data Model](docs/DATA_MODEL.md)
 - [Workflows](docs/WORKFLOWS.md)
 - [Environment](docs/ENVIRONMENT.md)
+
+## Optional local Pi Durable chat runtime
+
+A SokoChat-specific service lives in `services/pi-intelligence`. It preserves the
+existing reply/CTA format and runs chat generation through persistent Pi turns.
+See [its setup and architecture guide](services/pi-intelligence/README.md) for
+startup, credentials, storage, recovery boundaries, and rollback.

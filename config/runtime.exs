@@ -112,6 +112,31 @@ config :sokochat, :openai,
   text_verbosity: "low",
   max_output_tokens: 1024
 
+ai_backend =
+  if config_env() == :test,
+    do: env_value.("TEST_AI_BACKEND") || "openai",
+    else: env_value.("AI_BACKEND") || "openai"
+
+unless ai_backend in ["openai", "pi"], do: raise("AI_BACKEND must be openai or pi")
+
+pi_service_token = env_value.("PI_SERVICE_TOKEN")
+pi_url = env_value.("PI_URL") || "http://127.0.0.1:4100"
+pi_uri = URI.parse(pi_url)
+
+if pi_uri.scheme != "https" and
+     not (pi_uri.scheme == "http" and pi_uri.host in ["127.0.0.1", "localhost", "::1"]) do
+  raise "PI_URL must use HTTPS outside loopback"
+end
+
+if ai_backend == "pi" and (is_nil(pi_service_token) or byte_size(pi_service_token) < 32) do
+  raise "PI_SERVICE_TOKEN must contain at least 32 characters when AI_BACKEND=pi"
+end
+
+config :sokochat, :intelligence,
+  backend: ai_backend,
+  pi_url: pi_url,
+  pi_token: pi_service_token
+
 # Embeddings power semantic retrieval (RAG) over catalog items. `dimensions`
 # must match the `vector(N)` column in the catalog_items migration.
 config :sokochat, :embeddings,
@@ -122,7 +147,10 @@ config :sokochat, :embeddings,
 # WhatsApp Cloud API. Per-workspace credentials (phone number id, WABA id, access
 # token) are configured in the dashboard at /workspaces/:id/meta. Only the Graph
 # API version is global. Confirm the current version in your Meta app's dashboard.
-config :sokochat, :meta, graph_api_version: env_value.("WHATSAPP_GRAPH_API_VERSION") || "v21.0"
+config :sokochat, :meta,
+  graph_api_version: env_value.("WHATSAPP_GRAPH_API_VERSION") || "v21.0",
+  app_secret: env_value.("META_APP_SECRET"),
+  require_signature: config_env() == :prod
 
 if config_env() == :prod do
   database_url =

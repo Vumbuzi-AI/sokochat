@@ -11,6 +11,8 @@ defmodule SokochatWeb.WebhookController do
 
   require Logger
 
+  plug SokochatWeb.VerifyMetaSignature when action in [:handle_message]
+
   @doc """
   GET handler for Meta's webhook verification handshake. Echoes `hub.challenge`
   back as plain text when the verify token matches the stored one.

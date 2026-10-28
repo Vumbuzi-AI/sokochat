@@ -175,7 +175,8 @@ defmodule Sokochat.AI.OpenAIClient do
     Map.get(message, key) || Map.get(message, Atom.to_string(key))
   end
 
-  defp response_format do
+  @doc false
+  def response_format do
     %{
       type: "json_schema",
       name: "sales_assistant_response",
@@ -185,7 +186,7 @@ defmodule Sokochat.AI.OpenAIClient do
         additionalProperties: false,
         required: ["reply", "cta", "policy"],
         properties: %{
-          reply: %{type: "string"},
+          reply: %{type: "string", maxLength: 900},
           policy: %{type: "string", enum: ["ok", "refuse"]},
           cta: %{
             anyOf: [

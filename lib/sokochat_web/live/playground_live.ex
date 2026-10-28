@@ -138,6 +138,12 @@ defmodule SokochatWeb.PlaygroundLive do
     end
   end
 
+  def handle_info({:ai_turn_failed, workspace_id, reason}, socket) do
+    if socket.assigns.workspace && socket.assigns.workspace.id == workspace_id,
+      do: {:noreply, put_flash(socket, :error, reason)},
+      else: {:noreply, socket}
+  end
+
   def handle_info({:conversation_cleared, workspace_id}, socket) do
     if socket.assigns.workspace && socket.assigns.workspace.id == workspace_id do
       {:noreply,

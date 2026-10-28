@@ -42,3 +42,8 @@ npm-debug.log
 .env
 .env.local
 .env.*.local
+
+# Local Pi intelligence dependencies, durable sessions, and request snapshots.
+/services/pi-intelligence/node_modules/
+/services/pi-intelligence/data/
+!/services/pi-intelligence/package-lock.json

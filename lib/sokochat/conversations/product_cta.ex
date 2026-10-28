@@ -239,7 +239,8 @@ defmodule Sokochat.Conversations.ProductCTA do
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp merge_if_missing(map, additions) do
-    Map.merge(additions, map)
+    # Product facts come from the workspace catalog, ahead of model-supplied previews.
+    Map.merge(map, additions)
   end
 
   defp maybe_put_missing(map, _key, _value, false), do: map

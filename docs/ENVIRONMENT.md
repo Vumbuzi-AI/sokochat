@@ -90,3 +90,32 @@ Aliases in `mix.exs`:
 ## Docker
 
 No `Dockerfile`, `docker-compose.yml`, or `compose.yml` is present in the project root.
+
+## Optional Pi Durable chat backend
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AI_BACKEND` | `openai` | Select `pi` to route chat turns through the local service |
+| `PI_URL` | `http://127.0.0.1:4100` | Private Pi service base URL used by Phoenix |
+| `PI_SERVICE_TOKEN` | unset | Shared random token, at least 32 characters; required when using Pi |
+| `PI_MODEL` | `OPENAI_MODEL` or `gpt-5.5` | Pi service model, snapshotted per admitted turn |
+| `PI_HOST` | `127.0.0.1` | Pi service listen address |
+| `PI_PORT` | `4100` | Pi service listen port |
+| `PI_DATA_DIR` | `./data` | Private durable state path relative to the service working directory |
+
+The Node service loads the root `.env`, then its optional local `.env`; OS values
+win. Phoenix must restart after changing the backend or token. Embeddings and CTA
+recommendations still use `OPENAI_API_KEY` directly. See
+[`services/pi-intelligence/README.md`](../services/pi-intelligence/README.md).
+
+Pi's production-oriented path now uses workspace-scoped catalog tools and a
+Postgres/Oban turn ledger for reply reconciliation. Manual-catalog Pi chat bypasses
+message embedding/upsell retrieval; embedding indexing and CTA recommendations
+still use the direct clients. See the service guide for validation and delivery limits.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SOKOCHAT_INTERNAL_URL` | `http://127.0.0.1:4000` | Private Phoenix business-tool origin, HTTPS outside loopback |
+| `PI_WORKSPACE_DAILY_TURN_LIMIT` | `1000` | Durable admitted-turn quota per workspace per UTC day |
+| `META_APP_SECRET` | unset | HMAC verification of exact Meta webhook POST bodies; production rejects POSTs without it |
+| `TEST_AI_BACKEND` | `openai` | Explicit test backend; local `AI_BACKEND=pi` does not silently change existing tests |

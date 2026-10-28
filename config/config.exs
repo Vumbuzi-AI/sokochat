@@ -21,13 +21,14 @@ config :sokochat, Oban,
     Oban.Plugins.Pruner,
     {Oban.Plugins.Cron,
      crontab: [
+       {"* * * * *", Sokochat.Workers.ReconcileAiTurns},
        {"* * * * *", Sokochat.Workers.EndpointRefreshWorker,
         args: %{"strategy" => "poll_60s"}, queue: :endpoint_refresh},
        {"*/5 * * * *", Sokochat.Workers.EndpointRefreshWorker,
         args: %{"strategy" => "poll_300s"}, queue: :endpoint_refresh}
      ]}
   ],
-  queues: [default: 10, endpoint_refresh: 5, meta_send: 10, embeddings: 5]
+  queues: [default: 10, endpoint_refresh: 5, meta_send: 10, embeddings: 5, intelligence: 4]
 
 config :sokochat, Sokochat.Storage, adapter: :local
 

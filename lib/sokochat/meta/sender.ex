@@ -24,6 +24,15 @@ defmodule Sokochat.Meta.Sender do
     |> send_messages(connection, to)
   end
 
+  @doc "Sends exactly one outbox part without transport retries or media fallbacks."
+  def send_outbox_message(connection, to, message),
+    do:
+      do_send(connection, to, message, false,
+        retry: false,
+        receive_timeout: 10_000,
+        connect_options: [timeout: 3000]
+      )
+
   @doc """
   Sends a pre-approved template message (e.g. `hello_world`). Templates are the
   only message type allowed to open a conversation outside the 24h customer
@@ -88,7 +97,8 @@ defmodule Sokochat.Meta.Sender do
          %Connection{phone_number_id: phone_number_id, access_token: token} = connection,
          to,
          message,
-         retry_media?
+         retry_media?,
+         overrides \\ []
        ) do
     body = Map.merge(%{messaging_product: "whatsapp", to: to(to)}, message)
 
@@ -102,6 +112,7 @@ defmodule Sokochat.Meta.Sender do
         ],
         json: body
       )
+      |> Keyword.merge(overrides)
 
     case Req.post(options) do
       {:ok, %Req.Response{status: status, body: response_body}} when status in 200..299 ->
