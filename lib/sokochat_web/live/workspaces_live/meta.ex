@@ -264,7 +264,8 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
               <h2 class="text-sm font-semibold text-n900">Use the shared line</h2>
               <p class="mt-1 text-[13px] text-n400">
                 Join the account number so buyers reach this shop through a prefilled
-                <span class="font-medium">wa.me</span> link. You do not need dedicated credentials.
+                <span class="font-medium">wa.me</span>
+                link. You do not need dedicated credentials.
               </p>
             </div>
 
@@ -294,13 +295,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
                 Joined as <span class="font-mono text-[13px]">[shop:{@workspace.shop_code}]</span>
               </p>
               <.copy_field :if={@wa_me_url} id="shop-wa-me" label="Buyer link" value={@wa_me_url} />
-              <button
-                type="button"
-                phx-click="leave_shared_line"
-                class="text-sm font-medium text-danger hover:underline"
-              >
+              <.button type="button" variant="danger" size="sm" phx-click="leave_shared_line">
                 Leave shared line
-              </button>
+              </.button>
             </div>
           </div>
 
@@ -422,27 +419,45 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
   defp copy_field(assigns) do
     ~H"""
-    <div>
-      <label class="block text-sm font-medium text-n900">{@label}</label>
+    <div id={"copy-field-#{@id}"} data-copy-field phx-hook="ClipboardCopy" data-copy={@value}>
+      <label for={@id} class="block text-sm font-medium text-n900">{@label}</label>
       <div class="mt-1.5 flex items-center gap-2">
-        <input
-          id={@id}
-          type="text"
-          readonly
-          value={@value}
-          class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
-        />
+        <div class="relative min-w-0 flex-1">
+          <input
+            id={@id}
+            type="text"
+            readonly
+            value={@value}
+            aria-describedby={"#{@id}-copy-error"}
+            class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
+          />
+          <span
+            data-copy-status
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-primary"
+          >
+          </span>
+        </div>
         <button
           id={"copy-#{@id}"}
           type="button"
-          phx-hook="ClipboardCopy"
-          data-copy={@value}
+          data-copy-button
           class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 text-sm font-medium text-n900 transition hover:bg-n200"
           title="Copy to clipboard"
         >
           <.icon name="hero-document-duplicate-mini" class="h-4 w-4" /> Copy
         </button>
       </div>
+      <p
+        id={"#{@id}-copy-error"}
+        data-copy-error
+        role="alert"
+        class="mt-1.5 text-xs text-red-700"
+        hidden
+      >
+      </p>
     </div>
     """
   end
