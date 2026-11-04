@@ -113,23 +113,21 @@ defmodule SokochatWeb.CoreComponents do
     <div
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
-      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide_flash("##{@id}")}
       role="alert"
-      class={[
-        "fixed top-2 right-2 mr-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
-        @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500 fill-cyan-900",
-        @kind == :error && "bg-rose-50 text-rose-900 shadow-md ring-rose-500 fill-rose-900"
-      ]}
+      class={["flash", @kind == :info && "flash-info", @kind == :error && "flash-error"]}
       {@rest}
     >
-      <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
+      <span class="flash-icon" aria-hidden="true">
         <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
         <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
-        {@title}
-      </p>
-      <p class="mt-2 text-sm leading-5">{msg}</p>
-      <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
+      </span>
+      <div class="flash-body">
+        <p :if={@title} class="flash-title">{@title}</p>
+        <p class="flash-message">{msg}</p>
+      </div>
+      <button type="button" class="flash-close" aria-label={gettext("close")}>
+        <.icon name="hero-x-mark-solid" class="h-4 w-4" />
       </button>
     </div>
     """
@@ -147,31 +145,31 @@ defmodule SokochatWeb.CoreComponents do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id}>
-      <.flash kind={:info} title={gettext("Success!")} flash={@flash} />
-      <.flash kind={:error} title={gettext("Error!")} flash={@flash} />
+    <div id={@id} class="flash-group">
+      <.flash kind={:info} flash={@flash} />
+      <.flash kind={:error} flash={@flash} />
       <.flash
         id="client-error"
         kind={:error}
         title={gettext("We can't find the internet")}
-        phx-disconnected={show(".phx-client-error #client-error")}
-        phx-connected={hide("#client-error")}
+        phx-disconnected={show_flash(".phx-client-error #client-error")}
+        phx-connected={hide_flash("#client-error")}
         hidden
       >
         {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
+        <.icon name="hero-arrow-path" class="flash-spin h-3 w-3" />
       </.flash>
 
       <.flash
         id="server-error"
         kind={:error}
         title={gettext("Something went wrong!")}
-        phx-disconnected={show(".phx-server-error #server-error")}
-        phx-connected={hide("#server-error")}
+        phx-disconnected={show_flash(".phx-server-error #server-error")}
+        phx-connected={hide_flash("#server-error")}
         hidden
       >
         {gettext("Hang in there while we get back on track")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
+        <.icon name="hero-arrow-path" class="flash-spin h-3 w-3" />
       </.flash>
     </div>
     """
@@ -233,29 +231,47 @@ defmodule SokochatWeb.CoreComponents do
   attr :size, :string, default: "md", values: ~w(sm md icon)
   attr :type, :string, default: nil
   attr :navigate, :string, default: nil
+  attr :href, :string, default: nil
+  attr :method, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global, include: ~w(disabled form name value)
 
   slot :inner_block, required: true
 
-  def button(assigns) do
+  def button(%{navigate: navigate} = assigns) when not is_nil(navigate) do
     ~H"""
-    <button
-      :if={is_nil(@navigate)}
-      type={@type}
-      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
     <.link
-      :if={@navigate}
       navigate={@navigate}
       class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
       {@rest}
     >
       {render_slot(@inner_block)}
     </.link>
+    """
+  end
+
+  def button(%{href: href} = assigns) when not is_nil(href) do
+    ~H"""
+    <.link
+      href={@href}
+      method={@method}
+      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
+
+  def button(assigns) do
+    ~H"""
+    <button
+      type={@type}
+      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </button>
     """
   end
 
@@ -694,6 +710,24 @@ defmodule SokochatWeb.CoreComponents do
         {"transition-all transform ease-in duration-200",
          "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+    )
+  end
+
+  defp show_flash(js \\ %JS{}, selector) do
+    JS.show(js,
+      to: selector,
+      time: 200,
+      transition:
+        {"flash-enter", "flash-enter-from", "flash-enter-to"}
+    )
+  end
+
+  defp hide_flash(js \\ %JS{}, selector) do
+    JS.hide(js,
+      to: selector,
+      time: 150,
+      transition:
+        {"flash-leave", "flash-leave-from", "flash-leave-to"}
     )
   end
 

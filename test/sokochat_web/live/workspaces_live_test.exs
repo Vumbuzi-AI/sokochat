@@ -150,25 +150,15 @@ defmodule SokochatWeb.WorkspacesLiveTest do
     refute html =~ ~s(name="field[label]")
   end
 
-  test "can view workspaces list and edit a workspace", %{conn: conn} do
+  test "workspaces index opens the home workspace", %{conn: conn} do
     user = user_fixture()
     workspace = workspace_fixture(user)
 
-    {:ok, view, html} =
-      conn
-      |> log_in_user(user)
-      |> live(~p"/workspaces")
-
-    assert html =~ workspace.name
-    assert html =~ "Edit"
-    assert html =~ "Open"
-
-    # Click the Edit link and assert redirect/navigation
     assert {:error, {:live_redirect, %{to: to}}} =
-             view
-             |> element("a[href='/workspaces/#{workspace.id}/edit']")
-             |> render_click()
+             conn
+             |> log_in_user(user)
+             |> live(~p"/workspaces")
 
-    assert to == "/workspaces/#{workspace.id}/edit"
+    assert to == ~p"/workspaces/#{workspace.id}"
   end
 end

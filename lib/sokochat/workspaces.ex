@@ -15,11 +15,45 @@ defmodule Sokochat.Workspaces do
     |> Repo.all()
   end
 
+  @doc """
+  Returns the workspace to open after login or when visiting `/workspaces`.
+
+  Prefers `preferred_id` when it belongs to the user, otherwise the most
+  recently updated workspace. Returns `nil` when the user has none.
+  """
+  def get_home_workspace(user_id, preferred_id \\ nil) do
+    preferred = preferred_workspace(user_id, preferred_id)
+
+    preferred ||
+      Workspace
+      |> where([workspace], workspace.account_id == ^user_id)
+      |> order_by([workspace], desc: workspace.updated_at)
+      |> limit(1)
+      |> Repo.one()
+  end
+
   def get_workspace!(id, user_id) do
     Workspace
     |> where([workspace], workspace.id == ^id and workspace.account_id == ^user_id)
     |> Repo.one!()
   end
+
+  defp preferred_workspace(_user_id, nil), do: nil
+
+  defp preferred_workspace(user_id, preferred_id) when is_integer(preferred_id) do
+    Workspace
+    |> where([workspace], workspace.id == ^preferred_id and workspace.account_id == ^user_id)
+    |> Repo.one()
+  end
+
+  defp preferred_workspace(user_id, preferred_id) when is_binary(preferred_id) do
+    case Integer.parse(preferred_id) do
+      {id, ""} -> preferred_workspace(user_id, id)
+      _ -> nil
+    end
+  end
+
+  defp preferred_workspace(_user_id, _preferred_id), do: nil
 
   def create_workspace(attrs, user_id) do
     attrs = normalize_attrs(attrs)

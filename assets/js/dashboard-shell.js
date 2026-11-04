@@ -62,6 +62,18 @@ function focusable(container) {
   ].filter((element) => element.getClientRects().length > 0)
 }
 
+const LAST_WORKSPACE_COOKIE = "_sokochat_last_workspace"
+const LAST_WORKSPACE_MAX_AGE = 60 * 60 * 24 * 60
+
+function rememberWorkspace(id) {
+  if (!id) return
+  try {
+    document.cookie = `${LAST_WORKSPACE_COOKIE}=${encodeURIComponent(id)};path=/;max-age=${LAST_WORKSPACE_MAX_AGE};samesite=lax`
+  } catch {
+    // Private mode can reject cookies. Home redirect still falls back to newest.
+  }
+}
+
 export const DashboardShell = {
   mounted() {
     this.storageKey = this.el.dataset.storageKey || STORAGE_FALLBACK
@@ -75,6 +87,7 @@ export const DashboardShell = {
     this.hoverShown = false
     this.hoverHiddenAt = 0
     this.closeTimer = null
+    rememberWorkspace(this.el.dataset.workspaceId)
 
     this.onPointerDown = (event) => {
       const handle = event.target.closest?.("[data-resize]")
@@ -131,6 +144,11 @@ export const DashboardShell = {
       if (event.target.closest?.("[data-drawer] [data-nav-item]")) {
         this.closeDrawer(false)
       }
+
+      const switcher = event.target.closest?.(".dash-switcher")
+      this.el.querySelectorAll(".dash-switcher[open]").forEach((el) => {
+        if (el !== switcher) el.removeAttribute("open")
+      })
     }
 
     this.onKeyDown = (event) => {
@@ -147,6 +165,17 @@ export const DashboardShell = {
         this.setWidth(next[event.key])
         writeNumber(this.storageKey, this.width)
         return
+      }
+
+      if (event.key === "Escape") {
+        const openSwitcher = this.el.querySelector(".dash-switcher[open]")
+        if (openSwitcher) {
+          event.preventDefault()
+          event.stopPropagation()
+          openSwitcher.removeAttribute("open")
+          openSwitcher.querySelector("summary")?.focus()
+          return
+        }
       }
 
       if (!this.drawerOpen) return

@@ -15,6 +15,7 @@ defmodule SokochatWeb.PlaygroundLive do
     {:ok,
      socket
      |> assign(:page_title, "Playground")
+     |> assign(:workspaces, Workspaces.list_workspaces(socket.assigns.current_user.id))
      |> assign(:workspace, nil)
      |> assign(:endpoint, nil)
      |> assign(:conversation, nil)
@@ -173,6 +174,7 @@ defmodule SokochatWeb.PlaygroundLive do
     <.shell
       :if={@workspace}
       workspace={@workspace}
+      workspaces={@workspaces}
       current_user={@current_user}
       tab={:playground}
       title="Playground"

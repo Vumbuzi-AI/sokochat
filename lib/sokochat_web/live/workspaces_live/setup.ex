@@ -29,6 +29,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     {:ok,
      socket
      |> assign(:page_title, "Workspace")
+     |> assign(:workspaces, Workspaces.list_workspaces(socket.assigns.current_user.id))
      |> assign(:workspace, nil)
      |> assign(:active_step, :business)
      |> assign(:active_tab, "manual")
@@ -55,6 +56,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:recommend_ref, nil)
      # meta
      |> assign(:connection, nil)
+     |> assign(:shared_line, nil)
+     |> assign(:shop_code, "")
+     |> assign(:wa_me_url, nil)
      |> assign(:data_ingestion_configured, false)
      |> assign(:cta_rules_configured, false)
      |> assign(:meta_configured, false)
@@ -581,6 +585,52 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     end
   end
 
+  def handle_event("update_shop_code", %{"shop_code" => shop_code}, socket) do
+    {:noreply, assign(socket, :shop_code, shop_code)}
+  end
+
+  def handle_event("join_shared_line", _params, socket) do
+    shared_line = socket.assigns.shared_line
+
+    case Meta.join_shared_line(socket.assigns.workspace, shared_line, socket.assigns.shop_code) do
+      {:ok, workspace} ->
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:shop_code, workspace.shop_code)
+         |> assign(:wa_me_url, Meta.shop_wa_me_url(shared_line, workspace))
+         |> assign(:meta_configured, shared_line.status == "active")
+         |> put_flash(:info, "This shop now uses the shared WhatsApp line.")}
+
+      {:error, %Changeset{} = changeset} ->
+        message =
+          changeset
+          |> Changeset.traverse_errors(fn {msg, _opts} -> msg end)
+          |> Enum.map(fn {field, msgs} -> "#{field} #{Enum.join(msgs, ", ")}" end)
+          |> Enum.join("; ")
+
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
+
+  def handle_event("leave_shared_line", _params, socket) do
+    case Meta.leave_shared_line(socket.assigns.workspace) do
+      {:ok, workspace} ->
+        connection = socket.assigns.connection
+
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:shop_code, workspace.slug)
+         |> assign(:wa_me_url, nil)
+         |> assign(:meta_configured, connection && connection.status == "active")
+         |> put_flash(:info, "This shop left the shared WhatsApp line.")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Could not leave the shared line.")}
+    end
+  end
+
   # --- playground ---------------------------------------------------------
 
   def handle_event("send_message", %{"playground" => %{"message" => message}}, socket) do
@@ -704,6 +754,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     <.shell
       :if={@workspace}
       workspace={@workspace}
+      workspaces={@workspaces}
       current_user={@current_user}
       tab={@active_step}
       title={@page_title}
@@ -1289,8 +1340,11 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       <div>
         <h3 class="text-xl font-semibold text-n900">Meta Verification Pipeline</h3>
         <p class="mt-1 text-sm text-n400">
-          Connect this workspace to the WhatsApp Business Platform. Save your Cloud API
-          credentials, then point Meta's webhook at the URL below to go live.
+          Connect this workspace to WhatsApp with a dedicated number, or join the account
+          <.link navigate={~p"/shared-line"} class="font-medium text-primary hover:underline">
+            shared line
+          </.link>
+          so several shops share one GS1 number.
         </p>
       </div>
 
@@ -1311,77 +1365,126 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       </div>
 
       <div
-        :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
-        role="alert"
-        class={[
-          "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
-          alert_classes(alert.tone)
-        ]}
+        :if={@shared_line && @shared_line.id}
+        class="space-y-4 rounded-lg border border-n300 p-4"
       >
-        <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
-        <div class="space-y-1">
-          <p class="font-semibold">{alert.title}</p>
-          <p>{alert.body}</p>
-        </div>
-      </div>
-
-      <div
-        :if={@connection.last_error}
-        role="alert"
-        class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-red-500 bg-red-50 px-4 py-3 text-[13px] text-n600"
-      >
-        <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-red-500" />
-        <span>{@connection.last_error}</span>
-      </div>
-
-      <.simple_form for={@meta_form} phx-change="validate" phx-submit="save">
-        <div class="grid gap-4 md:grid-cols-2">
-          <.input field={@meta_form[:phone_number_id]} label="Phone Number ID" required />
-          <.input field={@meta_form[:waba_id]} label="WhatsApp Business Account ID" required />
-        </div>
-        <.input
-          field={@meta_form[:access_token]}
-          type="password"
-          label="Meta Permanent API Secret Token"
-          required
-          autocomplete="off"
-        />
-        <p class="-mt-3 text-[13px] text-n400">
-          The access token is encrypted at rest. Saving new credentials resets the connection to
-          <span class="font-medium">pending</span>
-          until the webhook is re-verified.
-        </p>
-
-        <:actions>
-          <.button>Save credentials</.button>
-        </:actions>
-      </.simple_form>
-
-      <div :if={persisted?(@connection)} class="space-y-5 border-t border-n300 pt-6">
         <div>
-          <h4 class="text-base font-semibold text-n900">Webhook setup</h4>
-          <p class="mt-1 text-sm text-n400">
-            In your Meta app, open WhatsApp → Configuration → Webhooks, paste these values, then
-            subscribe to the <span class="font-medium">messages</span> field.
+          <h4 class="text-sm font-semibold text-n900">Use the shared line</h4>
+          <p class="mt-1 text-xs text-n400">
+            Join the account number. Buyers open a prefilled wa.me link and land in this shop.
           </p>
         </div>
-        <.copy_field
-          id="webhook-url"
-          label="Callback URL"
-          value={webhook_url(@socket, @workspace.slug)}
-        />
-        <.copy_field id="verify-token" label="Verify token" value={@connection.verify_token} />
 
-        <div class="space-y-3 rounded-lg border border-n300 bg-n100/50 p-4 text-sm">
-          <.checklist_item done={true} label="Credentials saved" />
-          <.checklist_item
-            done={not is_nil(@connection.webhook_verified_at)}
-            label={"Webhook verified — #{verified_label(@connection.webhook_verified_at)}"}
+        <div :if={is_nil(@workspace.shared_line_id)} class="flex flex-col gap-3 sm:flex-row">
+          <form phx-change="update_shop_code" class="flex-1">
+            <label class="block text-sm font-medium text-n900">Shop code</label>
+            <input
+              type="text"
+              name="shop_code"
+              value={@shop_code}
+              class="mt-1.5 w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900"
+            />
+          </form>
+          <div class="flex items-end">
+            <button
+              type="button"
+              phx-click="join_shared_line"
+              class="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+            >
+              Join shared line
+            </button>
+          </div>
+        </div>
+
+        <div :if={@workspace.shared_line_id} class="space-y-3">
+          <p class="text-sm text-n900">
+            Joined as <span class="font-mono text-[13px]">[shop:{@workspace.shop_code}]</span>
+          </p>
+          <.copy_field :if={@wa_me_url} id="shop-wa-me" label="Buyer link" value={@wa_me_url} />
+          <button
+            type="button"
+            phx-click="leave_shared_line"
+            class="text-sm font-medium text-danger hover:underline"
+          >
+            Leave shared line
+          </button>
+        </div>
+      </div>
+
+      <div :if={is_nil(@workspace.shared_line_id)} class="space-y-6">
+        <div
+          :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
+          role="alert"
+          class={[
+            "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
+            alert_classes(alert.tone)
+          ]}
+        >
+          <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
+          <div class="space-y-1">
+            <p class="font-semibold">{alert.title}</p>
+            <p>{alert.body}</p>
+          </div>
+        </div>
+
+        <div
+          :if={@connection.last_error}
+          role="alert"
+          class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-red-500 bg-red-50 px-4 py-3 text-[13px] text-n600"
+        >
+          <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-red-500" />
+          <span>{@connection.last_error}</span>
+        </div>
+
+        <.simple_form for={@meta_form} phx-change="validate" phx-submit="save">
+          <div class="grid gap-4 md:grid-cols-2">
+            <.input field={@meta_form[:phone_number_id]} label="Phone Number ID" required />
+            <.input field={@meta_form[:waba_id]} label="WhatsApp Business Account ID" required />
+          </div>
+          <.input
+            field={@meta_form[:access_token]}
+            type="password"
+            label="Meta Permanent API Secret Token"
+            required
+            autocomplete="off"
           />
-          <.checklist_item
-            done={@connection.status == "active"}
-            label="Connection active and ready to receive messages"
+          <p class="-mt-3 text-[13px] text-n400">
+            The access token is encrypted at rest. Saving new credentials resets the connection to
+            <span class="font-medium">pending</span>
+            until the webhook is re-verified.
+          </p>
+
+          <:actions>
+            <.button>Save credentials</.button>
+          </:actions>
+        </.simple_form>
+
+        <div :if={persisted?(@connection)} class="space-y-5 border-t border-n300 pt-6">
+          <div>
+            <h4 class="text-base font-semibold text-n900">Webhook setup</h4>
+            <p class="mt-1 text-sm text-n400">
+              In your Meta app, open WhatsApp → Configuration → Webhooks, paste these values, then
+              subscribe to the <span class="font-medium">messages</span> field.
+            </p>
+          </div>
+          <.copy_field
+            id="webhook-url"
+            label="Callback URL"
+            value={webhook_url(@socket, @workspace.slug)}
           />
+          <.copy_field id="verify-token" label="Verify token" value={@connection.verify_token} />
+
+          <div class="space-y-3 rounded-lg border border-n300 bg-n100/50 p-4 text-sm">
+            <.checklist_item done={true} label="Credentials saved" />
+            <.checklist_item
+              done={not is_nil(@connection.webhook_verified_at)}
+              label={"Webhook verified — #{verified_label(@connection.webhook_verified_at)}"}
+            />
+            <.checklist_item
+              done={@connection.status == "active"}
+              label="Connection active and ready to receive messages"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1929,10 +2032,18 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     catalog = ensure_catalog(workspace)
     cta_rules = CTARules.list_cta_rules(workspace.id)
     connection = Meta.get_connection_or_new(workspace.id)
+    shared_line = Meta.get_shared_line(workspace.account_id)
 
     phone_number = Conversations.playground_phone_number(workspace.id)
     conversation = Conversations.get_conversation(workspace.id, phone_number, :playground)
     messages = if conversation, do: Conversations.list_messages(conversation.id), else: []
+
+    meta_configured =
+      if workspace.shared_line_id do
+        shared_line && shared_line.status == "active"
+      else
+        connection.status == "active"
+      end
 
     socket
     |> assign(:workspace, workspace)
@@ -1940,13 +2051,16 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     |> assign(:catalog, catalog)
     |> assign(:cta_rules, sort_rules(cta_rules))
     |> assign(:connection, connection)
+    |> assign(:shared_line, shared_line)
+    |> assign(:shop_code, workspace.shop_code || workspace.slug)
+    |> assign(:wa_me_url, Meta.shop_wa_me_url(shared_line, workspace))
     |> assign(:selected_item, nil)
     |> assign(:selected_field, nil)
     |> assign(:item_values, %{})
     |> assign(:test_error, nil)
     |> assign(:data_ingestion_configured, data_ingestion_configured?(endpoint, catalog))
     |> assign(:cta_rules_configured, cta_rules != [])
-    |> assign(:meta_configured, connection.status == "active")
+    |> assign(:meta_configured, meta_configured)
     |> assign(:conversation, conversation)
     |> assign(:phone_number, phone_number)
     |> assign(:message_ids, message_ids(messages))

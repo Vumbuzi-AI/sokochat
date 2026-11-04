@@ -8,15 +8,17 @@ defmodule Sokochat.Meta.Sender do
   """
 
   alias Sokochat.Meta.Connection
+  alias Sokochat.Meta.SharedLine
 
   require Logger
 
   @doc """
-  Sends `reply_text` (plus optional `cta`) to `to` through the workspace's Meta
-  connection. Returns `{:ok, message_id}` for the last message sent, or
-  `{:error, reason}` on the first failure.
+  Sends `reply_text` (plus optional `cta`) to `to` through Meta credentials
+  (`Connection` or `SharedLine`). Returns `{:ok, message_id}` for the last
+  message sent, or `{:error, reason}` on the first failure.
   """
-  def send_reply(%Connection{} = connection, to, reply_text, cta \\ nil) do
+  def send_reply(connection, to, reply_text, cta \\ nil)
+      when is_struct(connection, Connection) or is_struct(connection, SharedLine) do
     reply_text = reply_text || ""
 
     cta
@@ -38,7 +40,8 @@ defmodule Sokochat.Meta.Sender do
   only message type allowed to open a conversation outside the 24h customer
   service window, so this is the right call for a first proactive test message.
   """
-  def send_template(%Connection{} = connection, to, template_name, language_code \\ "en_US") do
+  def send_template(connection, to, template_name, language_code \\ "en_US")
+      when is_struct(connection, Connection) or is_struct(connection, SharedLine) do
     message = %{
       type: "template",
       template: %{name: template_name, language: %{code: language_code}}
@@ -46,6 +49,7 @@ defmodule Sokochat.Meta.Sender do
 
     send_message(connection, to, message)
   end
+
 
   @doc false
   def build_messages(cta, reply_text) do
@@ -93,13 +97,9 @@ defmodule Sokochat.Meta.Sender do
 
   defp send_message(connection, to, message), do: do_send(connection, to, message, true)
 
-  defp do_send(
-         %Connection{phone_number_id: phone_number_id, access_token: token} = connection,
-         to,
-         message,
-         retry_media?,
-         overrides \\ []
-       ) do
+  defp do_send(connection, to, message, retry_media?, overrides \\ []) do
+    phone_number_id = connection.phone_number_id
+    token = connection.access_token
     body = Map.merge(%{messaging_product: "whatsapp", to: to(to)}, message)
 
     options =
@@ -258,7 +258,7 @@ defmodule Sokochat.Meta.Sender do
       |> Enum.with_index()
       |> Enum.map(fn {item, index} ->
         %{
-          id: "row_#{index}",
+          id: truncate(value(item, "id") || "row_#{index}", 200),
           title: truncate(value(item, "title") || "Option #{index + 1}", 24),
           description: truncate(value(item, "description") || "", 72)
         }

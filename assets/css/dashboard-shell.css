@@ -94,32 +94,220 @@ html:has(.obsidian-dashboard-shell) {
   outline: 1px solid rgb(0 0 0 / 0.1);
 }
 
-.dash-brand-copy {
-  display: flex;
+.dash-switcher {
+  position: relative;
   min-width: 0;
   flex: 1;
-  flex-direction: column;
-  gap: 4px;
 }
 
-.dash-brand-name {
+.dash-switcher-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 4px;
+  list-style: none;
+  color: var(--obsidian-dashboard-shell-foreground);
+  user-select: none;
+  outline: none;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.dash-switcher-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.dash-switcher-trigger::marker {
+  content: "";
+}
+
+.dash-switcher-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.dash-switcher-name {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.2;
   letter-spacing: -0.01em;
+  text-align: left;
 }
 
-.dash-brand-desc {
+.dash-switcher-caret {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  transition: transform 150ms ease-out;
+}
+
+.dash-switcher[open] .dash-switcher-caret {
+  transform: rotate(180deg);
+}
+
+.dash-switcher-trigger:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--obsidian-dashboard-shell-ring);
+}
+
+.dash-switcher-trigger:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.dash-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  width: max(100%, 220px);
+  max-width: min(280px, 80vw);
+  max-height: min(360px, 60vh);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--obsidian-dashboard-shell-menu);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--obsidian-dashboard-shell-menu-shadow);
+  transform-origin: top left;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .dash-switcher[open] > .dash-switcher-menu {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.dash-switcher-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  list-style: none;
+}
+
+.dash-switcher-item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  text-decoration: none;
+  outline: none;
+  transition: background-color 150ms ease-out;
+}
+
+.dash-switcher-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--obsidian-dashboard-shell-ring);
+}
+
+.dash-switcher-avatar {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--obsidian-dashboard-shell-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.dash-switcher-item-name {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1;
-  color: var(--obsidian-dashboard-shell-text-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.dash-switcher-check {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.dash-switcher-item-current {
+  background: var(--obsidian-dashboard-shell-menu-highlight);
+}
+
+.dash-switcher-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  padding: 6px;
+}
+
+.dash-switcher-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  outline: none;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.dash-switcher-action:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--obsidian-dashboard-shell-ring);
+}
+
+@media (hover: hover) {
+  .dash-switcher-trigger:hover {
+    background: var(--obsidian-dashboard-shell-hover);
+  }
+
+  .dash-switcher-item:hover {
+    background: var(--obsidian-dashboard-shell-menu-highlight);
+  }
+
+  .dash-switcher-action:hover {
+    background: var(--obsidian-dashboard-shell-menu-highlight);
+    color: var(--obsidian-dashboard-shell-foreground);
+  }
 }
 
 .dash-nav-scroll {
@@ -387,23 +575,25 @@ html:has(.obsidian-dashboard-shell) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 6px;
   font-family: inherit;
   font-weight: 500;
   line-height: 1;
+  text-decoration: none;
   white-space: nowrap;
   user-select: none;
   outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color 150ms cubic-bezier(0.25, 1, 0.5, 1),
     color 150ms cubic-bezier(0.25, 1, 0.5, 1),
     box-shadow 150ms cubic-bezier(0.25, 1, 0.5, 1),
-    transform 160ms var(--ease-out);
+    transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .dash-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .dash-btn:focus-visible {
@@ -419,7 +609,7 @@ button.phx-submit-loading {
 
 button.phx-click-loading,
 button.phx-submit-loading {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .dash-btn.phx-click-loading:not(.dash-btn-icon)::after,
@@ -503,10 +693,6 @@ button.phx-submit-loading {
   );
 }
 
-.dash-btn-primary:hover {
-  background: var(--obsidian-dashboard-shell-accent-hover, #0c8450);
-}
-
 .dash-btn-secondary {
   background: var(--obsidian-dashboard-shell-control, #ffffff);
   color: var(--obsidian-dashboard-shell-foreground, #161616);
@@ -517,7 +703,6 @@ button.phx-submit-loading {
   );
 }
 
-.dash-btn-secondary:hover,
 .dash-btn-secondary[data-state="open"] {
   background: var(--obsidian-dashboard-shell-muted, #efefef);
 }
@@ -532,18 +717,9 @@ button.phx-submit-loading {
   );
 }
 
-.dash-btn-muted:hover {
-  background: var(--obsidian-dashboard-shell-muted-hover, #e6e6e6);
-}
-
 .dash-btn-ghost {
   background: transparent;
   color: var(--obsidian-dashboard-shell-text-subtle, #737373);
-}
-
-.dash-btn-ghost:hover {
-  background: var(--obsidian-dashboard-shell-muted, #efefef);
-  color: var(--obsidian-dashboard-shell-foreground, #161616);
 }
 
 .dash-btn-danger {
@@ -555,8 +731,27 @@ button.phx-submit-loading {
     0 0 0 1px rgb(0 0 0 / 0.08);
 }
 
-.dash-btn-danger:hover {
-  background: var(--obsidian-dashboard-shell-danger-solid-hover, #c81e1e);
+@media (hover: hover) {
+  .dash-btn-primary:hover {
+    background: var(--obsidian-dashboard-shell-accent-hover, #0c8450);
+  }
+
+  .dash-btn-secondary:hover {
+    background: var(--obsidian-dashboard-shell-muted, #efefef);
+  }
+
+  .dash-btn-muted:hover {
+    background: var(--obsidian-dashboard-shell-muted-hover, #e6e6e6);
+  }
+
+  .dash-btn-ghost:hover {
+    background: var(--obsidian-dashboard-shell-muted, #efefef);
+    color: var(--obsidian-dashboard-shell-foreground, #161616);
+  }
+
+  .dash-btn-danger:hover {
+    background: var(--obsidian-dashboard-shell-danger-solid-hover, #c81e1e);
+  }
 }
 
 .dash-back {
@@ -712,6 +907,12 @@ button.phx-submit-loading {
   .dash-back,
   .dash-back:active,
   .dash-resize-line,
+  .dash-switcher-trigger,
+  .dash-switcher-trigger:not(:disabled):active,
+  .dash-switcher-caret,
+  .dash-switcher-menu,
+  .dash-switcher-item,
+  .dash-switcher-action,
   button.phx-click-loading::after,
   button.phx-submit-loading::after,
   .form-reveal {
@@ -724,8 +925,22 @@ button.phx-submit-loading {
   .dash-btn,
   .dash-btn:active,
   .dash-back,
-  .dash-back:active {
+  .dash-back:active,
+  .dash-switcher-trigger:not(:disabled):active,
+  .dash-switcher-caret,
+  .dash-switcher-menu {
     transform: none;
+  }
+
+  @starting-style {
+    .dash-switcher[open] > .dash-switcher-menu {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
+  .dash-switcher-menu {
+    transition: opacity 150ms ease-out;
   }
 }
 

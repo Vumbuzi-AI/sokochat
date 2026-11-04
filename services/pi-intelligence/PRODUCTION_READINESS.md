@@ -87,7 +87,7 @@ recovery, container packaging or WhatsApp delivery.
 | Channel safety | Transactional assistant persistence, per-part delivery intent/acknowledgment, uncertain-send review | Staging Meta tests across partial sends, timeouts, worker crashes and manual review |
 | Webhook authentication | Exact raw-body HMAC verification; production fails closed without Meta app secret | Signed, unsigned and tampered payload tests through deployed HTTP stack |
 | Failure recovery | Persisted failure state and a late playground notification; retry remains an explicit new turn | Observe a failure before and after the browser wait timeout |
-| Packaging | Non-root Dockerfile, hardened systemd template, operational/retention commands and runbook | Build/review packaging on the target host; validate storage ownership, network/TLS, supervision and restore |
+| Packaging | Both Docker images built/deployed on Coolify; Phoenix, Pi and private PostgreSQL healthy; persistent volumes mounted; public HTTPS endpoints respond | Validate volume retention, operational recovery and backup restore on the target host |
 
 ## Test handoff
 
@@ -97,17 +97,21 @@ with greeting, browse, specific product, sizes/prices, image rendering and resta
 recovery. Production WhatsApp checks need a configured staging connection and
 `META_APP_SECRET`; the OpenAI key alone does not configure Meta.
 
-The Docker image was not built, and the systemd template was not installed or
-activated on a VPS. This local setup is not a production deployment. API-backed
-workspaces retain their existing context mode; manual catalogs use business tools.
-Embeddings/indexing and CTA-rule recommendations retain their existing clients.
+Both Docker images were built and deployed through Coolify MCP on Sean's Helsinki
+VPS at commit `35de1d0`. The application, Pi and private pgvector database report
+healthy. `https://sc.uzskicorp.agency` returns HTTP 200 with TLS verification, and
+`https://pi.sc.uzskicorp.agency/health` returns `ready` over verified HTTPS. Pi DNS
+is direct to the VPS; Cloudflare proxying the nested hostname caused a TLS handshake
+failure that was resolved by Sean setting it to DNS only. Checkpoint and uploaded
+image volumes are mounted. Secrets are runtime-only; protected shown-once values
+cannot be read back for direct comparison. This confirms deployment readiness,
+not a successful model/tool turn on the VPS.
 
-For Sean's Coolify-managed VPS, `compose.yaml` and `deploy/COOLIFY.md` now provide
-the separate Pi application, persistent volume, runtime variables, proxy/domain
-routing, non-root container restrictions, and a stop-then-start update procedure.
-`docker compose config --quiet` passed using placeholder credentials. A local
-image build was attempted but could not connect to the Docker daemon socket;
-no image was built and no containers were started. The `coolify` executable was
-not found on this shell's PATH, so no Coolify resources were inspected or changed.
+The first database backup completed successfully. Daily backups run at 03:00
+Africa/Nairobi with seven local copies/days retained. No off-server backup target
+is configured; restore and Pi-volume backup remain open. The systemd template was
+not installed. API-backed workspaces retain context mode; manual catalogs use
+business tools. Embeddings/indexing and CTA recommendations retain their clients.
+See `docs/COOLIFY_DEPLOYMENT.md` for current deployment and operator handoff.
 
 Mark readiness complete only after these proofs exist and any failures are fixed.

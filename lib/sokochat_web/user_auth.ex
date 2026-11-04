@@ -5,6 +5,7 @@ defmodule SokochatWeb.UserAuth do
   import Phoenix.Controller
 
   alias Sokochat.Accounts
+  alias Sokochat.Workspaces
 
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
@@ -12,6 +13,7 @@ defmodule SokochatWeb.UserAuth do
   @max_age 60 * 60 * 24 * 60
   @remember_me_cookie "_sokochat_web_user_remember_me"
   @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
+  @last_workspace_cookie "_sokochat_last_workspace"
 
   @doc """
   Logs the user in.
@@ -28,12 +30,14 @@ defmodule SokochatWeb.UserAuth do
   def log_in_user(conn, user, params \\ %{}) do
     token = Accounts.generate_user_session_token(user)
     user_return_to = Map.get(params, "redirect_to") || get_session(conn, :user_return_to)
+    # Read before renew_session clears cookies from the request path's session.
+    preferred_id = last_workspace_id(conn)
 
     conn
     |> renew_session()
     |> put_token_in_session(token)
     |> maybe_write_remember_me_cookie(token, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> redirect(to: user_return_to || workspace_home_path(user, preferred_id))
   end
 
   defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}) do
@@ -175,10 +179,14 @@ defmodule SokochatWeb.UserAuth do
   end
 
   defp mount_current_user(socket, session) do
-    Phoenix.Component.assign_new(socket, :current_user, fn ->
+    socket
+    |> Phoenix.Component.assign_new(:current_user, fn ->
       if user_token = session["user_token"] do
         Accounts.get_user_by_session_token(user_token)
       end
+    end)
+    |> Phoenix.Component.assign_new(:last_workspace_id, fn ->
+      session["last_workspace_id"]
     end)
   end
 
@@ -225,5 +233,41 @@ defmodule SokochatWeb.UserAuth do
 
   defp maybe_store_return_to(conn), do: conn
 
-  defp signed_in_path(_conn), do: ~p"/"
+  @doc """
+  Copies the last-workspace cookie into the session so LiveViews can read it.
+  """
+  def fetch_last_workspace(conn, _opts) do
+    case last_workspace_id(conn) do
+      nil -> conn
+      id -> put_session(conn, :last_workspace_id, id)
+    end
+  end
+
+  @doc """
+  Path to open after login: last-used workspace, else newest, else create.
+  """
+  def workspace_home_path(user, preferred_id \\ nil) do
+    case Workspaces.get_home_workspace(user.id, preferred_id) do
+      nil -> ~p"/workspaces/new"
+      workspace -> ~p"/workspaces/#{workspace.id}"
+    end
+  end
+
+  defp last_workspace_id(%Plug.Conn{} = conn) do
+    conn.req_cookies[@last_workspace_cookie] || get_session(conn, :last_workspace_id)
+  end
+
+  defp signed_in_path(%Plug.Conn{} = conn) do
+    case conn.assigns[:current_user] do
+      nil -> ~p"/"
+      user -> workspace_home_path(user, last_workspace_id(conn))
+    end
+  end
+
+  defp signed_in_path(socket) do
+    case socket.assigns[:current_user] do
+      nil -> ~p"/"
+      user -> workspace_home_path(user, socket.assigns[:last_workspace_id])
+    end
+  end
 end

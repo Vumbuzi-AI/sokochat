@@ -53,6 +53,25 @@ defmodule Sokochat.Meta.SenderTest do
       assert action.button == "Menu"
       assert [%{rows: rows}] = action.sections
       assert Enum.map(rows, & &1.title) == ["Tomatoes", "Onions"]
+      assert Enum.map(rows, & &1.id) == ["row_0", "row_1"]
+    end
+
+    test "list_message keeps stable shop picker ids when provided" do
+      cta = %{
+        "type" => "list_message",
+        "payload" => %{
+          "title" => "Choose a shop",
+          "items" => [
+            %{"id" => "shop:royco", "title" => "Royco Kenya"},
+            %{"id" => "shop:brookside", "title" => "Brookside Kenya"}
+          ]
+        }
+      }
+
+      assert [%{interactive: %{action: %{sections: [%{rows: rows}]}}}] =
+               Sender.build_messages(cta, "Pick a shop")
+
+      assert Enum.map(rows, & &1.id) == ["shop:royco", "shop:brookside"]
     end
 
     test "website builds a cta_url interactive message" do
@@ -153,6 +172,24 @@ defmodule Sokochat.Meta.SenderTest do
 
       assert {:ok, "wamid.OUT123"} =
                Sender.send_reply(connection, "+254 700 111 222", "Hello!", nil)
+    end
+
+    test "sends through a shared line using its phone number id and token" do
+      user = user_fixture()
+      shared_line = shared_line_fixture(user)
+
+      Req.Test.expect(__MODULE__.SharedSendStub, fn conn ->
+        version = Application.get_env(:sokochat, :meta)[:graph_api_version]
+        assert conn.request_path == "/#{version}/#{shared_line.phone_number_id}/messages"
+        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer #{shared_line.access_token}"]
+
+        Req.Test.json(conn, %{"messages" => [%{"id" => "wamid.SHARED_OUT"}]})
+      end)
+
+      Process.put(:meta_req_options, plug: {Req.Test, __MODULE__.SharedSendStub})
+
+      assert {:ok, "wamid.SHARED_OUT"} =
+               Sender.send_reply(shared_line, "254700999888", "Hello from GS1", nil)
     end
 
     test "retries without the image when Meta rejects the media" do

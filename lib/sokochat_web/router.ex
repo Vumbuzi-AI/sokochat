@@ -11,6 +11,7 @@ defmodule SokochatWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
+    plug :fetch_last_workspace
   end
 
   pipeline :api do
@@ -38,6 +39,8 @@ defmodule SokochatWeb.Router do
   scope "/webhooks", SokochatWeb do
     pipe_through :api
 
+    get "/whatsapp", WebhookController, :handle_shared_verification
+    post "/whatsapp", WebhookController, :handle_shared_message
     get "/whatsapp/:slug", WebhookController, :handle_verification
     post "/whatsapp/:slug", WebhookController, :handle_message
   end
@@ -94,6 +97,7 @@ defmodule SokochatWeb.Router do
       on_mount: [{SokochatWeb.UserAuth, :ensure_authenticated}] do
       live "/workspaces", WorkspacesLive.Index, :index
       live "/workspaces/new", WorkspacesLive.Form, :new
+      live "/shared-line", WorkspacesLive.SharedLine, :edit
       live "/workspaces/:id", WorkspacesLive.Setup, :business
       live "/workspaces/:id/edit", WorkspacesLive.Form, :edit
       live "/workspaces/:id/products", WorkspacesLive.Setup, :products

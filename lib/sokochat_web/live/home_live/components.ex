@@ -72,21 +72,21 @@ defmodule SokochatWeb.HomeLive.Components do
           </div>
         </nav>
 
-        <div class="ml-auto hidden items-center gap-4 lg:flex">
+        <div class="ml-auto hidden items-center gap-2 lg:flex">
           <%= if @current_user do %>
             <a
               href="/users/settings"
-              class="text-sm font-semibold text-n800 no-underline hover:text-primary"
+              class="text-sm font-medium text-n800 no-underline hover:text-primary"
             >
               {@current_user.email}
             </a>
-            <a href="/workspaces" class="btn btn-primary btn-sm">Workspaces</a>
-            <.link href={~p"/users/log_out"} method="delete" class="btn btn-secondary btn-sm">
+            <.button href={~p"/workspaces"} size="sm">Workspaces</.button>
+            <.button href={~p"/users/log_out"} method="delete" variant="secondary" size="sm">
               Log out
-            </.link>
+            </.button>
           <% else %>
-            <a href="/users/log_in" class="btn btn-secondary btn-sm">Login</a>
-            <a href="/users/register" class="btn btn-primary btn-sm">Get Started</a>
+            <.button href={~p"/users/log_in"} variant="secondary" size="sm">Login</.button>
+            <.button href={~p"/users/register"} size="sm">Get Started</.button>
           <% end %>
         </div>
 
@@ -124,18 +124,26 @@ defmodule SokochatWeb.HomeLive.Components do
           <a href="#" class="p-2 text-n800 no-underline hover:text-primary">Contact</a>
           <a href="#" class="p-2 text-n800 no-underline hover:text-primary">Book a Demo</a>
           <a href="#" class="p-2 text-n800 no-underline hover:text-primary">Careers</a>
-          <div class="mt-3 flex flex-col gap-3">
+          <div class="mt-3 flex flex-col gap-2">
             <%= if @current_user do %>
-              <a href="/users/settings" class="btn btn-secondary btn-sm w-full">
+              <.button href={~p"/users/settings"} variant="secondary" size="sm" class="w-full">
                 {@current_user.email}
-              </a>
-              <a href="/workspaces" class="btn btn-primary btn-sm w-full">Workspaces</a>
-              <.link href={~p"/users/log_out"} method="delete" class="btn btn-secondary btn-sm w-full">
+              </.button>
+              <.button href={~p"/workspaces"} size="sm" class="w-full">Workspaces</.button>
+              <.button
+                href={~p"/users/log_out"}
+                method="delete"
+                variant="secondary"
+                size="sm"
+                class="w-full"
+              >
                 Log out
-              </.link>
+              </.button>
             <% else %>
-              <a href="/users/log_in" class="btn btn-secondary btn-sm w-full">Login</a>
-              <a href="/users/register" class="btn btn-primary btn-sm w-full">Get Started</a>
+              <.button href={~p"/users/log_in"} variant="secondary" size="sm" class="w-full">
+                Login
+              </.button>
+              <.button href={~p"/users/register"} size="sm" class="w-full">Get Started</.button>
             <% end %>
           </div>
         </nav>
@@ -196,13 +204,13 @@ defmodule SokochatWeb.HomeLive.Components do
             <p class="w-full text-lg font-medium text-n400">
               Built for merchants, marketplaces, and growing teams across East Africa. Sokochat lets any business create and run an AI-powered WhatsApp chatbot without code.
             </p>
-            <div class="flex w-full flex-wrap items-center justify-center gap-x-6 gap-y-4 lg:justify-start">
+            <div class="flex w-full flex-wrap items-center justify-center gap-2 lg:justify-start">
               <%= if @current_user do %>
-                <a href="/workspaces" class="btn btn-primary btn-lg">Go to workspaces</a>
+                <.button href={~p"/workspaces"}>Go to workspaces</.button>
               <% else %>
-                <a href="#pricing" class="btn btn-primary btn-lg">Get Started</a>
+                <.button href="#pricing">Get Started</.button>
               <% end %>
-              <a href="#services" class="btn btn-secondary btn-lg">See Playground</a>
+              <.button href="#services" variant="secondary">See Playground</.button>
             </div>
           </div>
 

@@ -11,6 +11,7 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
     {:ok,
      socket
      |> assign(:page_title, "Analytics")
+     |> assign(:workspaces, Workspaces.list_workspaces(socket.assigns.current_user.id))
      |> assign(:workspace, nil)
      |> assign(:range, "week"), layout: false}
   end
@@ -54,6 +55,7 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
     <.shell
       :if={@workspace}
       workspace={@workspace}
+      workspaces={@workspaces}
       current_user={@current_user}
       tab={:analytics}
       title="Analytics"

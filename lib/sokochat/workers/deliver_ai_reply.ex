@@ -85,7 +85,7 @@ defmodule Sokochat.Workers.DeliverAiReply do
           :done
 
         true ->
-          connection = Meta.get_connection(turn.workspace_id)
+          connection = Meta.connection_for_send(turn.workspace_id)
           conversation = Repo.get(Conversation, turn.conversation_id)
           assistant = Repo.get(Message, turn.assistant_message_id)
 

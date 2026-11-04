@@ -15,6 +15,9 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
      |> assign(:page_title, "Meta Connection")
      |> assign(:workspace, nil)
      |> assign(:connection, nil)
+     |> assign(:shared_line, nil)
+     |> assign(:shop_code, "")
+     |> assign(:wa_me_url, nil)
      |> assign(:data_ingestion_configured, false)
      |> assign(:cta_rules_configured, false)}
   end
@@ -27,11 +30,15 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
         endpoint = Endpoints.get_endpoint(workspace.id)
         catalog = Catalogs.get_catalog(workspace.id)
         cta_rules = CTARules.list_cta_rules(workspace.id)
+        shared_line = Meta.get_shared_line(socket.assigns.current_user.id)
 
         {:noreply,
          socket
          |> assign(:workspace, workspace)
          |> assign(:connection, connection)
+         |> assign(:shared_line, shared_line)
+         |> assign(:shop_code, workspace.shop_code || workspace.slug)
+         |> assign(:wa_me_url, Meta.shop_wa_me_url(shared_line, workspace))
          |> assign(:data_ingestion_configured, data_ingestion_configured?(endpoint, catalog))
          |> assign(:cta_rules_configured, cta_rules != [])
          |> assign_form(Meta.change_connection(connection))}
@@ -65,6 +72,48 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
 
       {:error, %Changeset{} = changeset} ->
         {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+    end
+  end
+
+  def handle_event("update_shop_code", %{"shop_code" => shop_code}, socket) do
+    {:noreply, assign(socket, :shop_code, shop_code)}
+  end
+
+  def handle_event("join_shared_line", _params, socket) do
+    shared_line = socket.assigns.shared_line
+
+    case Meta.join_shared_line(socket.assigns.workspace, shared_line, socket.assigns.shop_code) do
+      {:ok, workspace} ->
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:shop_code, workspace.shop_code)
+         |> assign(:wa_me_url, Meta.shop_wa_me_url(shared_line, workspace))
+         |> put_flash(:info, "This shop now uses the shared WhatsApp line.")}
+
+      {:error, %Changeset{} = changeset} ->
+        message =
+          changeset
+          |> Changeset.traverse_errors(fn {msg, _opts} -> msg end)
+          |> Enum.map(fn {field, msgs} -> "#{field} #{Enum.join(msgs, ", ")}" end)
+          |> Enum.join("; ")
+
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
+
+  def handle_event("leave_shared_line", _params, socket) do
+    case Meta.leave_shared_line(socket.assigns.workspace) do
+      {:ok, workspace} ->
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:shop_code, workspace.slug)
+         |> assign(:wa_me_url, nil)
+         |> put_flash(:info, "This shop left the shared WhatsApp line.")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Could not leave the shared line.")}
     end
   end
 
@@ -200,72 +249,130 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
         </div>
 
         <div class="space-y-6 px-8 py-6">
+          <div class="rounded-lg border border-n300 bg-n100/60 px-4 py-3 text-[13px] text-n400">
+            Prefer one number for every shop?
+            <.link navigate={~p"/shared-line"} class="font-medium text-primary hover:underline">
+              Configure the shared WhatsApp line
+            </.link>
+          </div>
+
           <div
-            :for={
-              alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)
-            }
-            role="alert"
-            class={[
-              "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
-              alert_classes(alert.tone)
-            ]}
+            :if={@shared_line && @shared_line.id}
+            class="space-y-4 rounded-lg border border-n300 p-4"
           >
-            <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
-            <div class="space-y-1">
-              <p class="font-semibold">{alert.title}</p>
-              <p>{alert.body}</p>
+            <div>
+              <h2 class="text-sm font-semibold text-n900">Use the shared line</h2>
+              <p class="mt-1 text-[13px] text-n400">
+                Join the account number so buyers reach this shop through a prefilled
+                <span class="font-medium">wa.me</span> link. You do not need dedicated credentials.
+              </p>
+            </div>
+
+            <div :if={is_nil(@workspace.shared_line_id)} class="flex flex-col gap-3 sm:flex-row">
+              <form phx-change="update_shop_code" class="flex-1">
+                <label class="block text-sm font-medium text-n900">Shop code</label>
+                <input
+                  type="text"
+                  name="shop_code"
+                  value={@shop_code}
+                  class="mt-1.5 w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900"
+                />
+              </form>
+              <div class="flex items-end">
+                <button
+                  type="button"
+                  phx-click="join_shared_line"
+                  class="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Join shared line
+                </button>
+              </div>
+            </div>
+
+            <div :if={@workspace.shared_line_id} class="space-y-3">
+              <p class="text-sm text-n900">
+                Joined as <span class="font-mono text-[13px]">[shop:{@workspace.shop_code}]</span>
+              </p>
+              <.copy_field :if={@wa_me_url} id="shop-wa-me" label="Buyer link" value={@wa_me_url} />
+              <button
+                type="button"
+                phx-click="leave_shared_line"
+                class="text-sm font-medium text-danger hover:underline"
+              >
+                Leave shared line
+              </button>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-n400">Status</span>
-            <span class={[
-              "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold",
-              status_badge_class(@connection.status)
-            ]}>
-              {status_label(@connection.status)}
-            </span>
+          <div :if={is_nil(@workspace.shared_line_id)} class="space-y-6">
+            <div
+              :for={
+                alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)
+              }
+              role="alert"
+              class={[
+                "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
+                alert_classes(alert.tone)
+              ]}
+            >
+              <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
+              <div class="space-y-1">
+                <p class="font-semibold">{alert.title}</p>
+                <p>{alert.body}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-n400">Status</span>
+              <span class={[
+                "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold",
+                status_badge_class(@connection.status)
+              ]}>
+                {status_label(@connection.status)}
+              </span>
+            </div>
+
+            <div
+              :if={@connection.last_error}
+              role="alert"
+              class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-n400"
+            >
+              <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-danger" />
+              <span>{@connection.last_error}</span>
+            </div>
+
+            <.simple_form for={@form} phx-change="validate" phx-submit="save">
+              <.input field={@form[:phone_number_id]} label="Phone Number ID" required />
+              <.input field={@form[:waba_id]} label="WhatsApp Business Account ID" required />
+              <.input
+                field={@form[:access_token]}
+                type="password"
+                label="Access Token"
+                required
+                autocomplete="off"
+              />
+              <p class="-mt-3 text-[13px] text-n400">
+                The access token is encrypted at rest. Saving new credentials resets the
+                connection to <span class="font-medium">pending</span>
+                until the webhook is re-verified.
+              </p>
+
+              <:actions>
+                <.link
+                  navigate={~p"/workspaces/#{@workspace.id}"}
+                  class="mr-auto text-sm font-medium text-n400 transition hover:text-n900"
+                >
+                  Back to dashboard
+                </.link>
+                <.button>Save credentials</.button>
+              </:actions>
+            </.simple_form>
           </div>
-
-          <div
-            :if={@connection.last_error}
-            role="alert"
-            class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-n400"
-          >
-            <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-danger" />
-            <span>{@connection.last_error}</span>
-          </div>
-
-          <.simple_form for={@form} phx-change="validate" phx-submit="save">
-            <.input field={@form[:phone_number_id]} label="Phone Number ID" required />
-            <.input field={@form[:waba_id]} label="WhatsApp Business Account ID" required />
-            <.input
-              field={@form[:access_token]}
-              type="password"
-              label="Access Token"
-              required
-              autocomplete="off"
-            />
-            <p class="-mt-3 text-[13px] text-n400">
-              The access token is encrypted at rest. Saving new credentials resets the
-              connection to <span class="font-medium">pending</span> until the webhook is re-verified.
-            </p>
-
-            <:actions>
-              <.link
-                navigate={~p"/workspaces/#{@workspace.id}"}
-                class="mr-auto text-sm font-medium text-n400 transition hover:text-n900"
-              >
-                Back to dashboard
-              </.link>
-              <.button>Save credentials</.button>
-            </:actions>
-          </.simple_form>
         </div>
       </div>
 
       <div
-        :if={persisted?(@connection)}
+        :if={is_nil(@workspace.shared_line_id) and persisted?(@connection)}
         class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
       >
         <div class="space-y-1.5 border-b border-n300 px-8 py-6">
@@ -287,7 +394,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
       </div>
 
       <div
-        :if={persisted?(@connection)}
+        :if={is_nil(@workspace.shared_line_id) and persisted?(@connection)}
         class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
       >
         <div class="space-y-1.5 border-b border-n300 px-8 py-6">

@@ -3,6 +3,7 @@ defmodule SokochatWeb.WorkspaceShell do
   use SokochatWeb, :html
 
   attr :workspace, :map, required: true
+  attr :workspaces, :list, default: []
   attr :current_user, :map, required: true
   attr :tab, :atom, required: true
   attr :title, :string, required: true
@@ -21,16 +22,21 @@ defmodule SokochatWeb.WorkspaceShell do
     <div
       id={"workspace-#{@workspace.id}"}
       phx-hook="DashboardShell"
+      data-workspace-id={@workspace.id}
       data-storage-key="sokochat-dashboard-sidebar-width"
       data-default-width="220"
       data-min-width="180"
       data-max-width="320"
       class="obsidian-dashboard-shell"
     >
+      <.flash_group flash={@flash} />
+
       <aside id="workspace-sidebar" data-sidebar class="dash-sidebar">
         <.sidebar
           list="dock"
           workspace={@workspace}
+          workspaces={@workspaces}
+          tab={@tab}
           sections={@sections}
           active={@active}
           account={@current_user.email}
@@ -71,7 +77,6 @@ defmodule SokochatWeb.WorkspaceShell do
           </div>
         </header>
         <div id="main" class="obsidian-dashboard-shell-scroll dash-main">
-          <.flash_group flash={@flash} />
           {render_slot(@inner_block)}
         </div>
       </section>
@@ -88,6 +93,8 @@ defmodule SokochatWeb.WorkspaceShell do
           <.sidebar
             list="drawer"
             workspace={@workspace}
+            workspaces={@workspaces}
+            tab={@tab}
             sections={@sections}
             active={@active}
             account={@current_user.email}
@@ -101,6 +108,8 @@ defmodule SokochatWeb.WorkspaceShell do
 
   attr :list, :string, required: true
   attr :workspace, :map, required: true
+  attr :workspaces, :list, required: true
+  attr :tab, :atom, required: true
   attr :sections, :list, required: true
   attr :active, :string, required: true
   attr :account, :string, required: true
@@ -110,13 +119,12 @@ defmodule SokochatWeb.WorkspaceShell do
     ~H"""
     <div class="dash-sidebar-body">
       <div class="dash-brand">
-        <.link navigate={~p"/workspaces"} class="flex min-w-0 flex-1 items-center gap-2 no-underline">
-          <img src={~p"/images/logo.png"} alt="" width="32" height="32" class="dash-logo" />
-          <div class="dash-brand-copy">
-            <span class="dash-brand-name">Sokochat</span>
-            <span class="dash-brand-desc">{@workspace.name}</span>
-          </div>
-        </.link>
+        <.workspace_switcher
+          list={@list}
+          workspace={@workspace}
+          workspaces={@workspaces}
+          tab={@tab}
+        />
         <.button
           :if={@close}
           type="button"
@@ -179,6 +187,63 @@ defmodule SokochatWeb.WorkspaceShell do
     </div>
     """
   end
+
+  attr :list, :string, required: true
+  attr :workspace, :map, required: true
+  attr :workspaces, :list, required: true
+  attr :tab, :atom, required: true
+
+  defp workspace_switcher(assigns) do
+    ~H"""
+    <details id={"workspace-switcher-#{@list}"} class="dash-switcher">
+      <summary class="dash-switcher-trigger" aria-label={"Switch workspace. Current: #{@workspace.name}"}>
+        <img src={~p"/images/logo.png"} alt="" width="28" height="28" class="dash-logo dash-switcher-logo" />
+        <span class="dash-switcher-name">{@workspace.name}</span>
+        <span class="dash-switcher-caret" aria-hidden="true">
+          <.icon name="caret-down" class="h-3.5 w-3.5" />
+        </span>
+      </summary>
+
+      <div class="dash-switcher-menu" role="menu" aria-label="Workspaces">
+        <ul class="dash-switcher-list">
+          <li :for={ws <- @workspaces} role="none">
+            <.link
+              navigate={tab_path(ws.id, @tab)}
+              role="menuitem"
+              aria-current={ws.id == @workspace.id && "true"}
+              class={[
+                "dash-switcher-item",
+                ws.id == @workspace.id && "dash-switcher-item-current"
+              ]}
+            >
+              <span class="dash-switcher-avatar" aria-hidden="true">
+                {ws.name |> String.first() |> String.upcase()}
+              </span>
+              <span class="dash-switcher-item-name">{ws.name}</span>
+              <span :if={ws.id == @workspace.id} class="dash-switcher-check" aria-hidden="true">
+                <.icon name="check" class="h-4 w-4" />
+              </span>
+            </.link>
+          </li>
+        </ul>
+
+        <div class="dash-switcher-footer">
+          <.link navigate={~p"/workspaces/new"} class="dash-switcher-action" role="menuitem">
+            <.icon name="plus" class="h-4 w-4" /> New workspace
+          </.link>
+        </div>
+      </div>
+    </details>
+    """
+  end
+
+  defp tab_path(workspace_id, :business), do: ~p"/workspaces/#{workspace_id}"
+  defp tab_path(workspace_id, :products), do: ~p"/workspaces/#{workspace_id}/products"
+  defp tab_path(workspace_id, :cta), do: ~p"/workspaces/#{workspace_id}/cta"
+  defp tab_path(workspace_id, :meta), do: ~p"/workspaces/#{workspace_id}/connection"
+  defp tab_path(workspace_id, :playground), do: ~p"/workspaces/#{workspace_id}/playground"
+  defp tab_path(workspace_id, :analytics), do: ~p"/workspaces/#{workspace_id}/analytics"
+  defp tab_path(workspace_id, _), do: ~p"/workspaces/#{workspace_id}"
 
   defp nav_sections(workspace_id) do
     [

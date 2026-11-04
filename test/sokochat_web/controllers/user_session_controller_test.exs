@@ -18,7 +18,7 @@ defmodule SokochatWeb.UserSessionControllerTest do
 
     test "redirects if already logged in", %{conn: conn, user: user} do
       conn = conn |> log_in_user(user) |> get(~p"/users/log_in")
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/workspaces/new"
     end
   end
 
@@ -30,7 +30,7 @@ defmodule SokochatWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/workspaces/new"
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
@@ -51,7 +51,7 @@ defmodule SokochatWeb.UserSessionControllerTest do
         })
 
       assert conn.resp_cookies["_sokochat_web_user_remember_me"]
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/workspaces/new"
     end
 
     test "logs the user in with return to", %{conn: conn, user: user} do
