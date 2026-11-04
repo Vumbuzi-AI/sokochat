@@ -13,6 +13,9 @@ config :swoosh, api_client: Swoosh.ApiClient.Finch, finch_name: Sokochat.Finch
 # Disable Swoosh Local Memory Storage
 config :swoosh, local: false
 
+# Keep an absent email provider explicit; never use the development mailbox here.
+config :sokochat, Sokochat.Mailer, adapter: Sokochat.Mailer.UnconfiguredAdapter
+
 # Do not print debug messages in production
 config :logger, level: :info
 

@@ -121,7 +121,7 @@ IO.puts("""
 
 Soko Shoes demo ready
   Email: #{email}
-  Password: #{password}
+  Password: configured through SEED_SHOES_PASSWORD (not printed)
   Workspace: /workspaces/#{workspace.id}
   Playground: /workspaces/#{workspace.id}/playground
   Products: Adidas Spezial, Nike Shox, Onitsuka Tigers

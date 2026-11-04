@@ -13,14 +13,23 @@ defmodule SokochatWeb.UserRegistrationController do
   def create(conn, %{"user" => user_params}) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
-        {:ok, _} =
+        delivery =
           Accounts.deliver_user_confirmation_instructions(
             user,
             &url(~p"/users/confirm/#{&1}")
           )
 
+        message =
+          case delivery do
+            {:ok, _} ->
+              "User created successfully."
+
+            {:error, _} ->
+              "Your account is ready. We couldn't send your confirmation email right now."
+          end
+
         conn
-        |> put_flash(:info, "User created successfully.")
+        |> put_flash(:info, message)
         |> UserAuth.log_in_user(user, %{"redirect_to" => ~p"/workspaces/new"})
 
       {:error, %Ecto.Changeset{} = changeset} ->

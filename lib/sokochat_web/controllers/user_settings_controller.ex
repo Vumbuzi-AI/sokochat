@@ -16,18 +16,27 @@ defmodule SokochatWeb.UserSettingsController do
 
     case Accounts.apply_user_email(user, password, user_params) do
       {:ok, applied_user} ->
-        Accounts.deliver_user_update_email_instructions(
-          applied_user,
-          user.email,
-          &url(~p"/users/settings/confirm_email/#{&1}")
-        )
+        case Accounts.deliver_user_update_email_instructions(
+               applied_user,
+               user.email,
+               &url(~p"/users/settings/confirm_email/#{&1}")
+             ) do
+          {:ok, _} ->
+            conn
+            |> put_flash(
+              :info,
+              "A link to confirm your email change has been sent to the new address."
+            )
+            |> redirect(to: ~p"/users/settings")
 
-        conn
-        |> put_flash(
-          :info,
-          "A link to confirm your email change has been sent to the new address."
-        )
-        |> redirect(to: ~p"/users/settings")
+          {:error, _} ->
+            conn
+            |> put_flash(
+              :error,
+              "We couldn't send the confirmation email. Your email hasn't changed."
+            )
+            |> render(:edit, email_changeset: Accounts.change_user_email(user, user_params))
+        end
 
       {:error, changeset} ->
         render(conn, :edit, email_changeset: changeset)

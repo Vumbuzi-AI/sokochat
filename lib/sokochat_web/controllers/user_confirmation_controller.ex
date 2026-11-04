@@ -8,6 +8,19 @@ defmodule SokochatWeb.UserConfirmationController do
   end
 
   def create(conn, %{"user" => %{"email" => email}}) do
+    if Sokochat.Mailer.configured?() do
+      send_instructions(conn, email)
+    else
+      conn
+      |> put_flash(
+        :error,
+        "Confirmation emails are unavailable right now. Please try again later."
+      )
+      |> redirect(to: ~p"/users/confirm")
+    end
+  end
+
+  defp send_instructions(conn, email) do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_user_confirmation_instructions(
         user,

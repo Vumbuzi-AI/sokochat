@@ -10,6 +10,19 @@ defmodule SokochatWeb.UserResetPasswordController do
   end
 
   def create(conn, %{"user" => %{"email" => email}}) do
+    if Sokochat.Mailer.configured?() do
+      send_instructions(conn, email)
+    else
+      conn
+      |> put_flash(
+        :error,
+        "Password reset emails are unavailable right now. Please try again later."
+      )
+      |> redirect(to: ~p"/users/reset_password")
+    end
+  end
+
+  defp send_instructions(conn, email) do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_user_reset_password_instructions(
         user,
