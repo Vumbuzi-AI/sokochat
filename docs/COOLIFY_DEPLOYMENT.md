@@ -86,3 +86,27 @@ See `services/pi-intelligence/PRODUCTION_READINESS.md` for local tests and the
 human-confirmed Pi recovery exercise. Deployed provider/tool behavior, user flows,
 signed delivery, volume retention through container replacement, and backup restore
 remain unverified. Local demo accounts/catalogs were not copied to the public app.
+
+## Staging update: 2026-11-04
+
+Sean reported a registration POST crash after deploying `0540af3`. Runtime logs
+showed the account insert succeeded, followed by an exit from the development
+Swoosh mailbox because production disables its storage process. Revision
+`3aadb1e` replaces that production adapter with an explicit unconfigured adapter,
+handles notification errors/exits without logging email contents, and preserves
+successful account creation and login. Recovery routes report email unavailability
+without account enumeration, and a failed email change retains the current email.
+The deployment finished and Coolify reported `running:healthy`.
+
+At Sean's request to treat this deployment as staging, a disabled/manual-only
+Coolify task ran `Sokochat.Release.seed_shoes()` successfully. It created workspace
+1 (`/workspaces/1/playground`) with Adidas Spezial, Nike Shox and Onitsuka Tigers
+and their R2 image URLs. The owner is `shoes@sokochat.local`; a generated password
+is stored as a runtime secret and is not printed by the seed. The one-shot process
+does not start another HTTP server or run its own scheduled jobs. The ordinary
+staging owner's account created before the original crash was not removed.
+
+Compilation, formatting and static review were performed. Regression tests were
+added but not executed by the assistant, and registration/playground UI checks
+remain Sean's responsibility under the agreed testing boundary. See
+`docs/ENVIRONMENT.md` for the mail-failure test commands and seed operation.

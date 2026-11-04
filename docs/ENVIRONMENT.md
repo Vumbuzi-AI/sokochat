@@ -75,6 +75,34 @@ Production-optional values:
 
 Per-workspace Meta values (`phone_number_id`, `waba_id`, and `access_token`) are stored through the UI in `meta_connections`; they are not global production env vars.
 
+### Staging email and shoe demo
+
+Production currently uses `Sokochat.Mailer.UnconfiguredAdapter` until a real email
+transport and sender are configured. Account creation still signs the user in,
+with an explicit notice when confirmation email cannot be delivered. Accounts are
+not automatically confirmed. Password-reset and confirmation requests report that
+email is unavailable uniformly, without revealing whether an address exists.
+Authenticated email changes retain the old address when delivery fails.
+
+To seed only the fictional shoe store in a release, set runtime
+`SEED_SHOES_EMAIL` (default `shoes@sokochat.local`) and a generated
+`SEED_SHOES_PASSWORD` of at least 16 characters, then run:
+
+```sh
+/app/bin/sokochat eval 'Sokochat.Release.seed_shoes()'
+```
+
+The command starts its own application without an HTTP listener, scheduled jobs,
+or job execution. It seeds/updates the shoe owner, workspace and three products;
+it does not run the broader demo seed. Passwords are not printed. The Coolify
+seed task is disabled for recurring execution and is run manually when requested.
+
+Regression handoff (not executed by the assistant):
+
+```sh
+mix test test/sokochat_web/controllers/account_email_failure_test.exs test/sokochat_web/controllers/user_registration_controller_test.exs test/sokochat_web/controllers/user_confirmation_controller_test.exs test/sokochat_web/controllers/user_reset_password_controller_test.exs test/sokochat_web/controllers/user_settings_controller_test.exs
+```
+
 ## Aliases
 
 Aliases in `mix.exs`:
