@@ -104,6 +104,7 @@ defmodule SokochatWeb.Router do
       live "/workspaces/:id/cta", WorkspacesLive.Setup, :cta
       live "/workspaces/:id/connection", WorkspacesLive.Setup, :meta
       live "/workspaces/:id/analytics", WorkspacesLive.Analytics, :show
+      live "/workspaces/:id/inbox", WorkspacesLive.Inbox, :index
       live "/workspaces/:id/endpoint", WorkspacesLive.Endpoint, :show
       live "/workspaces/:id/cta_rules", WorkspacesLive.CTARules, :show
       live "/workspaces/:id/playground", PlaygroundLive, :show

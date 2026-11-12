@@ -271,7 +271,7 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
   @impl true
   def render(assigns) do
     ~H"""
-    <section :if={@workspace} class="space-y-8">
+    <section :if={@workspace} class="px-4 py-10 sm:px-8 space-y-8">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-3">
           <p class="text-sm font-medium text-zinc-500">{@workspace.name}</p>
@@ -537,7 +537,7 @@ defmodule SokochatWeb.WorkspacesLive.CTARules do
               <% end %>
 
               <:actions>
-                <.button type="button" variant="secondary" phx-click="close_rule_form">
+                <.button type="button" tone="secondary" phx-click="close_rule_form">
                   Cancel
                 </.button>
                 <.button>{if @editing_rule, do: "Save changes", else: "Create rule"}</.button>

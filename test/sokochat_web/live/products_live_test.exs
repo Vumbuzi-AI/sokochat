@@ -94,6 +94,10 @@ defmodule SokochatWeb.ProductsLiveTest do
     refute html =~ "Buyer-facing product category"
 
     view
+    |> element("button[phx-value-tab=\"categories\"]")
+    |> render_click()
+
+    view
     |> form("#shop-categories", category: %{query: "Fruit"})
     |> render_submit()
 

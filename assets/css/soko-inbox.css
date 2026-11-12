@@ -1,0 +1,20 @@
+.soko-inbox { display:grid;grid-template-columns:340px minmax(0,1fr);min-height:calc(100dvh - 64px); }
+.soko-inbox-list { padding:16px;border-inline-end:1px solid var(--color-soko-divider); }
+.soko-inbox-list h2 { font:500 16px var(--font-sans);margin-block-end:16px; }
+.soko-inbox-row { display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;padding:16px;margin-block-end:8px;border-radius:10px;text-align:start; }
+.soko-inbox-row:hover { background:var(--color-soko-hover); }
+.soko-inbox-row.is-selected { background:var(--color-soko-white); }
+.soko-inbox-row small,.soko-inbox-detail small,.soko-inbox-source,.soko-inbox-privacy { color:var(--color-soko-ink-2);font-size:12px; }
+.soko-inbox-detail { padding:24px;min-width:0; }
+.soko-inbox-detail h2 { font-family:var(--font-display);font-weight:var(--font-weight-display);font-size:24px; }
+.soko-inbox-source { font-size:14px;margin-block:12px 32px; }
+.soko-inbox-product { display:flex;align-items:center;gap:16px; }
+.soko-inbox-product img { width:96px;height:96px;object-fit:cover;border-radius:10px; }
+.soko-inbox-product h3 { font-size:16px;font-weight:500; }
+.soko-inbox-product p,.soko-inbox-product small { display:block;margin-block-start:8px; }
+.soko-inbox-buyer { margin-block:32px; }
+.soko-inbox-buyer p { margin-block-start:8px; }
+.soko-inbox-action { margin-block-start:24px; }
+.soko-inbox-privacy { margin-block-start:32px; }
+.soko-inbox-empty { padding:64px 24px; }
+@media(max-width:900px) { .soko-inbox { grid-template-columns:minmax(0,1fr); }.soko-inbox-list { border-inline-end:0;border-block-end:1px solid var(--color-soko-divider); }.soko-inbox-detail { padding:24px 16px; } }

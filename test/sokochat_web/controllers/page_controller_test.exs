@@ -4,8 +4,8 @@ defmodule SokochatWeb.PageControllerTest do
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
-    assert response =~ "Your always-on WhatsApp sales team"
-    assert response =~ "Turn WhatsApp conversations into"
-    assert response =~ "Built for merchants, marketplaces, and growing teams across East Africa"
+    assert response =~ "Turn WhatsApp chats"
+    assert response =~ "AI answers customers from your catalogue"
+    assert response =~ "List your shop"
   end
 end

@@ -145,8 +145,8 @@ export const DashboardShell = {
         this.closeDrawer(false)
       }
 
-      const switcher = event.target.closest?.(".dash-switcher")
-      this.el.querySelectorAll(".dash-switcher[open]").forEach((el) => {
+      const switcher = event.target.closest?.("[data-switcher]")
+      this.el.querySelectorAll("[data-switcher][open]").forEach((el) => {
         if (el !== switcher) el.removeAttribute("open")
       })
     }
@@ -168,7 +168,7 @@ export const DashboardShell = {
       }
 
       if (event.key === "Escape") {
-        const openSwitcher = this.el.querySelector(".dash-switcher[open]")
+        const openSwitcher = this.el.querySelector("[data-switcher][open]")
         if (openSwitcher) {
           event.preventDefault()
           event.stopPropagation()

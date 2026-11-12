@@ -36,10 +36,16 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
         :ok
 
       shared_line ->
-        case ShopRouter.route(shared_line, phone_number, message_text, reply_id) do
+        case ShopRouter.route(
+               shared_line,
+               phone_number,
+               message_text,
+               reply_id,
+               args["whatsapp_message_id"]
+             ) do
           {:dispatch, shop, cleaned_text, opts} ->
             maybe_send_switch_notice(shared_line, phone_number, opts)
-            dispatch_and_reply(shop.id, phone_number, cleaned_text, args)
+            dispatch_and_reply(shop.id, phone_number, cleaned_text, args, opts)
 
           {:picker, intro, cta} ->
             send_picker(shared_line, phone_number, intro, cta)
@@ -64,7 +70,7 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
     end
   end
 
-  defp dispatch_and_reply(workspace_id, phone_number, message_text, args) do
+  defp dispatch_and_reply(workspace_id, phone_number, message_text, args, opts \\ []) do
     connection = Meta.connection_for_send(workspace_id)
 
     if is_nil(connection) do
@@ -77,7 +83,9 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
       if Sokochat.AI.Intelligence.agentic?() do
         case Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp,
                wait: false,
-               source_key: "whatsapp:#{args["whatsapp_message_id"]}"
+               source_key: "whatsapp:#{args["whatsapp_message_id"]}",
+               marketplace_reply: Keyword.get(opts, :marketplace_reply),
+               preferred_shop: Keyword.get(opts, :preferred_shop)
              ) do
           {:ok, _turn} -> :ok
           {:error, reason} -> {:error, reason}

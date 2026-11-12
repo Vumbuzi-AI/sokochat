@@ -50,7 +50,6 @@ defmodule Sokochat.Meta.Sender do
     send_message(connection, to, message)
   end
 
-
   @doc false
   def build_messages(cta, reply_text) do
     case normalize_cta(cta) do
@@ -234,9 +233,14 @@ defmodule Sokochat.Meta.Sender do
       |> Enum.take(3)
       |> Enum.with_index()
       |> Enum.map(fn {label, index} ->
+        {id, title} =
+          if is_map(label),
+            do: {value(label, "id") || "btn_#{index}", value(label, "title") || "Choose"},
+            else: {"btn_#{index}", to_string(label)}
+
         %{
           type: "reply",
-          reply: %{id: "btn_#{index}", title: truncate(to_string(label), 20)}
+          reply: %{id: truncate(id, 200), title: truncate(title, 20)}
         }
       end)
 

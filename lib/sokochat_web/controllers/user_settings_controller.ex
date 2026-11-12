@@ -2,9 +2,12 @@ defmodule SokochatWeb.UserSettingsController do
   use SokochatWeb, :controller
 
   alias Sokochat.Accounts
+  alias Sokochat.Workspaces
   alias SokochatWeb.UserAuth
 
+  plug :put_layout, false
   plug :assign_email_and_password_changesets
+  plug :assign_desk
 
   def edit(conn, _params) do
     render(conn, :edit)
@@ -79,5 +82,17 @@ defmodule SokochatWeb.UserSettingsController do
     conn
     |> assign(:email_changeset, Accounts.change_user_email(user))
     |> assign(:password_changeset, Accounts.change_user_password(user))
+  end
+
+  defp assign_desk(conn, _opts) do
+    workspaces = Workspaces.list_workspaces(conn.assigns.current_user.id)
+    preferred = get_session(conn, :last_workspace_id)
+
+    workspace =
+      Enum.find(workspaces, &(to_string(&1.id) == to_string(preferred))) || List.first(workspaces)
+
+    conn
+    |> assign(:workspaces, workspaces)
+    |> assign(:workspace, workspace)
   end
 end

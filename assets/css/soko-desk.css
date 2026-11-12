@@ -1,0 +1,430 @@
+/*
+ * Desk shell: Stage canvas, Soko Sidebar (240px), Soko Page Header (53px),
+ * content panel on Base with 1px Line and radius 14.
+ * Rendered by SokochatWeb.WorkspaceShell.
+ */
+
+.soko-desk {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: 100dvh;
+  background: var(--color-soko-stage);
+  color: var(--color-soko-ink);
+}
+
+.soko-desk-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 8px 8px 0;
+}
+
+.soko-desk-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--color-soko-base);
+  border: 1px solid var(--color-soko-line);
+  border-radius: var(--radius-soko-14);
+  scrollbar-gutter: stable;
+}
+
+.soko-desk-panel[data-flush] {
+  padding: 0;
+  overflow: hidden;
+}
+
+.soko-desk-menu {
+  display: none;
+}
+
+/* Soko Sidebar */
+.soko-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 12px 12px;
+  font-family: var(--font-sans);
+  color: var(--color-soko-ink);
+}
+
+.soko-sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.soko-sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+}
+
+.soko-sidebar-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 0 0 6px;
+  border-top: 1px solid var(--color-soko-divider);
+}
+
+.soko-sidebar-email {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-soko-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.soko-sidebar-email:hover {
+  color: var(--color-soko-ink);
+}
+
+/* Shop switcher */
+.soko-switcher {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.soko-switcher > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 53px;
+  padding: 0 6px;
+  border-radius: 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.soko-switcher > summary::-webkit-details-marker {
+  display: none;
+}
+
+.soko-switcher > summary:focus-visible {
+  outline: 3px solid var(--color-soko-mint);
+}
+
+.soko-mark {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: left center;
+}
+
+.soko-switcher-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soko-switcher-caret {
+  display: inline-flex;
+  color: var(--color-soko-ink-3);
+  transition: transform 150ms ease-out;
+}
+
+.soko-switcher[open] .soko-switcher-caret {
+  transform: rotate(180deg);
+}
+
+.soko-switcher-menu {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 4px;
+  background: var(--color-soko-white);
+  border: 1px solid var(--color-soko-line);
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .soko-switcher-menu {
+  background: var(--color-soko-field);
+}
+
+.soko-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--color-soko-ink);
+  text-decoration: none;
+}
+
+.soko-switcher-item:hover {
+  background: var(--color-soko-hover);
+}
+
+.soko-switcher-item[aria-current="true"] {
+  font-weight: 500;
+}
+
+.soko-switcher-item svg {
+  width: 16px;
+  height: 16px;
+}
+
+.soko-switcher-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-soko-divider);
+}
+
+/* Playground: phone on the panel, help rail on the right */
+.soko-playground {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  height: 100%;
+}
+
+.soko-playground .wa-stage {
+  height: 100%;
+  padding: 16px;
+}
+
+.soko-playground-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+  border-left: 1px solid var(--color-soko-divider);
+  overflow-y: auto;
+}
+
+@media (max-width: 1023px) {
+  .soko-playground {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .soko-playground .wa-stage {
+    height: calc(100dvh - 80px);
+  }
+
+  .soko-playground-rail {
+    border-left: 0;
+    border-top: 1px solid var(--color-soko-divider);
+  }
+
+  .soko-desk-panel[data-flush]:has(.soko-playground) {
+    overflow-y: auto;
+  }
+}
+
+/* Analytics: KPIs and activity chart. Layout follows the panel width. */
+.soko-overview {
+  container-type: inline-size;
+}
+
+.soko-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.soko-overview-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@container (min-width: 720px) {
+  .soko-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .soko-overview-grid {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+.soko-card {
+  padding: 14px 16px;
+  background: var(--color-soko-white);
+  border: 1px solid var(--color-soko-line);
+  border-radius: var(--radius-soko-14);
+}
+
+.soko-series-a {
+  background: var(--color-soko-forest);
+}
+
+.soko-series-b {
+  background: var(--color-soko-mint);
+}
+
+.soko-chart {
+  position: relative;
+  height: 196px;
+}
+
+.soko-chart-grid {
+  position: absolute;
+  inset: 0 0 24px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.soko-chart-grid span {
+  position: relative;
+  height: 0;
+  border-top: 1px dashed var(--color-soko-line-2);
+}
+
+[data-theme="dark"] .soko-chart-grid span {
+  border-top-color: var(--color-soko-divider);
+}
+
+.soko-chart-grid span::before {
+  content: attr(data-value);
+  position: absolute;
+  top: 0;
+  left: -28px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-soko-ink-3);
+  transform: translateY(-50%);
+}
+
+.soko-chart-cols {
+  position: absolute;
+  inset: 0 0 0 28px;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr));
+  gap: 6px;
+}
+
+.soko-chart-col {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: minmax(0, 1fr) 24px;
+}
+
+.soko-bars {
+  display: flex;
+  grid-row: 1;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+}
+
+.soko-bar {
+  width: min(12px, 40%);
+  align-self: flex-end;
+  border-radius: 4px 4px 2px 2px;
+  transition: opacity 150ms ease-out;
+}
+
+.soko-chart-label {
+  grid-row: 2;
+  align-self: end;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--color-soko-ink-3);
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .soko-chart-cols:hover .soko-chart-col:not(:hover) .soko-bar {
+    opacity: 0.45;
+  }
+}
+
+/* Mobile drawer */
+.soko-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.soko-drawer[hidden] {
+  display: none;
+}
+
+.soko-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--color-soko-scrim);
+  opacity: 0;
+  transition: opacity 240ms ease-out;
+}
+
+.soko-drawer-panel {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 264px;
+  background: var(--color-soko-stage);
+  transform: translateX(-100%);
+  transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.soko-drawer[data-open] .soko-drawer-backdrop {
+  opacity: 1;
+}
+
+.soko-drawer[data-open] .soko-drawer-panel {
+  transform: translateX(0);
+}
+
+@media (max-width: 767px) {
+  .soko-desk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .soko-desk > .soko-sidebar {
+    display: none;
+  }
+
+  .soko-desk-main {
+    padding: 0 8px 8px;
+  }
+
+  .soko-desk-menu {
+    display: inline-grid;
+    margin-left: -4px;
+  }
+
+  .soko-desk-panel {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soko-drawer-backdrop,
+  .soko-drawer-panel,
+  .soko-switcher-caret {
+    transition: none;
+  }
+}

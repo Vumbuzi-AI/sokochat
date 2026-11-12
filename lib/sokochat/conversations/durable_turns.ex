@@ -58,6 +58,7 @@ defmodule Sokochat.Conversations.DurableTurns do
             user_message_id: message.id,
             source_key: key,
             instructions: instructions,
+            fixed_reply: Keyword.get(opts, :marketplace_reply),
             tool_mode:
               if(prepared.workspace.data_source == "manual" and is_nil(prepared.endpoint),
                 do: "catalog",
@@ -66,6 +67,7 @@ defmodule Sokochat.Conversations.DurableTurns do
           })
 
         %{turn_id: turn.id} |> Sokochat.Workers.RunAiTurn.new() |> Oban.insert!()
+
         turn
       end
     end)
@@ -138,22 +140,28 @@ defmodule Sokochat.Conversations.DurableTurns do
               # Reuse the channel card builder with authoritative workspace data.
               workspace = Repo.get!(Sokochat.Workspaces.Workspace, turn.workspace_id)
 
-              context =
-                if workspace.data_source == "manual" do
-                  card_products(turn.workspace_id, user_message.content, reply)
-                else
-                  case Sokochat.Endpoints.get_endpoint(turn.workspace_id) do
-                    nil -> %{}
-                    endpoint -> endpoint.cached_data || %{}
+              if workspace.marketplace do
+                if reply[:trusted],
+                  do: reply.cta,
+                  else: Sokochat.Marketplace.safe_cta(workspace, reply.cta)
+              else
+                context =
+                  if workspace.data_source == "manual" do
+                    card_products(turn.workspace_id, user_message.content, reply)
+                  else
+                    case Sokochat.Endpoints.get_endpoint(turn.workspace_id) do
+                      nil -> %{}
+                      endpoint -> endpoint.cached_data || %{}
+                    end
                   end
-                end
 
-              cta =
-                if workspace.data_source == "manual",
-                  do: safe_manual_cta(workspace, context, reply.cta),
-                  else: reply.cta
+                cta =
+                  if workspace.data_source == "manual",
+                    do: safe_manual_cta(workspace, context, reply.cta),
+                    else: reply.cta
 
-              ProductCTA.attach(reply.reply, user_message.content, context, cta)
+                ProductCTA.attach(reply.reply, user_message.content, context, cta)
+              end
             end
 
           {:ok, assistant} =

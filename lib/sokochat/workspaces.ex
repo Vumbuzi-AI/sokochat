@@ -10,7 +10,7 @@ defmodule Sokochat.Workspaces do
 
   def list_workspaces(user_id) do
     Workspace
-    |> where([workspace], workspace.account_id == ^user_id)
+    |> where([workspace], workspace.account_id == ^user_id and not workspace.marketplace)
     |> order_by([workspace], desc: workspace.inserted_at)
     |> Repo.all()
   end
@@ -26,7 +26,7 @@ defmodule Sokochat.Workspaces do
 
     preferred ||
       Workspace
-      |> where([workspace], workspace.account_id == ^user_id)
+      |> where([workspace], workspace.account_id == ^user_id and not workspace.marketplace)
       |> order_by([workspace], desc: workspace.updated_at)
       |> limit(1)
       |> Repo.one()
@@ -63,9 +63,14 @@ defmodule Sokochat.Workspaces do
       |> Map.put("account_id", user_id)
       |> Map.put("slug", unique_slug(user_id, attrs))
 
-    %Workspace{}
-    |> Workspace.changeset(attrs)
-    |> Repo.insert()
+    Repo.transaction(fn ->
+      with {:ok, workspace} <- %Workspace{} |> Workspace.changeset(attrs) |> Repo.insert(),
+           {:ok, workspace} <- Sokochat.Marketplace.enroll(workspace) do
+        workspace
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   def update_workspace(%Workspace{} = workspace, attrs) do

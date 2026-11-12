@@ -1,19 +1,14 @@
 defmodule SokochatWeb.CoreComponents do
   @moduledoc """
-  Provides core UI components.
+  Sokochat v2 UI components.
 
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as modals, tables, and
-  forms. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
+  Each component mirrors a "Soko" component on the Doop canvas
+  (https://doop.design/c/nbdU_ygDzg, Components page) and renders the
+  matching `soko-*` classes from `assets/css/soko-components.css`.
+  Colours, type and radii come from the tokens in `soko-tokens.css`.
 
-  The default components use Tailwind CSS, a utility-first CSS framework.
-  See the [Tailwind CSS documentation](https://tailwindcss.com) to learn
-  how to customize them or feel free to swap in another framework altogether.
-
-  Icons are provided by [Phosphor](https://phosphoricons.com) through
-  `phosphor_live_view`. See `icon/1` for usage.
+  Icons are [Phosphor](https://phosphoricons.com) through
+  `phosphor_live_view`. See `icon/1`.
   """
   use Phoenix.Component
   use Gettext, backend: SokochatWeb.Gettext
@@ -21,82 +16,124 @@ defmodule SokochatWeb.CoreComponents do
   alias Phoenix.LiveView.JS
 
   @doc """
-  Renders a modal.
+  Renders a Soko Modal on a flat scrim.
+
+  The modal is server-driven: render it with `:if` and handle `on_close`
+  to remove it. Body goes in the inner block; buttons go in `:actions`,
+  secondary first. Forms inside the body can keep their own actions,
+  which are styled as the modal footer.
+
+  `tone="danger"` shows the red warning tile. Use it for destructive
+  confirms together with a `tone="danger"` button labelled with the exact
+  action.
 
   ## Examples
 
-      <.modal id="confirm-modal">
-        This is a modal.
+      <.modal :if={@show} id="new-product" title="New product" on_close="close_modal">
+        ...
       </.modal>
-
-  JS commands may be passed to the `:on_cancel` to configure
-  the closing/cancel event, for example:
-
-      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
-        This is another modal.
-      </.modal>
-
   """
-  attr :id, :string, required: true
-  attr :show, :boolean, default: false
-  attr :on_cancel, JS, default: %JS{}
-  slot :inner_block, required: true
+  attr :id, :string, default: "modal"
+  attr :title, :string, required: true
+  attr :text, :string, default: nil
+  attr :tone, :string, default: "default", values: ~w(default danger)
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+  attr :on_close, :any, default: "close_modal", doc: "event name or JS command"
+  slot :inner_block
+  slot :actions
 
   def modal(assigns) do
     ~H"""
-    <div
-      id={@id}
-      phx-mounted={@show && show_modal(@id)}
-      phx-remove={hide_modal(@id)}
-      data-cancel={JS.exec(@on_cancel, "phx-remove")}
-      class="relative z-50 hidden"
-    >
-      <div id={"#{@id}-bg"} class="bg-zinc-50/90 fixed inset-0 transition-opacity" aria-hidden="true" />
-      <div
-        class="fixed inset-0 overflow-y-auto"
-        aria-labelledby={"#{@id}-title"}
-        aria-describedby={"#{@id}-description"}
-        role="dialog"
-        aria-modal="true"
-        tabindex="0"
-      >
-        <div class="flex min-h-full items-center justify-center">
-          <div class="w-full max-w-3xl p-4 sm:p-6 lg:py-8">
-            <.focus_wrap
-              id={"#{@id}-container"}
-              phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
-              phx-key="escape"
-              phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
-              class="shadow-zinc-700/10 ring-zinc-700/10 relative hidden rounded-2xl bg-white p-14 shadow-lg ring-1 transition"
+    <div id={@id} class="fixed inset-0 z-50" phx-window-keydown={@on_close} phx-key="escape">
+      <div class="soko-scrim" phx-click={@on_close} aria-hidden="true"></div>
+      <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <section
+          class="soko-modal pointer-events-auto"
+          data-tone={@tone}
+          data-size={@size}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={"#{@id}-title"}
+        >
+          <header class="soko-modal-head">
+            <span :if={@tone == "danger"} class="soko-modal-warn" aria-hidden="true">
+              <.icon name="warning-circle" />
+            </span>
+            <div class="soko-modal-titles">
+              <h2 id={"#{@id}-title"} class="soko-modal-title">{@title}</h2>
+              <p :if={@text} class="soko-modal-text">{@text}</p>
+            </div>
+            <button
+              type="button"
+              class="soko-icon-btn"
+              phx-click={@on_close}
+              aria-label={gettext("Close")}
             >
-              <div class="absolute top-6 right-5">
-                <button
-                  phx-click={JS.exec("data-cancel", to: "##{@id}")}
-                  type="button"
-                  class="-m-3 flex-none p-3 opacity-20 hover:opacity-40"
-                  aria-label={gettext("close")}
-                >
-                  <.icon name="hero-x-mark-solid" class="h-5 w-5" />
-                </button>
-              </div>
-              <div id={"#{@id}-content"}>
-                {render_slot(@inner_block)}
-              </div>
-            </.focus_wrap>
-          </div>
-        </div>
+              <.icon name="x" />
+            </button>
+          </header>
+          <div class="soko-modal-body">{render_slot(@inner_block)}</div>
+          <footer :if={@actions != []} class="soko-modal-foot">
+            {render_slot(@actions)}
+          </footer>
+        </section>
       </div>
     </div>
     """
   end
 
   @doc """
-  Renders flash notices.
+  Renders a Soko Modal confirm on a native `<dialog>`. It opens on the
+  client, so it works on LiveView and controller pages alike. Open it from
+  any element with `data-dialog-open={id}`; Cancel and Escape close it.
+
+  ## Examples
+
+      <.icon_button icon="sign-out" data-dialog-open="logout" aria-label="Log out" />
+      <.confirm_dialog id="logout" title="Log out of Sokochat?">
+        <:actions>
+          <.button href={~p"/users/log_out"} method="delete" tone="danger">Log out</.button>
+        </:actions>
+      </.confirm_dialog>
+  """
+  attr :id, :string, required: true
+  attr :title, :string, required: true
+  attr :text, :string, default: nil
+  attr :tone, :string, default: "danger", values: ~w(default danger)
+  slot :actions, required: true
+
+  def confirm_dialog(assigns) do
+    ~H"""
+    <dialog id={@id} class="soko-dialog" aria-labelledby={"#{@id}-title"} phx-update="ignore">
+      <section class="soko-modal" data-tone={@tone} data-size="sm">
+        <header class="soko-modal-head">
+          <span :if={@tone == "danger"} class="soko-modal-warn" aria-hidden="true">
+            <.icon name="warning-circle" />
+          </span>
+          <div class="soko-modal-titles">
+            <h2 id={"#{@id}-title"} class="soko-modal-title">{@title}</h2>
+            <p :if={@text} class="soko-modal-text">{@text}</p>
+          </div>
+          <button type="button" class="soko-icon-btn" data-dialog-close aria-label={gettext("Close")}>
+            <.icon name="x" />
+          </button>
+        </header>
+        <footer class="soko-modal-foot">
+          <.button type="button" tone="secondary" data-dialog-close>{gettext("Cancel")}</.button>
+          {render_slot(@actions)}
+        </footer>
+      </section>
+    </dialog>
+    """
+  end
+
+  @doc """
+  Renders a flash message as a Soko Toast.
 
   ## Examples
 
       <.flash kind={:info} flash={@flash} />
-      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
+      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome back</.flash>
   """
   attr :id, :string, doc: "the optional id of flash container"
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
@@ -115,19 +152,20 @@ defmodule SokochatWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide_flash("##{@id}")}
       role="alert"
-      class={["flash", @kind == :info && "flash-info", @kind == :error && "flash-error"]}
+      class="soko-toast"
+      data-tone={if @kind == :error, do: "danger", else: "success"}
       {@rest}
     >
-      <span class="flash-icon" aria-hidden="true">
-        <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
+      <span class="soko-toast-icon" aria-hidden="true">
+        <.icon :if={@kind == :info} name="check-circle" weight="fill" />
+        <.icon :if={@kind == :error} name="warning-circle" weight="fill" />
       </span>
-      <div class="flash-body">
-        <p :if={@title} class="flash-title">{@title}</p>
-        <p class="flash-message">{msg}</p>
-      </div>
-      <button type="button" class="flash-close" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-4 w-4" />
+      <span class="soko-toast-body">
+        <span :if={@title} class="soko-toast-title">{@title}</span>
+        <span>{msg}</span>
+      </span>
+      <button type="button" class="soko-toast-close" aria-label={gettext("Close")}>
+        <.icon name="x" />
       </button>
     </div>
     """
@@ -145,44 +183,42 @@ defmodule SokochatWeb.CoreComponents do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} class="flash-group">
+    <div id={@id} class="soko-toasts">
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
       <.flash
         id="client-error"
         kind={:error}
-        title={gettext("We can't find the internet")}
+        title={gettext("You're offline")}
         phx-disconnected={show_flash(".phx-client-error #client-error")}
         phx-connected={hide_flash("#client-error")}
         hidden
       >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="flash-spin h-3 w-3" />
+        {gettext("Reconnecting")}
+        <.icon name="arrow-clockwise" class="soko-toast-spin h-3 w-3" />
       </.flash>
-
       <.flash
         id="server-error"
         kind={:error}
-        title={gettext("Something went wrong!")}
+        title={gettext("Something went wrong")}
         phx-disconnected={show_flash(".phx-server-error #server-error")}
         phx-connected={hide_flash("#server-error")}
         hidden
       >
-        {gettext("Hang in there while we get back on track")}
-        <.icon name="hero-arrow-path" class="flash-spin h-3 w-3" />
+        {gettext("Getting back on track")}
+        <.icon name="arrow-clockwise" class="soko-toast-spin h-3 w-3" />
       </.flash>
     </div>
     """
   end
 
   @doc """
-  Renders a simple form.
+  Renders a form with Soko spacing. Actions sit at the end, right-aligned.
 
   ## Examples
 
       <.simple_form for={@form} phx-change="validate" phx-submit="save">
-        <.input field={@form[:email]} label="Email"/>
-        <.input field={@form[:username]} label="Username" />
+        <.input field={@form[:email]} label="Email" />
         <:actions>
           <.button>Save</.button>
         </:actions>
@@ -190,6 +226,7 @@ defmodule SokochatWeb.CoreComponents do
   """
   attr :for, :any, required: true, doc: "the data structure for the form"
   attr :as, :any, default: nil, doc: "the server side parameter to collect all input under"
+  attr :class, :any, default: nil
 
   attr :rest, :global,
     include: ~w(autocomplete name rel action enctype method novalidate target multipart),
@@ -200,62 +237,56 @@ defmodule SokochatWeb.CoreComponents do
 
   def simple_form(assigns) do
     ~H"""
-    <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="space-y-6">
-        {render_slot(@inner_block, f)}
-        <div
-          :for={action <- @actions}
-          class="flex flex-wrap items-center justify-end gap-3 border-t border-n300 pt-6"
-        >
-          {render_slot(action, f)}
-        </div>
+    <.form :let={f} for={@for} as={@as} class={["soko-form", @class]} {@rest}>
+      {render_slot(@inner_block, f)}
+      <div :for={action <- @actions} class="soko-form-actions">
+        {render_slot(action, f)}
       </div>
     </.form>
     """
   end
 
   @doc """
-  Renders an action button.
+  Renders a Soko Button. Pass `navigate`, `patch` or `href` to render a link
+  with the same look.
 
-  `variant` is `primary`, `secondary`, `muted`, `ghost`, or `danger`.
-  `size` is `sm`, `md`, or `icon`. Inside a form the type defaults to submit.
-  Pass `navigate` to render a LiveView navigation link with the same styling.
+    * `tone` - `primary` (forest, one per view), `secondary` (white fill and
+      border), `dark` (marketing nav and pairs), `danger` (only for the
+      confirm step of a destructive action).
+    * `size` - `lg` (48, marketing and auth), `md` (40), `sm` (30, desk).
+    * `width` - `full` for auth forms.
 
   ## Examples
 
-      <.button>Save</.button>
-      <.button variant="secondary" type="button" phx-click="close">Cancel</.button>
-      <.button variant="ghost" size="icon" aria-label="Close menu">...</.button>
+      <.button>Save changes</.button>
+      <.button tone="secondary" type="button" phx-click="close_modal">Cancel</.button>
+      <.button navigate={~p"/users/register"} size="lg">List your shop</.button>
   """
-  attr :variant, :string, default: "primary", values: ~w(primary secondary muted ghost danger)
-  attr :size, :string, default: "md", values: ~w(sm md icon)
+  attr :tone, :string, default: "primary", values: ~w(primary secondary dark danger)
+  attr :size, :string, default: "md", values: ~w(lg md sm)
+  attr :width, :string, default: "auto", values: ~w(auto full)
   attr :type, :string, default: nil
   attr :navigate, :string, default: nil
+  attr :patch, :string, default: nil
   attr :href, :string, default: nil
   attr :method, :string, default: nil
   attr :class, :any, default: nil
-  attr :rest, :global, include: ~w(disabled form name value)
+  attr :rest, :global, include: ~w(disabled form name value download target)
 
   slot :inner_block, required: true
 
-  def button(%{navigate: navigate} = assigns) when not is_nil(navigate) do
+  def button(%{navigate: nav, patch: patch, href: href} = assigns)
+      when not is_nil(nav) or not is_nil(patch) or not is_nil(href) do
     ~H"""
     <.link
       navigate={@navigate}
-      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </.link>
-    """
-  end
-
-  def button(%{href: href} = assigns) when not is_nil(href) do
-    ~H"""
-    <.link
+      patch={@patch}
       href={@href}
       method={@method}
-      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
+      class={["soko-btn", @class]}
+      data-tone={@tone}
+      data-size={@size}
+      data-width={@width}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -267,7 +298,10 @@ defmodule SokochatWeb.CoreComponents do
     ~H"""
     <button
       type={@type}
-      class={["dash-btn", button_variant(@variant), button_size(@size), @class]}
+      class={["soko-btn", @class]}
+      data-tone={@tone}
+      data-size={@size}
+      data-width={@width}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -275,50 +309,77 @@ defmodule SokochatWeb.CoreComponents do
     """
   end
 
-  defp button_variant("primary"), do: "dash-btn-primary"
-  defp button_variant("secondary"), do: "dash-btn-secondary"
-  defp button_variant("muted"), do: "dash-btn-muted"
-  defp button_variant("ghost"), do: "dash-btn-ghost"
-  defp button_variant("danger"), do: "dash-btn-danger"
-
-  defp button_size("sm"), do: "dash-btn-sm"
-  defp button_size("md"), do: "dash-btn-md"
-  defp button_size("icon"), do: "dash-btn-icon"
-
   @doc """
-  Renders an input with label and error messages.
-
-  A `Phoenix.HTML.FormField` may be passed as argument,
-  which is used to retrieve the input name, id, and values.
-  Otherwise all attributes may be passed explicitly.
-
-  ## Types
-
-  This function accepts all HTML input types, considering that:
-
-    * You may also set `type="select"` to render a `<select>` tag
-
-    * `type="checkbox"` is used exclusively to render boolean values
-
-    * For live file uploads, see `Phoenix.Component.live_file_input/1`
-
-  See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
-  for more information. Unsupported types, such as hidden and radio,
-  are best written directly in your templates.
+  Renders a quiet 30px icon button: modal close, row actions, log out.
+  An `aria-label` is required.
 
   ## Examples
 
-      <.input field={@form[:email]} type="email" />
-      <.input name="my-input" errors={["oh no!"]} />
+      <.icon_button icon="dots-three" aria-label="More" phx-click="menu" />
+      <.icon_button icon="sign-out" tone="danger" aria-label="Log out" />
+  """
+  attr :icon, :string, required: true
+  attr :tone, :string, default: "default", values: ~w(default danger)
+  attr :type, :string, default: "button"
+  attr :navigate, :string, default: nil
+  attr :href, :string, default: nil
+  attr :method, :string, default: nil
+  attr :class, :any, default: nil
+  attr :rest, :global, include: ~w(disabled aria-label title)
+
+  def icon_button(%{navigate: nav, href: href} = assigns)
+      when not is_nil(nav) or not is_nil(href) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      href={@href}
+      method={@method}
+      class={["soko-icon-btn", @class]}
+      data-tone={@tone}
+      {@rest}
+    >
+      <.icon name={@icon} />
+    </.link>
+    """
+  end
+
+  def icon_button(assigns) do
+    ~H"""
+    <button type={@type} class={["soko-icon-btn", @class]} data-tone={@tone} {@rest}>
+      <.icon name={@icon} />
+    </button>
+    """
+  end
+
+  @doc """
+  Renders a Soko Field (text inputs), Soko Select, textarea, Soko Checkbox
+  or Soko Toggle, with label, hint and errors.
+
+  A `Phoenix.HTML.FormField` may be passed as argument, which is used to
+  retrieve the input name, id, and values. Otherwise all attributes may be
+  passed explicitly.
+
+    * `size` - `lg` (48, auth and marketing) or `md` (36, desk, the default).
+    * `type="toggle"` renders a switch row with `label` and `hint`.
+    * `:trailing` slot holds an icon at the end of the box, e.g. an eye
+      toggle for passwords.
+
+  ## Examples
+
+      <.input field={@form[:email]} type="email" label="Email" size="lg" />
+      <.input field={@form[:ai_enabled]} type="toggle" label="AI replies" />
   """
   attr :id, :any, default: nil
   attr :name, :any
   attr :label, :string, default: nil
+  attr :hint, :string, default: nil
   attr :value, :any
+  attr :size, :string, default: "md", values: ~w(lg md)
+  attr :class, :any, default: nil
 
   attr :type, :string,
     default: "text",
-    values: ~w(checkbox color date datetime-local email file month number password
+    values: ~w(checkbox toggle color date datetime-local email file month number password
                range search select tel text textarea time url week)
 
   attr :field, Phoenix.HTML.FormField,
@@ -332,7 +393,9 @@ defmodule SokochatWeb.CoreComponents do
 
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
-                multiple pattern placeholder readonly required rows size step)
+                multiple pattern placeholder readonly required rows size step inputmode)
+
+  slot :trailing
 
   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
@@ -345,26 +408,30 @@ defmodule SokochatWeb.CoreComponents do
     |> input()
   end
 
-  def input(%{type: "checkbox"} = assigns) do
+  def input(%{type: type} = assigns) when type in ~w(checkbox toggle) do
     assigns =
       assign_new(assigns, :checked, fn ->
         Phoenix.HTML.Form.normalize_value("checkbox", assigns[:value])
       end)
 
     ~H"""
-    <div>
-      <label class="flex items-center gap-3 text-sm leading-6 text-n400">
+    <div class={@class}>
+      <label class={if @type == "toggle", do: "soko-toggle", else: "soko-check"}>
         <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
+        <span :if={@type == "toggle"} class="soko-toggle-text">
+          <span class="soko-toggle-label">{@label}</span>
+          <span :if={@hint} class="soko-toggle-hint">{@hint}</span>
+        </span>
         <input
           type="checkbox"
           id={@id}
           name={@name}
           value="true"
           checked={@checked}
-          class="h-4 w-4 rounded border-n300 text-primary focus:ring-primary"
+          role={@type == "toggle" && "switch"}
           {@rest}
         />
-        {@label}
+        <span :if={@type == "checkbox"}>{@label}</span>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -373,18 +440,18 @@ defmodule SokochatWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div>
-      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
-      <select
-        id={@id}
-        name={@name}
-        class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-        multiple={@multiple}
-        {@rest}
-      >
-        <option :if={@prompt} value="">{@prompt}</option>
-        {Phoenix.HTML.Form.options_for_select(@options, @value)}
-      </select>
+    <div class={["soko-field", @class]} data-size={@size} data-state={@errors != [] && "error"}>
+      <.label :if={@label} for={@id}>
+        {@label}
+      </.label>
+      <div class="soko-box">
+        <select id={@id} name={@name} class="soko-control" multiple={@multiple} {@rest}>
+          <option :if={@prompt} value="">{@prompt}</option>
+          {Phoenix.HTML.Form.options_for_select(@options, @value)}
+        </select>
+        <.icon :if={!@multiple} name="caret-down" class="soko-caret" />
+      </div>
+      <p :if={@hint && @errors == []} class="soko-hint">{@hint}</p>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -392,78 +459,115 @@ defmodule SokochatWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div>
-      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
-      <textarea
-        id={@id}
-        name={@name}
-        class={[
-          "mt-1.5 block w-full min-h-[6rem] rounded-lg bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition placeholder:text-n500 focus:ring-2",
-          @errors == [] && "border-n300 focus:border-primary focus:ring-primary/15",
-          @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
-        ]}
-        {@rest}
-      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+    <div class={["soko-field", @class]} data-size={@size} data-state={@errors != [] && "error"}>
+      <.label :if={@label} for={@id}>
+        {@label}
+      </.label>
+      <div class="soko-box">
+        <textarea id={@id} name={@name} class="soko-control" {@rest}>{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      </div>
+      <p :if={@hint && @errors == []} class="soko-hint">{@hint}</p>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
   end
 
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div>
-      <.label for={@id} required={@rest[:required] in [true, "required"]}>{@label}</.label>
-      <input
-        type={@type}
-        name={@name}
-        id={@id}
-        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={[
-          "mt-1.5 block w-full rounded-lg bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm transition placeholder:text-n500 focus:ring-2",
-          @errors == [] && "border-n300 focus:border-primary focus:ring-primary/15",
-          @errors != [] && "border-danger focus:border-danger focus:ring-danger/15"
-        ]}
-        {@rest}
-      />
+    <div class={["soko-field", @class]} data-size={@size} data-state={@errors != [] && "error"}>
+      <.label :if={@label} for={@id}>
+        {@label}
+      </.label>
+      <div class="soko-box">
+        <input
+          type={@type}
+          name={@name}
+          id={@id}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          class="soko-control"
+          aria-invalid={@errors != [] && "true"}
+          {@rest}
+        />
+        <span :if={@trailing != []} class="soko-trailing">{render_slot(@trailing)}</span>
+      </div>
+      <p :if={@hint && @errors == []} class="soko-hint">{@hint}</p>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
   end
 
   @doc """
-  Renders a label.
+  Renders a field label.
   """
   attr :for, :string, default: nil
-  attr :required, :boolean, default: false
   slot :inner_block, required: true
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-[13px] font-semibold leading-6 text-n900">
-      {render_slot(@inner_block)}<span :if={@required} class="text-danger" aria-hidden="true"> *</span>
-    </label>
+    <label for={@for} class="soko-label">{render_slot(@inner_block)}</label>
     """
   end
 
   @doc """
-  Generates a generic error message.
+  Generates a field error message.
   """
   slot :inner_block, required: true
 
   def error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-1.5 text-[13px] leading-6 text-danger">
-      <.icon name="hero-exclamation-circle-mini" class="mt-1 h-4 w-4 flex-none" />
+    <p class="soko-error">
+      <.icon name="warning-circle" />
       {render_slot(@inner_block)}
     </p>
     """
   end
 
   @doc """
-  Renders a header with title.
+  Renders a Soko Segmented control: two or three options on a stage track.
+  It submits like a radio group.
+
+  ## Examples
+
+      <.segmented field={@form[:reply_mode]} options={[{"Send automatically", "auto"}, {"Approve first", "approve"}]} />
   """
-  attr :class, :string, default: nil
+  attr :field, Phoenix.HTML.FormField, default: nil
+  attr :name, :string, default: nil
+  attr :value, :any, default: nil
+  attr :options, :list, required: true, doc: "list of {label, value}"
+  attr :label, :string, default: nil
+  attr :rest, :global
+
+  def segmented(assigns) do
+    assigns =
+      case assigns.field do
+        %Phoenix.HTML.FormField{} = field ->
+          assign(assigns, name: field.name, value: assigns.value || field.value)
+
+        nil ->
+          assigns
+      end
+
+    ~H"""
+    <div class="soko-segmented" role="radiogroup" aria-label={@label} {@rest}>
+      <label :for={{label, value} <- @options}>
+        <input
+          type="radio"
+          name={@name}
+          value={value}
+          checked={to_string(@value) == to_string(value)}
+        />
+        {label}
+      </label>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the desk page title with an optional subtitle and actions
+  (Soko Page Header). The desk shell renders one for every page; use this
+  for headings inside a page.
+  """
+  attr :class, :any, default: nil
 
   slot :inner_block, required: true
   slot :subtitle
@@ -471,28 +575,251 @@ defmodule SokochatWeb.CoreComponents do
 
   def header(assigns) do
     ~H"""
-    <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
-      <div>
-        <h1 class="text-[22px] font-bold leading-8 tracking-tight text-n900">
-          {render_slot(@inner_block)}
-        </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-n400">
-          {render_slot(@subtitle)}
-        </p>
+    <header class={["soko-page-header", @class]}>
+      <div class="soko-page-titles">
+        <h1 class="soko-page-title">{render_slot(@inner_block)}</h1>
+        <span :if={@subtitle != []} class="soko-page-subtitle">{render_slot(@subtitle)}</span>
       </div>
-      <div class="flex-none">{render_slot(@actions)}</div>
+      <div :if={@actions != []} class="soko-page-actions">{render_slot(@actions)}</div>
     </header>
     """
   end
 
-  @doc ~S"""
-  Renders a table with generic styling.
+  @doc """
+  Renders a settings section: title and help on the left, fields on the
+  right. Stack several inside one panel; dividers come for free.
 
   ## Examples
 
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
+      <.section title="Business profile" text="Sokochat uses this to describe your shop.">
+        <.input field={@form[:name]} label="Business name" />
+      </.section>
+  """
+  attr :title, :string, required: true
+  attr :text, :string, default: nil
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def section(assigns) do
+    ~H"""
+    <section class={["soko-section", @class]}>
+      <div>
+        <h2 class="soko-section-title">{@title}</h2>
+        <p :if={@text} class="soko-section-text">{@text}</p>
+      </div>
+      <div class="flex min-w-0 flex-col gap-4">{render_slot(@inner_block)}</div>
+    </section>
+    """
+  end
+
+  @doc """
+  Renders a Soko Badge.
+
+    * `success` - paid, active, connected
+    * `waiting` - to confirm, draft ready
+    * `neutral` - draft, hidden
+    * `danger` - cancelled, failed
+    * `dark` - counts on photos
+  """
+  attr :tone, :string, default: "success", values: ~w(success waiting neutral danger dark)
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def badge(assigns) do
+    ~H"""
+    <span class={["soko-badge", @class]} data-tone={@tone}>{render_slot(@inner_block)}</span>
+    """
+  end
+
+  @doc """
+  Renders a Soko Avatar: a seeded orb, never initials. Pass any term as
+  `seed` and the same person always gets the same orb.
+  """
+  attr :seed, :any, default: 1
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+  attr :label, :string, default: nil
+  attr :class, :any, default: nil
+
+  def avatar(assigns) do
+    assigns = assign(assigns, :seed_index, seed_index(assigns.seed))
+
+    ~H"""
+    <span
+      class={["soko-avatar", @class]}
+      data-seed={@seed_index}
+      data-size={@size}
+      role={@label && "img"}
+      aria-label={@label}
+      aria-hidden={is_nil(@label) && "true"}
+    >
+    </span>
+    """
+  end
+
+  defp seed_index(seed) when is_integer(seed) and seed in 1..6, do: seed
+  defp seed_index(seed), do: :erlang.phash2(seed, 6) + 1
+
+  @doc """
+  Renders a Soko Banner: an inline message above a form or list.
+  `danger` for form errors, `info` for neutral notices, `waiting` for
+  things that need the merchant.
+  """
+  attr :tone, :string, default: "info", values: ~w(danger info waiting)
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def banner(assigns) do
+    ~H"""
+    <div class={["soko-banner", @class]} data-tone={@tone} role={@tone == "danger" && "alert"} {@rest}>
+      <.icon name={if @tone == "info", do: "info", else: "warning-circle"} weight="fill" />
+      <div class="min-w-0 flex-1">{render_slot(@inner_block)}</div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a Soko Empty state. Centre it in the content panel.
+  """
+  attr :title, :string, required: true
+  attr :text, :string, default: nil
+  attr :icon, :string, default: "package"
+  attr :class, :any, default: nil
+  slot :actions
+
+  def empty(assigns) do
+    ~H"""
+    <div class={["soko-empty", @class]}>
+      <span class="soko-empty-tile" aria-hidden="true"><.icon name={@icon} /></span>
+      <p class="soko-empty-title">{@title}</p>
+      <p :if={@text} class="soko-empty-text">{@text}</p>
+      <div :if={@actions != []} class="soko-empty-actions">{render_slot(@actions)}</div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the mono "Sample data" tag. Every screen that shows invented
+  data carries one.
+  """
+  attr :class, :any, default: nil
+
+  def sample_tag(assigns) do
+    ~H"""
+    <span class={["soko-sample", @class]}>{gettext("Sample data")}</span>
+    """
+  end
+
+  @doc """
+  Renders a Soko Order Note, the floating card on marketing photos.
+  """
+  attr :photo, :string, required: true
+  attr :title, :string, required: true
+  attr :meta, :string, required: true
+  attr :badge, :string, required: true
+  attr :foot_left, :string, required: true
+  attr :foot_right, :string, required: true
+  attr :class, :any, default: nil
+
+  def order_note(assigns) do
+    ~H"""
+    <article class={["soko-order-note", @class]}>
+      <div class="soko-order-note-head">
+        <img class="soko-order-note-thumb" src={@photo} alt="" />
+        <span class="soko-order-note-text">
+          <strong>{@title}</strong>
+          <span>{@meta}</span>
+        </span>
+        <span class="soko-order-note-badge">{@badge}</span>
+      </div>
+      <p class="soko-order-note-foot">
+        <span>{@foot_left}</span>
+        <strong>{@foot_right}</strong>
+      </p>
+    </article>
+    """
+  end
+
+  @doc """
+  Renders a Soko Stat Note, the small floating stat on marketing photos.
+  """
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :caption, :string, required: true
+  attr :class, :any, default: nil
+
+  def stat_note(assigns) do
+    ~H"""
+    <article class={["soko-stat-note", @class]}>
+      <span class="soko-stat-note-label">{@label}</span>
+      <strong class="soko-stat-note-value">{@value}</strong>
+      <span class="soko-stat-note-caption">{@caption}</span>
+    </article>
+    """
+  end
+
+  @doc """
+  Renders a read-only value with a Copy button, for webhook URLs, tokens
+  and buyer links.
+  """
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+
+  def copy_field(assigns) do
+    ~H"""
+    <div class="flex items-end gap-2">
+      <.input
+        id={@id}
+        name={@id}
+        type="text"
+        readonly
+        value={@value}
+        label={@label}
+        class="min-w-0 flex-1"
+      />
+      <.button
+        id={"copy-#{@id}"}
+        type="button"
+        tone="secondary"
+        phx-hook="ClipboardCopy"
+        data-copy={@value}
+        title="Copy"
+      >
+        <.icon name="copy" /> Copy
+      </.button>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders one line of a setup checklist: a forest check when done, a
+  dashed circle when not.
+  """
+  attr :done, :boolean, required: true
+  attr :label, :string, required: true
+
+  def checklist_item(assigns) do
+    ~H"""
+    <div class="flex items-center gap-2.5 text-sm">
+      <.icon
+        name={if @done, do: "check-circle", else: "circle-dashed"}
+        weight={if @done, do: "fill", else: "regular"}
+        class={["h-4 w-4 flex-none", (@done && "text-soko-forest") || "text-soko-ink-3"]}
+      />
+      <span class={(@done && "text-soko-ink") || "text-soko-ink-2"}>{@label}</span>
+    </div>
+    """
+  end
+
+  @doc ~S"""
+  Renders a Soko table: 40px grey header, 52px rows.
+
+  ## Examples
+
+      <.table id="products" rows={@products}>
+        <:col :let={product} label="Product">{product.name}</:col>
+        <:col :let={product} label="From" align="right">{product.price}</:col>
       </.table>
   """
   attr :id, :string, required: true
@@ -506,6 +833,7 @@ defmodule SokochatWeb.CoreComponents do
 
   slot :col, required: true do
     attr :label, :string
+    attr :align, :string
   end
 
   slot :action, doc: "the slot for showing user actions in the last table column"
@@ -517,43 +845,30 @@ defmodule SokochatWeb.CoreComponents do
       end
 
     ~H"""
-    <div class="overflow-y-auto px-4 sm:overflow-visible sm:px-0">
-      <table class="w-[40rem] mt-11 sm:w-full">
-        <thead class="text-sm text-left leading-6 text-zinc-500">
+    <div class="soko-table-wrap">
+      <table class="soko-table">
+        <thead>
           <tr>
-            <th :for={col <- @col} class="p-0 pb-4 pr-6 font-normal">{col[:label]}</th>
-            <th :if={@action != []} class="relative p-0 pb-4">
+            <th :for={col <- @col} class={col[:align] == "right" && "soko-num"}>{col[:label]}</th>
+            <th :if={@action != []} class="w-12">
               <span class="sr-only">{gettext("Actions")}</span>
             </th>
           </tr>
         </thead>
-        <tbody
-          id={@id}
-          phx-update={match?(%Phoenix.LiveView.LiveStream{}, @rows) && "stream"}
-          class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
-        >
-          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="group hover:bg-zinc-50">
+        <tbody id={@id} phx-update={match?(%Phoenix.LiveView.LiveStream{}, @rows) && "stream"}>
+          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} data-clickable={@row_click && true}>
             <td
-              :for={{col, i} <- Enum.with_index(@col)}
+              :for={col <- @col}
               phx-click={@row_click && @row_click.(row)}
-              class={["relative p-0", @row_click && "hover:cursor-pointer"]}
+              class={col[:align] == "right" && "soko-num"}
             >
-              <div class="block py-4 pr-6">
-                <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl" />
-                <span class={["relative", i == 0 && "font-semibold text-zinc-900"]}>
-                  {render_slot(col, @row_item.(row))}
-                </span>
-              </div>
+              {render_slot(col, @row_item.(row))}
             </td>
-            <td :if={@action != []} class="relative w-14 p-0">
-              <div class="relative whitespace-nowrap py-4 text-right text-sm font-medium">
-                <span class="absolute -inset-y-px -right-4 left-0 group-hover:bg-zinc-50 sm:rounded-r-xl" />
-                <span
-                  :for={action <- @action}
-                  class="relative ml-4 font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
-                >
+            <td :if={@action != []} class="soko-num">
+              <div class="flex items-center justify-end gap-1">
+                <%= for action <- @action do %>
                   {render_slot(action, @row_item.(row))}
-                </span>
+                <% end %>
               </div>
             </td>
           </tr>
@@ -570,7 +885,6 @@ defmodule SokochatWeb.CoreComponents do
 
       <.list>
         <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
       </.list>
   """
   slot :item, required: true do
@@ -579,14 +893,12 @@ defmodule SokochatWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <div class="mt-14">
-      <dl class="-my-4 divide-y divide-zinc-100">
-        <div :for={item <- @item} class="flex gap-4 py-4 text-sm leading-6 sm:gap-8">
-          <dt class="w-1/4 flex-none text-zinc-500">{item.title}</dt>
-          <dd class="text-zinc-700">{render_slot(item)}</dd>
-        </div>
-      </dl>
-    </div>
+    <dl class="divide-y divide-soko-divider">
+      <div :for={item <- @item} class="flex gap-4 py-3 text-sm sm:gap-8">
+        <dt class="w-1/3 flex-none text-soko-ink-2">{item.title}</dt>
+        <dd class="min-w-0 text-soko-ink">{render_slot(item)}</dd>
+      </div>
+    </dl>
     """
   end
 
@@ -595,121 +907,126 @@ defmodule SokochatWeb.CoreComponents do
 
   ## Examples
 
-      <.back navigate={~p"/posts"}>Back to posts</.back>
+      <.back navigate={~p"/workspaces"}>Back to shops</.back>
   """
   attr :navigate, :any, required: true
   slot :inner_block, required: true
 
   def back(assigns) do
     ~H"""
-    <div class="mt-16">
-      <.link
-        navigate={@navigate}
-        class="text-sm font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
-      >
-        <.icon name="hero-arrow-left-solid" class="h-3 w-3" />
-        {render_slot(@inner_block)}
-      </.link>
-    </div>
+    <.link
+      navigate={@navigate}
+      class="inline-flex items-center gap-2 text-sm font-medium text-soko-ink-2 hover:text-soko-ink"
+    >
+      <.icon name="arrow-left" class="h-4 w-4" />
+      {render_slot(@inner_block)}
+    </.link>
     """
   end
 
   @doc """
-  Renders a Phosphor icon.
+  Renders a Phosphor icon. Regular weight by default; use `weight="fill"`
+  for the active nav item and toast icons.
 
-  Existing `-solid` and `-mini` names are retained as semantic aliases,
-  but every icon uses Phosphor's `regular` weight for now.
-
-  You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
-
-  Phosphor icons are rendered as compile-time SVG components instead of being
-  bundled into the Tailwind stylesheet.
+  Older `hero-*` names are kept as aliases so existing call sites keep
+  working.
 
   ## Examples
 
-      <.icon name="hero-x-mark-solid" />
-      <.icon name="hero-arrow-path" class="ml-1 w-3 h-3 animate-spin" />
+      <.icon name="storefront" />
+      <.icon name="house" weight="fill" class="h-4 w-4" />
   """
   attr :name, :string, required: true
-  attr :class, :string, default: nil
+  attr :weight, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
 
   @icon_map %{
-    "hero-arrow-left-solid" => {"arrow-left", "regular"},
-    "hero-arrow-left-mini" => {"arrow-left", "regular"},
-    "hero-arrow-path" => {"arrow-clockwise", "regular"},
-    "hero-arrow-path-mini" => {"arrow-clockwise", "regular"},
-    "hero-arrow-right-on-rectangle" => {"sign-out", "regular"},
-    "hero-bars-3" => {"list", "regular"},
-    "hero-bolt" => {"lightning", "regular"},
-    "hero-bolt-mini" => {"lightning", "regular"},
-    "hero-building-storefront" => {"storefront", "regular"},
-    "hero-chart-bar" => {"chart-bar", "regular"},
-    "hero-chat-bubble-left-right" => {"chats", "regular"},
-    "hero-chat-bubble-left-right-mini" => {"chats", "regular"},
-    "hero-check-badge-mini" => {"seal-check", "regular"},
-    "hero-check-circle-mini" => {"check-circle", "regular"},
-    "hero-code-bracket-mini" => {"code", "regular"},
-    "hero-cursor-arrow-rays" => {"cursor", "regular"},
-    "hero-cursor-arrow-rays-mini" => {"cursor", "regular"},
-    "hero-document-duplicate-mini" => {"copy", "regular"},
-    "hero-eye-slash-mini" => {"eye-slash", "regular"},
-    "hero-exclamation-circle-mini" => {"x-circle", "regular"},
-    "hero-exclamation-triangle-mini" => {"warning", "regular"},
-    "hero-globe-alt-mini" => {"globe", "regular"},
-    "hero-information-circle-mini" => {"info", "regular"},
-    "hero-list-bullet-mini" => {"list-bullets", "regular"},
-    "hero-map-pin-mini" => {"map-pin", "regular"},
-    "hero-minus-circle-mini" => {"minus-circle", "regular"},
-    "hero-pencil-square-mini" => {"pencil-simple", "regular"},
-    "hero-phone-mini" => {"phone", "regular"},
-    "hero-photo" => {"image", "regular"},
-    "hero-plus" => {"plus", "regular"},
-    "hero-plus-mini" => {"plus", "regular"},
-    "hero-shield-check-mini" => {"shield-check", "regular"},
-    "hero-signal" => {"broadcast", "regular"},
-    "hero-sparkles-mini" => {"sparkle", "regular"},
-    "hero-squares-2x2" => {"squares-four", "regular"},
-    "hero-squares-2x2-mini" => {"squares-four", "regular"},
-    "hero-trash-mini" => {"trash", "regular"},
-    "hero-wrench-screwdriver" => {"wrench", "regular"},
-    "hero-x-mark" => {"x", "regular"},
-    "hero-x-mark-mini" => {"x", "regular"},
-    "hero-x-mark-solid" => {"x", "regular"}
+    "hero-arrow-left-solid" => "arrow-left",
+    "hero-arrow-left-mini" => "arrow-left",
+    "hero-arrow-path" => "arrow-clockwise",
+    "hero-arrow-path-mini" => "arrow-clockwise",
+    "hero-arrow-right-on-rectangle" => "sign-out",
+    "hero-bars-3" => "list",
+    "hero-bolt" => "lightning",
+    "hero-bolt-mini" => "lightning",
+    "hero-building-storefront" => "storefront",
+    "hero-chart-bar" => "chart-bar",
+    "hero-chat-bubble-left-right" => "chats",
+    "hero-chat-bubble-left-right-mini" => "chats",
+    "hero-check-badge-mini" => "seal-check",
+    "hero-check-circle-mini" => "check-circle",
+    "hero-code-bracket-mini" => "code",
+    "hero-cursor-arrow-rays" => "cursor",
+    "hero-cursor-arrow-rays-mini" => "cursor",
+    "hero-document-duplicate-mini" => "copy",
+    "hero-eye-slash-mini" => "eye-slash",
+    "hero-exclamation-circle-mini" => "warning-circle",
+    "hero-exclamation-triangle-mini" => "warning",
+    "hero-globe-alt-mini" => "globe",
+    "hero-information-circle-mini" => "info",
+    "hero-list-bullet-mini" => "list-bullets",
+    "hero-map-pin-mini" => "map-pin",
+    "hero-minus-circle-mini" => "minus-circle",
+    "hero-pencil-square-mini" => "pencil-simple",
+    "hero-phone-mini" => "phone",
+    "hero-photo" => "image",
+    "hero-plus" => "plus",
+    "hero-plus-mini" => "plus",
+    "hero-shield-check-mini" => "shield-check",
+    "hero-signal" => "broadcast",
+    "hero-sparkles-mini" => "sparkle",
+    "hero-squares-2x2" => "squares-four",
+    "hero-squares-2x2-mini" => "squares-four",
+    "hero-trash-mini" => "trash",
+    "hero-wrench-screwdriver" => "wrench",
+    "hero-x-mark" => "x",
+    "hero-x-mark-mini" => "x",
+    "hero-x-mark-solid" => "x"
   }
 
   def icon(assigns) do
-    {name, weight} = Map.get(@icon_map, assigns.name, {assigns.name, "regular"})
-
-    assigns = assign(assigns, phosphor_name: name, phosphor_weight: weight)
+    assigns =
+      assign(assigns,
+        phosphor_name: Map.get(@icon_map, assigns.name, assigns.name),
+        phosphor_weight: assigns.weight || "regular",
+        class: icon_class(assigns.class)
+      )
 
     ~H"""
     <Phosphor.icon name={@phosphor_name} weight={@phosphor_weight} class={@class} {@rest} />
     """
   end
 
+  defp icon_class(class) when is_list(class) do
+    case class |> List.flatten() |> Enum.filter(&is_binary/1) do
+      [] -> nil
+      classes -> Enum.join(classes, " ")
+    end
+  end
+
+  defp icon_class(class) when is_binary(class), do: class
+  defp icon_class(_class), do: nil
+
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
     JS.show(js,
       to: selector,
-      time: 300,
+      time: 200,
       transition:
-        {"transition-all transform ease-out duration-300",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
-         "opacity-100 translate-y-0 sm:scale-100"}
+        {"transition-all ease-out duration-200", "opacity-0 translate-y-2",
+         "opacity-100 translate-y-0"}
     )
   end
 
   def hide(js \\ %JS{}, selector) do
     JS.hide(js,
       to: selector,
-      time: 200,
+      time: 150,
       transition:
-        {"transition-all transform ease-in duration-200",
-         "opacity-100 translate-y-0 sm:scale-100",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+        {"transition-all ease-in duration-150", "opacity-100 translate-y-0",
+         "opacity-0 translate-y-2"}
     )
   end
 
@@ -717,8 +1034,7 @@ defmodule SokochatWeb.CoreComponents do
     JS.show(js,
       to: selector,
       time: 200,
-      transition:
-        {"flash-enter", "flash-enter-from", "flash-enter-to"}
+      transition: {"soko-toast-enter", "soko-toast-enter-from", "soko-toast-enter-to"}
     )
   end
 
@@ -726,50 +1042,14 @@ defmodule SokochatWeb.CoreComponents do
     JS.hide(js,
       to: selector,
       time: 150,
-      transition:
-        {"flash-leave", "flash-leave-from", "flash-leave-to"}
+      transition: {"soko-toast-leave", "soko-toast-leave-from", "soko-toast-leave-to"}
     )
-  end
-
-  def show_modal(js \\ %JS{}, id) when is_binary(id) do
-    js
-    |> JS.show(to: "##{id}")
-    |> JS.show(
-      to: "##{id}-bg",
-      time: 300,
-      transition: {"transition-all transform ease-out duration-300", "opacity-0", "opacity-100"}
-    )
-    |> show("##{id}-container")
-    |> JS.add_class("overflow-hidden", to: "body")
-    |> JS.focus_first(to: "##{id}-content")
-  end
-
-  def hide_modal(js \\ %JS{}, id) do
-    js
-    |> JS.hide(
-      to: "##{id}-bg",
-      transition: {"transition-all transform ease-in duration-200", "opacity-100", "opacity-0"}
-    )
-    |> hide("##{id}-container")
-    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
-    |> JS.remove_class("overflow-hidden", to: "body")
-    |> JS.pop_focus()
   end
 
   @doc """
   Translates an error message using gettext.
   """
   def translate_error({msg, opts}) do
-    # When using gettext, we typically pass the strings we want
-    # to translate as a static argument:
-    #
-    #     # Translate the number of files with plural rules
-    #     dngettext("errors", "1 file", "%{count} files", count)
-    #
-    # However the error messages in our forms and APIs are generated
-    # dynamically, so we need to translate them by calling Gettext
-    # with our gettext backend as first argument. Translations are
-    # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
       Gettext.dngettext(SokochatWeb.Gettext, "errors", msg, msg, count, opts)
     else

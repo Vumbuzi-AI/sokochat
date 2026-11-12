@@ -5,7 +5,8 @@ defmodule SokochatWeb.HomeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: "Sokochat"), layout: false}
+    {:ok, assign(socket, page_title: "Turn WhatsApp chats into orders", marketing: true),
+     layout: false}
   end
 
   @impl true

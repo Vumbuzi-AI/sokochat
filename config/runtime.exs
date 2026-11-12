@@ -49,6 +49,10 @@ env_value = fn key ->
   end
 end
 
+if line_id = env_value.("MARKETPLACE_SHARED_LINE_ID") do
+  config :sokochat, :marketplace_shared_line_id, String.to_integer(line_id)
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration

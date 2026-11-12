@@ -51,6 +51,22 @@ defmodule Sokochat.Meta.ShopRouterTest do
     assert binding.workspace_id == brookside.id
   end
 
+  test "legacy shop-link greetings become a catalog browse ask", %{
+    shared_line: shared_line,
+    brookside: brookside,
+    phone: phone
+  } do
+    assert {:dispatch, shop, "What do you have?", []} =
+             ShopRouter.route(
+               shared_line,
+               phone,
+               "Hi, I'd like help from Brookside Kenya [shop:brookside]",
+               nil
+             )
+
+    assert shop.id == brookside.id
+  end
+
   test "later messages without a code stay on the bound shop", %{
     shared_line: shared_line,
     brookside: brookside,
@@ -73,7 +89,7 @@ defmodule Sokochat.Meta.ShopRouterTest do
     {:ok, _} = Meta.upsert_shop_binding(shared_line.id, phone, royco.id)
     {:ok, royco_convo} = Conversations.get_or_create_conversation(royco.id, phone, :whatsapp)
 
-    assert {:dispatch, shop, "Hello", opts} =
+    assert {:dispatch, shop, "What do you have?", opts} =
              ShopRouter.route(shared_line, phone, "[shop:brookside]", nil)
 
     assert shop.id == brookside.id

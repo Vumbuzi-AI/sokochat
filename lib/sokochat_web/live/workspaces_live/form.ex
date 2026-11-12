@@ -97,57 +97,47 @@ defmodule SokochatWeb.WorkspacesLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="mx-auto max-w-3xl space-y-6">
-      <nav class="flex items-center gap-1.5 text-[13px] text-n500">
-        <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
-        <span>/</span>
-        <span class="text-n400">{@page_title}</span>
-        <span :if={@current_user} class="ml-auto text-n400">{@current_user.name}</span>
-      </nav>
-
-      <div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
-          <h1 class="text-[22px] font-bold tracking-tight text-n900">{@page_title}</h1>
-          <p class="text-sm leading-6 text-n400">
-            Set the business name, the AI's baseline instructions, and the languages the bot should support.
-          </p>
-        </div>
-
-        <div class="px-8 py-6">
-          <.simple_form for={@form} phx-change="validate" phx-submit="save">
-            <.input field={@form[:name]} label="Name" required />
+    <.stage_page title={@page_title} current_user={@current_user} center>
+      <div class="w-full max-w-[560px] overflow-hidden rounded-soko-20 border border-soko-line bg-soko-white">
+        <.simple_form for={@form} phx-change="validate" phx-submit="save" class="!gap-0">
+          <div class="flex flex-col gap-5 p-6 sm:p-7">
+            <div class="flex flex-col gap-2">
+              <h1 class="soko-heading text-[28px]">{@page_title}</h1>
+              <p class="text-sm text-soko-ink-2">
+                Set the business name, how the AI should talk and the languages it replies in.
+              </p>
+            </div>
+            <.input field={@form[:name]} label="Name" placeholder="Soko Shoes" required />
             <.input
               field={@form[:ai_instructions]}
               type="textarea"
-              label="AI Instructions"
-              placeholder="You are a helpful sales assistant for..."
+              label="AI instructions"
+              rows="3"
+              placeholder="You sell shoes for Soko Shoes. Answer with sizes and KES prices from the catalogue."
             />
             <.input
               field={@form[:language]}
               type="select"
-              label="Language"
+              label="Languages"
               options={[
+                {"English and Swahili", "both"},
                 {"English only", "en"},
-                {"Swahili only", "sw"},
-                {"Both", "both"}
+                {"Swahili only", "sw"}
               ]}
             />
-
-            <:actions>
-              <.link
-                navigate={~p"/workspaces"}
-                class="mr-auto text-sm font-medium text-n400 transition hover:text-n900"
-              >
-                Cancel
-              </.link>
-              <.button>
-                {if @live_action == :new, do: "Create workspace", else: "Save changes"}
-              </.button>
-            </:actions>
-          </.simple_form>
-        </div>
+          </div>
+          <div class="flex justify-end gap-2 border-t border-soko-divider px-6 py-4 sm:px-7">
+            <.button navigate={cancel_path(@workspace)} tone="secondary">Cancel</.button>
+            <.button phx-disable-with="Saving">
+              {if @live_action == :new, do: "Create workspace", else: "Save changes"}
+            </.button>
+          </div>
+        </.simple_form>
       </div>
-    </section>
+    </.stage_page>
     """
   end
+
+  defp cancel_path(%Workspace{id: id}) when not is_nil(id), do: ~p"/workspaces/#{id}"
+  defp cancel_path(_workspace), do: ~p"/workspaces"
 end

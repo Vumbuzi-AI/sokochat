@@ -1,120 +1,93 @@
-<div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-  <div class="grid lg:grid-cols-2">
-    <%!-- Form panel (left) --%>
-    <div class="flex items-center justify-center p-8 sm:p-12">
-      <div class="w-full max-w-sm">
-        <div class="mb-8">
-          <div class="section-title">Get started</div>
-          <h1 class="mt-1 text-[28px] font-semibold leading-tight text-n900">
-            Register
-          </h1>
-          <p class="mt-2 text-sm text-n400">
-            Already registered?
-            <.link
-              navigate={~p"/users/log_in"}
-              class="font-semibold text-primary no-underline hover:underline"
-            >
-              Log in
-            </.link>
-            to your account.
-          </p>
-        </div>
+<.auth_split
+  label="Create account"
+  title="Set up your shop on Sokochat"
+  eyebrow="How it works"
+  headline="Sell what you stock to people who ask on WhatsApp."
+>
+  <:subtitle>
+    Already have an account? <.link navigate={~p"/users/log_in"} class="soko-link">Log in</.link>
+  </:subtitle>
 
-        <.form :let={f} for={@form} action={~p"/users/register"} class="flex flex-col gap-5">
-          <div
-            :if={@changeset.action == :insert}
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            Oops, something went wrong! Please check the errors below.
-          </div>
+  <.form :let={f} for={@form} action={~p"/users/register"} class="soko-form !gap-5">
+    <.banner :if={@changeset.action == :insert} tone="danger">
+      Some details need another look. Check the fields below.
+    </.banner>
 
-          <div class="flex flex-col gap-1.5">
-            <label for="user_name" class="text-sm font-medium text-n800">Name</label>
-            <input
-              type="text"
-              name="user[name]"
-              id="user_name"
-              value={Phoenix.HTML.Form.normalize_value("text", f[:name].value)}
-              required
-              autocomplete="name"
-              placeholder="Jane Doe"
-              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <p :for={error <- f[:name].errors} class="text-sm text-red-600">
-              {translate_error(error)}
-            </p>
-          </div>
+    <.input
+      field={f[:name]}
+      type="text"
+      label="Name"
+      size="lg"
+      required
+      autocomplete="name"
+      placeholder="Mercy Wanjiku"
+    />
+    <.input
+      field={f[:email]}
+      type="email"
+      label="Email"
+      size="lg"
+      required
+      autocomplete="email"
+      placeholder="you@yourshop.co.ke"
+    />
+    <.input
+      field={f[:password]}
+      type="password"
+      label="Password"
+      size="lg"
+      required
+      autocomplete="new-password"
+      hint="At least 6 characters."
+    >
+      <:trailing><.password_toggle for="user_password" /></:trailing>
+    </.input>
 
-          <div class="flex flex-col gap-1.5">
-            <label for="user_email" class="text-sm font-medium text-n800">Email</label>
-            <input
-              type="email"
-              name="user[email]"
-              id="user_email"
-              value={Phoenix.HTML.Form.normalize_value("email", f[:email].value)}
-              required
-              autocomplete="email"
-              placeholder="you@example.com"
-              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <p :for={error <- f[:email].errors} class="text-sm text-red-600">
-              {translate_error(error)}
-            </p>
-          </div>
+    <.button size="lg" width="full" phx-disable-with="Creating account">
+      <.icon name="arrow-right" /> Create account
+    </.button>
 
-          <div class="flex flex-col gap-1.5">
-            <label for="user_password" class="text-sm font-medium text-n800">Password</label>
-            <input
-              type="password"
-              name="user[password]"
-              id="user_password"
-              required
-              autocomplete="new-password"
-              placeholder="••••••••"
-              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <p :for={error <- f[:password].errors} class="text-sm text-red-600">
-              {translate_error(error)}
-            </p>
-          </div>
+    <p class="text-xs text-soko-ink-3">We'll email you a link to confirm your account.</p>
+  </.form>
 
-          <button
-            type="submit"
-            phx-disable-with="Creating account..."
-            class="btn btn-primary mt-1 w-full"
-          >
-            Create an account <span aria-hidden="true">→</span>
-          </button>
-        </.form>
-      </div>
+  <:aside>
+    <ol class="flex flex-col">
+      <li
+        :for={
+          {n, title, text} <- [
+            {"01", "Add your products and your website",
+             "Names, photos and prices in KES. Sokochat reads your website too."},
+            {"02", "Share one WhatsApp number",
+             "Buyers ask there. Sokochat replies with what you have."},
+            {"03", "Confirm orders on your desk",
+             "Paid orders and questions wait for you in one place."}
+          ]
+        }
+        class="flex gap-6 border-t border-soko-line-2 py-4 first:border-t-0"
+      >
+        <span class="font-mono text-xs text-soko-forest">{n}</span>
+        <span class="flex flex-col gap-1">
+          <span class="text-base font-medium">{title}</span>
+          <span class="text-sm text-soko-ink-2">{text}</span>
+        </span>
+      </li>
+    </ol>
+  </:aside>
+
+  <:stage>
+    <div class="absolute inset-0 overflow-hidden rounded-soko-20">
+      <img
+        src={~p"/images/adidas-spezial.webp"}
+        alt="A curved row of Adidas Spezial trainers in many colours"
+        class="h-full w-full object-cover"
+      />
     </div>
-
-    <%!-- Image panel (right) --%>
-    <div class="relative hidden flex-col justify-between gap-8 overflow-hidden bg-[linear-gradient(to_bottom,rgba(15,156,92,0.12),rgba(255,255,255,0)_60%)] p-10 lg:flex">
-      <a href={~p"/"} class="flex items-center justify-end gap-2 no-underline">
-        <img src={~p"/images/logo.png"} alt="Sokochat" class="h-9 w-auto object-contain" />
-      </a>
-
-      <div class="flex flex-1 flex-col items-center justify-center gap-8">
-        <img
-          src={~p"/images/2.png"}
-          alt="No-code chatbot setup illustration"
-          class="h-[220px] w-auto object-contain"
-        />
-        <img
-          src={~p"/images/6.png"}
-          alt="Live data answers illustration"
-          class="h-[220px] w-auto object-contain"
-        />
-      </div>
-
-      <div class="max-w-[420px] text-right lg:ml-auto">
-        <h2 class="h5 text-n900">Build your WhatsApp chatbot</h2>
-        <p class="mt-2 text-sm font-light text-n400">
-          Create and run an AI-powered WhatsApp chatbot without code. Connect your
-          own data, keep answers current, and test in the browser before you launch.
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
+    <.sample_tag class="absolute left-4 top-4 !bg-soko-white" />
+    <.stat_note
+      class="absolute bottom-4 right-4 hidden sm:flex"
+      label="Adidas Spezial"
+      value="KES 6,500"
+      caption="5 sizes · EU 38 to 42"
+    />
+  </:stage>
+</.auth_split>

@@ -35,6 +35,17 @@ defmodule Sokochat.Workers.RunAiTurn do
       DurableTurns.earlier_pending?(turn) ->
         {:snooze, 2}
 
+      is_map(turn.fixed_reply) ->
+        # Trusted server interactions still wait their turn and survive restarts.
+        # The model and public callbacks cannot write this snapshot.
+        DurableTurns.complete(turn.id, %{
+          reply: turn.fixed_reply["reply"],
+          cta: turn.fixed_reply["cta"],
+          tokens: 0,
+          policy: "ok",
+          trusted: true
+        })
+
       true ->
         conversation = Repo.get!(Conversation, turn.conversation_id)
 

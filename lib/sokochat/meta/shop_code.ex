@@ -25,7 +25,7 @@ defmodule Sokochat.Meta.ShopCode do
   Finds a `[shop:code]` token in text, strips it, and returns the cleaned
   remainder.
 
-  An empty remainder becomes `"Hello"` so the shop bot still greets.
+  An empty remainder becomes a catalog browse ask so the shop opens on products.
   Returns `{:ok, code, cleaned_text}` or `:none`.
   """
   def extract(text) when is_binary(text) do
@@ -37,13 +37,16 @@ defmodule Sokochat.Meta.ShopCode do
           |> String.replace(~r/\s+/, " ")
           |> String.trim()
 
-        cleaned = if cleaned == "", do: "Hello", else: cleaned
+        cleaned = if cleaned == "", do: catalog_opener(), else: cleaned
         {:ok, String.downcase(code), cleaned}
 
       _ ->
         :none
     end
   end
+
+  @doc "Default first-turn ask used when a shop link carries no product question."
+  def catalog_opener, do: "What do you have?"
 
   def extract(_), do: :none
 end

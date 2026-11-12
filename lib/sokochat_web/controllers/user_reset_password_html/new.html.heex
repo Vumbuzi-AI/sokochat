@@ -1,20 +1,30 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">
-    Forgot your password?
-    <:subtitle>We'll send a password reset link to your inbox</:subtitle>
-  </.header>
-
-  <.simple_form :let={f} for={@conn.params["user"]} as={:user} action={~p"/users/reset_password"}>
-    <.input field={f[:email]} type="email" placeholder="Email" required />
-    <:actions>
-      <.button phx-disable-with="Sending..." class="w-full">
-        Send password reset instructions
-      </.button>
-    </:actions>
+<.auth_card
+  icon="lock-simple"
+  title="Forgot your password?"
+  text="Enter the email you log in with and we'll send you a link to reset your password."
+>
+  <.simple_form
+    :let={f}
+    for={@conn.params["user"]}
+    as={:user}
+    action={~p"/users/reset_password"}
+    class="!gap-5"
+  >
+    <.input
+      field={f[:email]}
+      type="email"
+      label="Email"
+      size="lg"
+      placeholder="you@yourshop.co.ke"
+      autocomplete="email"
+      required
+    />
+    <.button size="lg" width="full" phx-disable-with="Sending">Send reset link</.button>
   </.simple_form>
 
-  <p class="text-center text-sm mt-4">
-    <.link href={~p"/users/register"}>Register</.link>
-    | <.link href={~p"/users/log_in"}>Log in</.link>
-  </p>
-</div>
+  <:footer>
+    <.link navigate={~p"/users/log_in"} class="soko-link">Log in</.link>
+    <span class="px-1.5 text-soko-ink-3">or</span>
+    <.link navigate={~p"/users/register"} class="soko-link">create an account</.link>
+  </:footer>
+</.auth_card>

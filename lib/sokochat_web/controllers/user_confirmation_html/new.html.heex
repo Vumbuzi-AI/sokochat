@@ -1,20 +1,31 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">
-    No confirmation instructions received?
-    <:subtitle>We'll send a new confirmation link to your inbox</:subtitle>
-  </.header>
-
-  <.simple_form :let={f} for={@conn.params["user"]} as={:user} action={~p"/users/confirm"}>
-    <.input field={f[:email]} type="email" placeholder="Email" required />
-    <:actions>
-      <.button phx-disable-with="Sending..." class="w-full">
-        Resend confirmation instructions
-      </.button>
-    </:actions>
+<.auth_card
+  icon="envelope-simple"
+  title="No confirmation instructions received?"
+  text="We'll send a new confirmation link to your inbox."
+>
+  <.simple_form
+    :let={f}
+    for={@conn.params["user"]}
+    as={:user}
+    action={~p"/users/confirm"}
+    class="!gap-5"
+  >
+    <.banner>Check your spam folder first. The email comes from Sokochat.</.banner>
+    <.input
+      field={f[:email]}
+      type="email"
+      label="Email"
+      size="lg"
+      placeholder="you@yourshop.co.ke"
+      autocomplete="email"
+      required
+    />
+    <.button size="lg" width="full" phx-disable-with="Sending">Resend confirmation link</.button>
   </.simple_form>
 
-  <p class="text-center mt-4">
-    <.link href={~p"/users/register"}>Register</.link>
-    | <.link href={~p"/users/log_in"}>Log in</.link>
-  </p>
-</div>
+  <:footer>
+    <.link navigate={~p"/users/log_in"} class="soko-link">Log in</.link>
+    <span class="px-1.5 text-soko-ink-3">or</span>
+    <.link navigate={~p"/users/register"} class="soko-link">create an account</.link>
+  </:footer>
+</.auth_card>

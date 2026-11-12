@@ -59,6 +59,7 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
       current_user={@current_user}
       tab={:analytics}
       title="Analytics"
+      subtitle="Messages and next steps"
       flash={@flash}
     >
       <.overview overview={@overview} />
@@ -73,59 +74,40 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
     assigns = assign(assigns, :ticks, ticks)
 
     ~H"""
-    <section class="spot-overview" aria-label="Workspace analytics">
-      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p class="text-[0.8125rem] text-n500">{@overview.caption}</p>
-        <div
-          class="inline-flex rounded-lg border border-n300 bg-n50 p-0.5"
-          role="group"
-          aria-label="Date range"
-        >
-          <button
-            :for={{id, label} <- [{"week", "Week"}, {"month", "Month"}]}
-            type="button"
-            phx-click="set_range"
-            phx-value-range={id}
-            aria-pressed={to_string(@overview.range == id)}
-            class={[
-              "h-7 rounded-md px-2.5 text-[0.75rem]",
-              @overview.range == id && "bg-primary text-white",
-              @overview.range != id && "text-n500"
-            ]}
-          >
+    <section class="soko-overview" aria-label="Shop analytics">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-soko-ink-2">{@overview.caption}</p>
+        <div class="soko-segmented" role="group" aria-label="Date range">
+          <label :for={{id, label} <- [{"week", "Week"}, {"month", "Month"}]}>
+            <input
+              type="radio"
+              name="range"
+              value={id}
+              checked={@overview.range == id}
+              phx-click="set_range"
+              phx-value-range={id}
+            />
             {label}
-          </button>
+          </label>
         </div>
       </div>
 
-      <ul class="spot-kpis grid grid-cols-2 gap-2" aria-label="Key metrics">
-        <li
-          :for={kpi <- @overview.kpis}
-          class="flex flex-col rounded-xl border border-n300 bg-n50 px-3.5 py-3"
-        >
-          <span class="text-[0.8125rem] text-n500">{kpi.label}</span>
-          <div class="mt-2.5 flex items-center justify-between gap-2">
-            <p class="text-[1.5rem] font-medium tabular-nums leading-none tracking-[-0.02em]">
-              {kpi.value}
-            </p>
-            <span
-              :if={kpi.delta}
-              class={[
-                "inline-flex h-5 items-center rounded-full px-1.5 text-[0.75rem] font-medium tabular-nums",
-                kpi.delta > 0 && "bg-primary-light text-primary",
-                kpi.delta < 0 && "bg-red-50 text-red-700"
-              ]}
-            >
+      <ul class="soko-kpis" aria-label="Key numbers">
+        <li :for={kpi <- @overview.kpis} class="soko-card flex flex-col">
+          <span class="text-xs text-soko-ink-2">{kpi.label}</span>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <p class="soko-heading text-[26px] tabular-nums leading-none">{kpi.value}</p>
+            <.badge :if={kpi.delta} tone={if kpi.delta > 0, do: "success", else: "danger"}>
               {if kpi.delta > 0, do: "+", else: "−"}{abs(kpi.delta)}%
-            </span>
+            </.badge>
           </div>
           <svg
             :if={Enum.any?(kpi.spark, &(&1 > 0))}
             viewBox="0 0 120 28"
             class={[
               "mt-2 h-7 w-full",
-              (is_nil(kpi.delta) or kpi.delta >= 0) && "text-series-views",
-              kpi.delta && kpi.delta < 0 && "text-red-700"
+              (is_nil(kpi.delta) or kpi.delta >= 0) && "text-soko-forest",
+              kpi.delta && kpi.delta < 0 && "text-soko-danger"
             ]}
             aria-hidden="true"
           >
@@ -141,47 +123,42 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
         </li>
       </ul>
 
-      <div class="spot-overview-grid mt-2 grid gap-2">
-        <section
-          class="rounded-xl border border-n300 bg-n50 px-4 py-3.5"
-          aria-labelledby="activity-chart"
-        >
+      <div class="soko-overview-grid">
+        <section class="soko-card" aria-labelledby="activity-chart">
           <header class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 id="activity-chart" class="text-[0.875rem] font-medium tracking-[-0.02em]">
-              Activity
-            </h2>
-            <ul class="flex flex-wrap justify-end gap-x-3 gap-y-1 text-[0.75rem] text-n500">
+            <h2 id="activity-chart" class="soko-section-title text-[16px]">Activity</h2>
+            <ul class="flex flex-wrap justify-end gap-x-3 gap-y-1 text-xs text-soko-ink-2">
               <li class="inline-flex items-center gap-1.5">
-                <i class="h-2 w-2 rounded-[2.5px] bg-series-views" aria-hidden="true"></i> Messages
+                <i class="soko-series-a h-2 w-2 rounded-[2.5px]" aria-hidden="true"></i> Messages
               </li>
               <li class="inline-flex items-center gap-1.5">
-                <i class="h-2 w-2 rounded-[2.5px] bg-series-clicks" aria-hidden="true"></i> CTAs
+                <i class="soko-series-b h-2 w-2 rounded-[2.5px]" aria-hidden="true"></i> Next steps
               </li>
             </ul>
           </header>
-          <figure class="spot-chart" role="img" aria-label={chart_label(@overview.days)}>
-            <div class="spot-chart-grid" aria-hidden="true">
+          <figure class="soko-chart" role="img" aria-label={chart_label(@overview.days)}>
+            <div class="soko-chart-grid" aria-hidden="true">
               <span :for={tick <- @ticks} data-value={tick}></span>
             </div>
-            <ol class="spot-chart-cols" style={"--cols: #{max(length(@overview.days), 1)}"}>
-              <li :for={{day, index} <- Enum.with_index(@overview.days)} class="spot-chart-col">
+            <ol class="soko-chart-cols" style={"--cols: #{max(length(@overview.days), 1)}"}>
+              <li :for={{day, index} <- Enum.with_index(@overview.days)} class="soko-chart-col">
                 <div
-                  class="spot-bars"
-                  title={"#{day_label(day.date)} · #{day.buyer} messages · #{day.ctas} CTAs"}
+                  class="soko-bars"
+                  title={"#{day_label(day.date)} · #{day.buyer} messages · #{day.ctas} next steps"}
                 >
                   <span
-                    class="spot-bar bg-series-views"
+                    class="soko-bar soko-series-a"
                     style={"height: #{bar_pct(day.buyer, @overview.ceil)}%"}
                   >
                   </span>
                   <span
-                    class="spot-bar bg-series-clicks"
+                    class="soko-bar soko-series-b"
                     style={"height: #{bar_pct(day.ctas, @overview.ceil)}%"}
                   >
                   </span>
                 </div>
                 <span
-                  class="spot-chart-label"
+                  class="soko-chart-label"
                   style={
                     unless show_label?(index, @overview.range, length(@overview.days)),
                       do: "visibility: hidden"
@@ -194,30 +171,25 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
           </figure>
         </section>
 
-        <section
-          class="rounded-xl border border-n300 bg-n50 px-4 py-3.5"
-          aria-labelledby="busiest-days"
-        >
-          <h2 id="busiest-days" class="text-[0.875rem] font-medium tracking-[-0.02em]">
-            Busiest days
-          </h2>
-          <ol :if={@overview.leaders != []} class="mt-3 space-y-3">
+        <section class="soko-card" aria-labelledby="busiest-days">
+          <h2 id="busiest-days" class="soko-section-title text-[16px]">Busiest days</h2>
+          <ol :if={@overview.leaders != []} class="mt-3 flex flex-col gap-3">
             <li :for={day <- @overview.leaders}>
               <div class="flex items-baseline justify-between gap-2">
-                <span class="text-[0.875rem] font-medium">{day.label}</span>
-                <span class="text-[0.75rem] tabular-nums text-n500">{day.buyer} messages</span>
+                <span class="text-sm font-medium">{day.label}</span>
+                <span class="text-xs tabular-nums text-soko-ink-2">{day.buyer} messages</span>
               </div>
-              <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-n200" aria-hidden="true">
+              <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-soko-stage" aria-hidden="true">
                 <span
-                  class="block h-full rounded-full bg-series-views"
+                  class="soko-series-a block h-full rounded-full"
                   style={"width: #{day.share * 100}%"}
                 >
                 </span>
               </div>
-              <p class="mt-1.5 text-[0.75rem] tabular-nums text-n500">{day.ctas} CTAs</p>
+              <p class="mt-1.5 text-xs tabular-nums text-soko-ink-2">{day.ctas} next steps</p>
             </li>
           </ol>
-          <p :if={@overview.leaders == []} class="mt-3 text-[0.8125rem] text-n500">
+          <p :if={@overview.leaders == []} class="mt-3 text-sm text-soko-ink-2">
             No buyer messages in this range.
           </p>
         </section>

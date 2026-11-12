@@ -111,14 +111,15 @@ defmodule SokochatWeb.PlaygroundChat do
       <div :if={@type == "reply_buttons"} class="wa-replies">
         <button
           :for={button <- payload_buttons(@payload)}
-          id={"reply-button-#{slugify_value(button)}"}
+          id={"reply-button-#{slugify_value(cta_prompt(button))}"}
           type="button"
           phx-click="send_interactive_message"
           phx-value-message={cta_prompt(button)}
+          phx-value-reply-id={payload_value(button, "id")}
           disabled={@assistant_pending}
           class="catalog-action"
         >
-          {button}
+          {cta_prompt(button)}
         </button>
       </div>
 
@@ -129,6 +130,7 @@ defmodule SokochatWeb.PlaygroundChat do
           type="button"
           phx-click="send_interactive_message"
           phx-value-message={cta_prompt(item)}
+          phx-value-reply-id={payload_value(item, "id")}
           disabled={@assistant_pending}
           class="wa-list-item"
         >

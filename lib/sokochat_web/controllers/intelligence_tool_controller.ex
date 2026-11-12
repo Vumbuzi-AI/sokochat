@@ -13,6 +13,51 @@ defmodule SokochatWeb.IntelligenceToolController do
   def show(conn, %{"tool" => tool} = params) do
     workspace = conn.assigns.intelligence_workspace
 
+    if workspace.marketplace do
+      marketplace_tool(conn, workspace, tool, params)
+    else
+      shop_tool(conn, workspace, tool, params)
+    end
+  end
+
+  defp marketplace_tool(conn, workspace, tool, params) do
+    alias Sokochat.Marketplace
+
+    case tool do
+      "shop_profile" ->
+        json(conn, %{
+          name: "Sokochat",
+          scope: "marketplace",
+          orders: "Unpaid requests; merchant follows up"
+        })
+
+      "list_categories" ->
+        json(conn, %{categories: Marketplace.categories(workspace)})
+
+      "search_products" ->
+        json(
+          conn,
+          Marketplace.search(
+            workspace,
+            params["query"] || "",
+            params["category"],
+            integer(params["offset"], 0, 0, 10_000),
+            params["seller_id"]
+          )
+        )
+
+      "get_product" ->
+        case Marketplace.get_product(workspace, params["product_id"]) do
+          nil -> conn |> put_status(:not_found) |> json(%{error: "Product not found"})
+          item -> json(conn, %{item: Marketplace.product_context(item)})
+        end
+
+      _ ->
+        conn |> put_status(:not_found) |> json(%{error: "Unknown tool"})
+    end
+  end
+
+  defp shop_tool(conn, workspace, tool, params) do
     case tool do
       "shop_profile" ->
         json(

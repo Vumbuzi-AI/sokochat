@@ -9,50 +9,38 @@
   min-height: 0;
 }
 
+/* Figma iPhone 15 bezel (Memoria / Apple kit), the same PNG as the Doop
+   Playground. The device is 548 x 1120.36; the screen sits at 29.23, 28.01
+   and measures 489.55 x 1064.34 with a 75.5 corner radius. */
 .wa-phone {
   position: relative;
-  width: min(390px, 100%, calc((100dvh - 112px) * 390 / 844));
-  padding: 7px;
-  border: 1px solid #696969;
-  border-radius: 49px;
-  background: #171717;
-  box-shadow:
-    0 28px 60px rgb(0 0 0 / 0.24),
-    inset 0 0 0 2px #343434;
+  width: min(440px, 100%, calc((100dvh - 112px) * 548 / 1120.36));
+  aspect-ratio: 548 / 1120.36;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color: #111b21;
 }
 
-.wa-phone::before {
-  content: "";
+.wa-phone .wa-bezel {
   position: absolute;
-  left: -3px;
-  top: 110px;
-  width: 2px;
-  height: 55px;
-  border-radius: 2px;
-  background: #747474;
-  box-shadow: 0 66px #747474;
-}
-
-.wa-phone::after {
-  content: "";
-  position: absolute;
-  right: -3px;
-  top: 140px;
-  width: 2px;
-  height: 65px;
-  border-radius: 2px;
-  background: #747474;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
 }
 
 .wa-phone .phone-screen {
   --u: calc(100cqw / 390);
   container-type: inline-size;
-  position: relative;
-  aspect-ratio: 390 / 844;
+  position: absolute;
+  left: 5.334%;
+  top: 2.5%;
+  width: 89.334%;
+  height: 95%;
   overflow: hidden;
-  border-radius: 40px;
+  border-radius: 15.42% / 7.09%;
   background: #efeae2;
   font-size: calc(var(--u) * 16);
   font-weight: 400;
@@ -67,7 +55,7 @@
   align-items: center;
   justify-content: space-between;
   height: calc(var(--u) * 59);
-  padding: calc(var(--u) * 10) calc(var(--u) * 26) 0;
+  padding: calc(var(--u) * 10) calc(var(--u) * 30) 0 calc(var(--u) * 52);
   background: #f7f7f7;
 }
 
@@ -75,28 +63,6 @@
   font-size: calc(var(--u) * 16);
   font-weight: 600;
   letter-spacing: -0.025em;
-}
-
-.wa-phone .dynamic-island {
-  position: absolute;
-  left: 50%;
-  top: calc(var(--u) * 11);
-  width: calc(var(--u) * 122);
-  height: calc(var(--u) * 35);
-  transform: translateX(-50%);
-  border-radius: calc(var(--u) * 22);
-  background: #050505;
-}
-
-.wa-phone .dynamic-island > span {
-  position: absolute;
-  right: calc(var(--u) * 13);
-  top: calc(var(--u) * 11);
-  width: calc(var(--u) * 12);
-  height: calc(var(--u) * 12);
-  border-radius: 50%;
-  background: #0d1015;
-  box-shadow: inset 0 0 0 2px #11131b;
 }
 
 .wa-phone .ios-indicators {

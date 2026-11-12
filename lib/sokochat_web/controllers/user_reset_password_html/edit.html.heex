@@ -1,29 +1,42 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">
-    Reset Password
-  </.header>
-
-  <.simple_form :let={f} for={@changeset} action={~p"/users/reset_password/#{@token}"}>
-    <.error :if={@changeset.action}>
-      Oops, something went wrong! Please check the errors below.
-    </.error>
-
-    <.input field={f[:password]} type="password" label="New Password" required />
+<.auth_card
+  icon="key"
+  title="Reset Password"
+  text="Choose a new password for your shop. You'll use it the next time you log in."
+>
+  <.simple_form
+    :let={f}
+    for={@changeset}
+    action={~p"/users/reset_password/#{@token}"}
+    class="!gap-5"
+  >
+    <.banner :if={@changeset.action} tone="danger">
+      Some details need another look. Check the fields below.
+    </.banner>
+    <.input
+      field={f[:password]}
+      type="password"
+      label="New password"
+      size="lg"
+      autocomplete="new-password"
+      hint="At least 6 characters."
+      required
+    >
+      <:trailing><.password_toggle for="user_password" /></:trailing>
+    </.input>
     <.input
       field={f[:password_confirmation]}
       type="password"
       label="Confirm new password"
+      size="lg"
+      autocomplete="new-password"
       required
     />
-    <:actions>
-      <.button phx-disable-with="Resetting..." class="w-full">
-        Reset password
-      </.button>
-    </:actions>
+    <.button size="lg" width="full" phx-disable-with="Saving">Reset password</.button>
   </.simple_form>
 
-  <p class="text-center text-sm mt-4">
-    <.link href={~p"/users/register"}>Register</.link>
-    | <.link href={~p"/users/log_in"}>Log in</.link>
-  </p>
-</div>
+  <:footer>
+    <.link navigate={~p"/users/log_in"} class="soko-link">Log in</.link>
+    <span class="px-1.5 text-soko-ink-3">or</span>
+    <.link navigate={~p"/users/register"} class="soko-link">create an account</.link>
+  </:footer>
+</.auth_card>

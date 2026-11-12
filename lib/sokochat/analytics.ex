@@ -58,7 +58,7 @@ defmodule Sokochat.Analytics do
           previous_totals.replies,
           spark(by_day, :replies)
         ),
-        kpi("ctas", "CTA sends", totals.ctas, previous_totals.ctas, spark(by_day, :ctas))
+        kpi("ctas", "Next steps sent", totals.ctas, previous_totals.ctas, spark(by_day, :ctas))
       ],
       days: by_day,
       leaders: leaders(by_day)

@@ -117,7 +117,7 @@ defmodule SokochatWeb.WorkspacesLive.Show do
       )
 
     ~H"""
-    <section :if={assigns[:workspace]} class="space-y-8">
+    <section :if={assigns[:workspace]} class="px-4 py-10 sm:px-8 space-y-8">
       <nav class="flex items-center gap-1.5 text-[13px] text-n500">
         <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
         <span>/</span>

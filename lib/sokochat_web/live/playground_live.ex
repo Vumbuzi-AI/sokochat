@@ -63,8 +63,8 @@ defmodule SokochatWeb.PlaygroundLive do
     dispatch_message(socket, message)
   end
 
-  def handle_event("send_interactive_message", %{"message" => message}, socket) do
-    dispatch_message(socket, message)
+  def handle_event("send_interactive_message", %{"message" => message} = params, socket) do
+    dispatch_message(socket, message, params["reply-id"])
   end
 
   def handle_event("clear_chat", _params, socket) do
@@ -168,8 +168,16 @@ defmodule SokochatWeb.PlaygroundLive do
     end
   end
 
+  @try_prompts [
+    "What do you have in stock?",
+    "How much is delivery to Westlands?",
+    "Can I pay with M-Pesa?"
+  ]
+
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :try_prompts, @try_prompts)
+
     ~H"""
     <.shell
       :if={@workspace}
@@ -178,120 +186,159 @@ defmodule SokochatWeb.PlaygroundLive do
       current_user={@current_user}
       tab={:playground}
       title="Playground"
+      subtitle="Test replies"
+      flush
       flash={@flash}
     >
       <:actions>
-        <.button type="button" variant="secondary" phx-click="clear_chat">
-          Clear chat
+        <.button type="button" tone="secondary" size="sm" phx-click="clear_chat">
+          <.icon name="trash" /> Clear chat
         </.button>
       </:actions>
-      <div class="wa-stage">
-        <div class="wa-phone">
-          <div class="phone-screen">
-            <div class="ios-status">
-              <span class="ios-time">9:41</span>
-              <span class="dynamic-island"><span></span></span>
-              <span class="ios-indicators">
-                <svg class="ios-cellular" viewBox="0 0 20 14" fill="currentColor" aria-hidden="true">
-                  <rect x="0" y="9" width="3" height="5" rx=".6" /><rect
-                    x="5"
-                    y="6"
-                    width="3"
-                    height="8"
-                    rx=".6"
-                  /><rect x="10" y="3" width="3" height="11" rx=".6" /><rect
-                    x="15"
-                    width="3"
-                    height="14"
-                    rx=".6"
-                  />
-                </svg>
-                <svg class="ios-wifi" viewBox="0 0 20 15" fill="currentColor" aria-hidden="true">
-                  <path d="M0 4a16 16 0 0 1 20 0l-2.4 2.5a12.5 12.5 0 0 0-15.2 0Zm4.1 4.2a9 9 0 0 1 11.8 0l-2.4 2.5a5.5 5.5 0 0 0-7 0Zm3.5 3.6a3.5 3.5 0 0 1 4.8 0L10 15Z" />
-                </svg>
-                <svg class="ios-battery" viewBox="0 0 30 14" aria-hidden="true">
-                  <rect
-                    x=".5"
-                    y="1"
-                    width="25"
-                    height="12"
-                    rx="3"
-                    fill="none"
-                    stroke="currentColor"
-                    opacity=".4"
-                  /><rect x="2.5" y="3" width="21" height="8" rx="1.5" fill="currentColor" /><path
-                    d="M27 4v6c2 0 2-6 0-6"
-                    fill="currentColor"
-                    opacity=".4"
-                  />
-                </svg>
-              </span>
-            </div>
+      <div class="soko-playground">
+        <div class="wa-stage">
+          <div class="wa-phone">
+            <div class="phone-screen">
+              <div class="ios-status">
+                <span class="ios-time">9:41</span>
+                <span class="ios-indicators">
+                  <svg class="ios-cellular" viewBox="0 0 20 14" fill="currentColor" aria-hidden="true">
+                    <rect x="0" y="9" width="3" height="5" rx=".6" /><rect
+                      x="5"
+                      y="6"
+                      width="3"
+                      height="8"
+                      rx=".6"
+                    /><rect x="10" y="3" width="3" height="11" rx=".6" /><rect
+                      x="15"
+                      width="3"
+                      height="14"
+                      rx=".6"
+                    />
+                  </svg>
+                  <svg class="ios-wifi" viewBox="0 0 20 15" fill="currentColor" aria-hidden="true">
+                    <path d="M0 4a16 16 0 0 1 20 0l-2.4 2.5a12.5 12.5 0 0 0-15.2 0Zm4.1 4.2a9 9 0 0 1 11.8 0l-2.4 2.5a5.5 5.5 0 0 0-7 0Zm3.5 3.6a3.5 3.5 0 0 1 4.8 0L10 15Z" />
+                  </svg>
+                  <svg class="ios-battery" viewBox="0 0 30 14" aria-hidden="true">
+                    <rect
+                      x=".5"
+                      y="1"
+                      width="25"
+                      height="12"
+                      rx="3"
+                      fill="none"
+                      stroke="currentColor"
+                      opacity=".4"
+                    /><rect x="2.5" y="3" width="21" height="8" rx="1.5" fill="currentColor" /><path
+                      d="M27 4v6c2 0 2-6 0-6"
+                      fill="currentColor"
+                      opacity=".4"
+                    />
+                  </svg>
+                </span>
+              </div>
 
-            <div
-              id="playground-scroll-region"
-              phx-hook="PlaygroundScroll"
-              data-message-count={MapSet.size(@message_ids)}
-              data-pending={to_string(not is_nil(@pending_user_message) or @assistant_pending)}
-              class="wa-chat"
-            >
-              <span class="wa-date">Today</span>
-              <div id="playground-messages" phx-update="stream" class="wa-messages">
-                <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
-                  <.message_bubble message={message} assistant_pending={@assistant_pending} />
+              <div
+                id="playground-scroll-region"
+                phx-hook="PlaygroundScroll"
+                data-message-count={MapSet.size(@message_ids)}
+                data-pending={to_string(not is_nil(@pending_user_message) or @assistant_pending)}
+                class="wa-chat"
+              >
+                <span class="wa-date">Today</span>
+                <div id="playground-messages" phx-update="stream" class="wa-messages">
+                  <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
+                    <.message_bubble message={message} assistant_pending={@assistant_pending} />
+                  </div>
+                </div>
+
+                <div :if={@pending_user_message} class="wa-turn wa-turn-out wa-pending">
+                  <div class="wa-bubble wa-outgoing">
+                    <span class="wa-copy">{@pending_user_message.content}</span>
+                    <span class="wa-meta">{message_time(@pending_user_message.inserted_at)}</span>
+                  </div>
+                </div>
+
+                <div :if={@assistant_pending} class="wa-turn">
+                  <div class="wa-bubble wa-incoming" aria-label="Typing">
+                    <span class="wa-dots" aria-hidden="true">
+                      <span></span><span></span><span></span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div :if={@pending_user_message} class="wa-turn wa-turn-out wa-pending">
-                <div class="wa-bubble wa-outgoing">
-                  <span class="wa-copy">{@pending_user_message.content}</span>
-                  <span class="wa-meta">{message_time(@pending_user_message.inserted_at)}</span>
-                </div>
-              </div>
-
-              <div :if={@assistant_pending} class="wa-turn">
-                <div class="wa-bubble wa-incoming" aria-label="Typing">
-                  <span class="wa-dots" aria-hidden="true">
-                    <span></span><span></span><span></span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="wa-bottom-chrome">
-              <.form for={@message_form} as={:playground} phx-submit="send_message" class="wa-compose">
-                <label class="compose-field">
-                  <input
-                    type="text"
-                    name={@message_form[:message].name}
-                    id={@message_form[:message].id}
-                    value={@message_form[:message].value}
-                    autocomplete="off"
-                    aria-label="Message"
-                    disabled={@assistant_pending}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  aria-label="Send message"
-                  disabled={@assistant_pending}
-                  class="wa-send"
+              <div class="wa-bottom-chrome">
+                <.form
+                  for={@message_form}
+                  as={:playground}
+                  phx-submit="send_message"
+                  class="wa-compose"
                 >
-                  <.wa_glyph name="microphone" />
-                </button>
-              </.form>
-              <div class="ios-bottom-safe">
-                <div class="home-indicator"></div>
+                  <label class="compose-field">
+                    <input
+                      type="text"
+                      name={@message_form[:message].name}
+                      id={@message_form[:message].id}
+                      value={@message_form[:message].value}
+                      autocomplete="off"
+                      aria-label="Message"
+                      disabled={@assistant_pending}
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    aria-label="Send message"
+                    disabled={@assistant_pending}
+                    class="wa-send"
+                  >
+                    <.wa_glyph name="microphone" />
+                  </button>
+                </.form>
+                <div class="ios-bottom-safe">
+                  <div class="home-indicator"></div>
+                </div>
               </div>
             </div>
+            <img
+              class="wa-bezel"
+              src={~p"/images/iphone-15.png"}
+              alt=""
+              aria-hidden="true"
+              width="548"
+              height="1120"
+            />
           </div>
         </div>
+        <aside class="soko-playground-rail">
+          <.banner>Test chat. Messages here don't reach buyers.</.banner>
+          <div class="flex flex-col gap-1">
+            <p class="text-sm font-medium">Ask like a buyer</p>
+            <p class="text-sm text-soko-ink-2">
+              Sokochat replies from your products and prices, the same way it does on your WhatsApp number.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 border-t border-soko-divider pt-4">
+            <p class="soko-mono text-soko-ink-3">Try</p>
+            <button
+              :for={prompt <- @try_prompts}
+              type="button"
+              phx-click="send_interactive_message"
+              phx-value-message={prompt}
+              disabled={@assistant_pending}
+              class="flex h-10 items-center justify-between gap-3 rounded-[10px] border border-soko-line bg-soko-white px-3 text-left text-sm hover:border-soko-ink-3 disabled:opacity-50"
+            >
+              <span class="truncate">{prompt}</span>
+              <.icon name="arrow-right" class="h-4 w-4 flex-none text-soko-ink-2" />
+            </button>
+          </div>
+        </aside>
       </div>
     </.shell>
     """
   end
 
-  defp dispatch_message(socket, message) do
+  defp dispatch_message(socket, message, reply_id \\ nil) do
     trimmed_message = String.trim(message || "")
 
     cond do
@@ -317,7 +364,7 @@ defmodule SokochatWeb.PlaygroundLive do
              |> assign(:pending_user_message, pending_message)
              |> assign_message_form("")
              |> start_async({:dispatch_message, dispatch_ref}, fn ->
-               run_dispatch(workspace_id, phone_number, trimmed_message)
+               run_dispatch(workspace_id, phone_number, trimmed_message, reply_id)
              end)}
 
           {:error, reason} ->
@@ -359,11 +406,20 @@ defmodule SokochatWeb.PlaygroundLive do
     end
   end
 
-  defp run_dispatch(workspace_id, phone_number, message) do
-    with {:ok, prepared} <- Dispatcher.prepare_dispatch(workspace_id),
-         {:ok, _assistant_message} <-
-           Dispatcher.dispatch_prepared(prepared, phone_number, message, :playground) do
-      {:ok, %{prepared: prepared}}
+  defp run_dispatch(workspace_id, phone_number, message, reply_id) do
+    with {:ok, prepared} <- Dispatcher.prepare_dispatch(workspace_id) do
+      {message, opts} =
+        Sokochat.Marketplace.Chat.prepare_preview(
+          prepared.workspace,
+          phone_number,
+          message,
+          reply_id
+        )
+
+      with {:ok, _assistant_message} <-
+             Dispatcher.dispatch_prepared(prepared, phone_number, message, :playground, opts) do
+        {:ok, %{prepared: prepared}}
+      end
     end
   end
 

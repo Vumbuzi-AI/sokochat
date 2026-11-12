@@ -2,6 +2,7 @@ defmodule Sokochat.Conversations.AiTurn do
   use Ecto.Schema
 
   schema "ai_turns" do
+    field :fixed_reply, :map
     field :workspace_id, :id
     field :conversation_id, :id
     field :user_message_id, :id

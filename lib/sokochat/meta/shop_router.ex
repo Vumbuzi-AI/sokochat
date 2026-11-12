@@ -25,7 +25,27 @@ defmodule Sokochat.Meta.ShopRouter do
   id when present.
   """
   @spec route(SharedLine.t(), String.t(), String.t(), String.t() | nil) :: route_result()
-  def route(%SharedLine{} = shared_line, phone_number, message_text, reply_id \\ nil) do
+  def route(
+        %SharedLine{} = shared_line,
+        phone_number,
+        message_text,
+        reply_id \\ nil,
+        source_key \\ nil
+      ) do
+    if Sokochat.Marketplace.enabled_line?(shared_line) do
+      Sokochat.Marketplace.Chat.route(
+        shared_line,
+        phone_number,
+        message_text,
+        reply_id,
+        source_key
+      )
+    else
+      route_shop(shared_line, phone_number, message_text, reply_id)
+    end
+  end
+
+  defp route_shop(shared_line, phone_number, message_text, reply_id) do
     shops = Meta.list_shared_line_shops(shared_line.id)
     explicit = explicit_code(message_text, reply_id)
 
@@ -45,7 +65,7 @@ defmodule Sokochat.Meta.ShopRouter do
           if is_binary(message_text) and String.trim(message_text) != "" do
             String.trim(message_text)
           else
-            "Hello"
+            ShopCode.catalog_opener()
           end
 
         {:ok, code, cleaned}
@@ -68,12 +88,37 @@ defmodule Sokochat.Meta.ShopRouter do
             []
           end
 
-        {:dispatch, shop, cleaned, opts}
+        {:dispatch, shop, ensure_catalog_intent(cleaned), opts}
 
       nil ->
         {:picker, "That shop wasn't recognized. Please pick one:", picker_payload(shops)}
     end
   end
+
+  # Shop-link openers often look like greetings after the token is stripped.
+  # Rewrite those into a browse ask so the first reply opens the catalog.
+  defp ensure_catalog_intent(text) when is_binary(text) do
+    normalized =
+      text
+      |> String.trim()
+      |> String.downcase()
+
+    cond do
+      normalized == "" ->
+        ShopCode.catalog_opener()
+
+      normalized in ~w(hello hi hey hiya) ->
+        ShopCode.catalog_opener()
+
+      String.match?(normalized, ~r/\Ahi[,!]?\s+i'?d like help from\b/) ->
+        ShopCode.catalog_opener()
+
+      true ->
+        String.trim(text)
+    end
+  end
+
+  defp ensure_catalog_intent(_), do: ShopCode.catalog_opener()
 
   defp route_without_code(shared_line, phone_number, message_text, shops) do
     case Meta.get_shop_binding_with_workspace(shared_line.id, phone_number) do

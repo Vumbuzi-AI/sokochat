@@ -1,163 +1,81 @@
-<div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-  <div class="grid lg:grid-cols-2">
-    <%!-- Image panel (left) --%>
-    <div class="relative hidden flex-col justify-between gap-8 overflow-hidden bg-[linear-gradient(to_bottom,rgba(15,156,92,0.12),rgba(255,255,255,0)_60%)] p-10 lg:flex">
-      <a href={~p"/"} class="flex items-center gap-2 no-underline">
-        <img src={~p"/images/logo.png"} alt="Sokochat" class="h-9 w-auto object-contain" />
-      </a>
+<.auth_split
+  label="Sign in"
+  title="Log in to your shop"
+  eyebrow="For businesses"
+  headline="Answer buyers on WhatsApp and see every order on your desk."
+>
+  <:subtitle>Pick up the orders and questions that came in on WhatsApp.</:subtitle>
 
-      <div class="flex flex-1 flex-col items-center justify-center gap-8">
-        <img
-          src={~p"/images/1.png"}
-          alt="WhatsApp business network illustration"
-          class="h-[220px] w-auto object-contain"
-        />
-        <img
-          src={~p"/images/5.png"}
-          alt="AI chatbot conversation illustration"
-          class="h-[220px] w-auto object-contain"
-        />
-      </div>
+  <.form
+    :let={f}
+    for={@conn.params["user"]}
+    as={:user}
+    action={~p"/users/log_in"}
+    class="soko-form !gap-5"
+  >
+    <.banner :if={@error_message} tone="danger">{@error_message}</.banner>
 
-      <div class="max-w-[420px]">
-        <h2 class="h5 text-n900">Welcome back to Sokochat</h2>
-        <p class="mt-2 text-sm font-light text-n400">
-          Pick up where you left off — manage your AI-powered WhatsApp chatbots,
-          keep your data current, and test before you go live.
-        </p>
-      </div>
+    <.input
+      field={f[:email]}
+      type="email"
+      label="Email"
+      size="lg"
+      required
+      autocomplete="email"
+      placeholder="you@yourshop.co.ke"
+    />
+    <.input
+      field={f[:password]}
+      type="password"
+      label="Password"
+      size="lg"
+      value=""
+      required
+      autocomplete="current-password"
+    >
+      <:trailing><.password_toggle for="user_password" /></:trailing>
+    </.input>
+
+    <div class="flex items-center justify-between gap-4">
+      <.input field={f[:remember_me]} type="checkbox" label="Keep me logged in" />
+      <.link href={~p"/users/reset_password"} class="soko-link text-sm">
+        Forgot your password?
+      </.link>
     </div>
 
-    <%!-- Form panel (right) --%>
-    <div class="flex items-center justify-center p-8 sm:p-12">
-      <div class="w-full max-w-sm">
-        <div class="mb-8">
-          <div class="section-title">Sign in</div>
-          <h1 class="mt-1 text-[28px] font-semibold leading-tight text-n900">
-            Log in to your account
-          </h1>
-          <p class="mt-2 text-sm text-n400">
-            Don't have an account?
-            <.link
-              navigate={~p"/users/register"}
-              class="font-semibold text-primary no-underline hover:underline"
-            >
-              Sign up
-            </.link>
-            for free.
-          </p>
-        </div>
+    <.button size="lg" width="full" phx-disable-with="Logging in">
+      <.icon name="arrow-right" /> Log in
+    </.button>
 
-        <.form
-          :let={f}
-          for={@conn.params["user"]}
-          as={:user}
-          action={~p"/users/log_in"}
-          class="flex flex-col gap-5"
-        >
-          <div
-            :if={@error_message}
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {@error_message}
-          </div>
+    <p class="text-sm text-soko-ink-2">
+      New to Sokochat?
+      <.link navigate={~p"/users/register"} class="soko-link">Create an account</.link>
+    </p>
+  </.form>
 
-          <div class="flex flex-col gap-1.5">
-            <label for="user_email" class="text-sm font-medium text-n800">Email</label>
-            <input
-              type="email"
-              name="user[email]"
-              id="user_email"
-              value={Phoenix.HTML.Form.normalize_value("email", f[:email].value)}
-              required
-              autocomplete="email"
-              placeholder="you@example.com"
-              class="rounded-lg border border-n300 bg-n50 px-4 py-3 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label for="user_password" class="text-sm font-medium text-n800">Password</label>
-            <div class="relative">
-              <input
-                type="password"
-                name="user[password]"
-                id="user_password"
-                required
-                autocomplete="current-password"
-                placeholder="••••••••"
-                class="w-full rounded-lg border border-n300 bg-n50 px-4 py-3 pr-12 text-base text-n800 placeholder:text-n400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                type="button"
-                data-password-toggle
-                aria-controls="user_password"
-                aria-pressed="false"
-                aria-label="Show password"
-                class="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-n400 transition-colors duration-200 hover:text-n800"
-              >
-                <svg
-                  data-icon="show"
-                  class="hidden h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <svg
-                  data-icon="hide"
-                  class="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94">
-                  </path>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19">
-                  </path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                  <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <label class="flex items-center gap-2 text-sm text-n600">
-              <input
-                type="checkbox"
-                name="user[remember_me]"
-                value="true"
-                class="h-4 w-4 rounded border-n300 text-primary focus:ring-primary/30"
-              /> Keep me logged in
-            </label>
-            <.link
-              href={~p"/users/reset_password"}
-              class="text-sm font-semibold text-primary no-underline hover:underline"
-            >
-              Forgot your password?
-            </.link>
-          </div>
-
-          <button
-            type="submit"
-            phx-disable-with="Logging in..."
-            class="btn btn-primary mt-1 w-full"
-          >
-            Log in <span aria-hidden="true">→</span>
-          </button>
-        </.form>
-      </div>
+  <:stage>
+    <div class="absolute inset-0 overflow-hidden rounded-soko-20">
+      <img
+        src={~p"/images/people-phone.jpg"}
+        alt="Two friends laughing while looking at a phone"
+        class="h-full w-full object-cover object-[50%_30%]"
+      />
     </div>
-  </div>
-</div>
+    <.order_note
+      class="absolute left-4 top-4 hidden sm:block"
+      photo={~p"/images/cherry-case.webp"}
+      title="New order"
+      meta="Cherry phone case"
+      badge="Paid"
+      foot_left="Order 1042"
+      foot_right="KES 1,200"
+    />
+    <.stat_note
+      class="absolute bottom-4 right-4 hidden sm:flex"
+      label="Asked this week"
+      value="14 people"
+      caption="Phone cases"
+    />
+    <.sample_tag class="absolute bottom-4 left-4 !bg-soko-white" />
+  </:stage>
+</.auth_split>

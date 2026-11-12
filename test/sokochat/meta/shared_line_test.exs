@@ -37,6 +37,7 @@ defmodule Sokochat.Meta.SharedLineTest do
     url = Meta.shop_wa_me_url(shared_line, joined)
     assert url =~ "https://wa.me/254700111222?text="
     assert url =~ "shop%3Abrookside" or url =~ URI.encode_www_form("[shop:brookside]")
+    assert url =~ URI.encode_www_form("What do you have at Brookside Kenya?")
 
     {:ok, left} = Meta.leave_shared_line(joined)
     assert is_nil(left.shared_line_id)

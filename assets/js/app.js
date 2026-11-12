@@ -209,6 +209,66 @@ document.addEventListener("click", (event) => {
   input.focus()
 })
 
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest?.("[data-dialog-open]")
+  if (opener) {
+    const dialog = document.getElementById(opener.dataset.dialogOpen)
+    if (dialog && !dialog.open) dialog.showModal()
+    return
+  }
+
+  if (event.target.closest?.("[data-dialog-close]")) {
+    event.target.closest("dialog")?.close()
+    return
+  }
+
+  if (event.target instanceof HTMLDialogElement && event.target.classList.contains("soko-dialog")) {
+    event.target.close()
+  }
+})
+
+const APPEARANCE_KEY = "soko-appearance"
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)")
+
+function readAppearance() {
+  try {
+    return window.localStorage.getItem(APPEARANCE_KEY) || "system"
+  } catch {
+    return "system"
+  }
+}
+
+function applyAppearance(choice = readAppearance()) {
+  const root = document.documentElement
+  if (root.hasAttribute("data-marketing")) return
+  const dark = choice === "dark" || (choice === "system" && darkQuery.matches)
+  if (dark) root.setAttribute("data-theme", "dark")
+  else root.removeAttribute("data-theme")
+}
+
+function syncAppearanceControls() {
+  const choice = readAppearance()
+  document.querySelectorAll("[data-appearance] input[name='appearance']").forEach((input) => {
+    input.checked = input.value === choice
+  })
+}
+
+darkQuery.addEventListener("change", () => applyAppearance())
+
+document.addEventListener("change", (event) => {
+  const input = event.target.closest?.("[data-appearance] input[name='appearance']")
+  if (!input) return
+  try {
+    window.localStorage.setItem(APPEARANCE_KEY, input.value)
+  } catch {
+    // Private mode can reject storage. The choice still applies to this page.
+  }
+  applyAppearance(input.value)
+})
+
+window.addEventListener("phx:page-loading-stop", syncAppearanceControls)
+document.addEventListener("DOMContentLoaded", syncAppearanceControls)
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 

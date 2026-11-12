@@ -54,17 +54,42 @@ defmodule Sokochat.Conversations.Dispatcher do
   end
 
   def dispatch_prepared(prepared, phone_number, user_message, source \\ :playground, opts \\ []) do
-    if Intelligence.agentic?() do
-      Sokochat.Conversations.DurableTurns.dispatch(
-        prepared,
-        phone_number,
-        user_message,
-        source,
-        system_prompt_for(prepared, user_message),
+    prepared =
+      if prepared.workspace.marketplace do
+        Map.put(prepared, :preferred_shop, Keyword.get(opts, :preferred_shop))
+      else
+        prepared
+      end
+
+    opts =
+      if prepared.workspace.marketplace and
+           Sokochat.Marketplace.Chat.greeting?(user_message) and
+           is_nil(Keyword.get(opts, :marketplace_reply)) do
+        Keyword.put(
+          opts,
+          :marketplace_reply,
+          Sokochat.Marketplace.welcome(prepared.workspace, Map.get(prepared, :preferred_shop))
+        )
+      else
         opts
-      )
-    else
-      dispatch_direct(prepared, phone_number, user_message, source)
+      end
+
+    cond do
+      prepared.workspace.marketplace and not Intelligence.agentic?() ->
+        {:error, "Marketplace shopping requires the Pi intelligence backend."}
+
+      Intelligence.agentic?() ->
+        Sokochat.Conversations.DurableTurns.dispatch(
+          prepared,
+          phone_number,
+          user_message,
+          source,
+          system_prompt_for(prepared, user_message),
+          opts
+        )
+
+      true ->
+        dispatch_direct(prepared, phone_number, user_message, source)
     end
   end
 
@@ -137,6 +162,10 @@ defmodule Sokochat.Conversations.Dispatcher do
   # For catalog-backed workspaces, retrieve only the items semantically relevant
   # to the buyer's message (RAG). The prompt stays a constant size no matter how
   # large the catalog is, and the bot always sees the right products.
+  defp system_prompt_for(%{workspace: %Workspace{marketplace: true}} = prepared, _message) do
+    Sokochat.Marketplace.instructions(Map.get(prepared, :preferred_shop))
+  end
+
   defp system_prompt_for(
          %{
            workspace: %Workspace{data_source: "manual"} = workspace,

@@ -564,66 +564,6 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
     """
   end
 
-  attr :title, :string, required: true
-  attr :subtitle, :string, default: nil
-  attr :width, :string, default: "max-w-lg"
-  slot :inner_block, required: true
-
-  defp modal_shell(assigns) do
-    ~H"""
-    <div class="fixed inset-0 z-50" phx-window-keydown="close_modal" phx-key="escape">
-      <div
-        class="fixed inset-0 bg-n900/40 transition-opacity"
-        phx-click="close_modal"
-        aria-hidden="true"
-      >
-      </div>
-      <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 lg:py-10">
-        <div class="flex min-h-full items-start justify-center">
-          <div class={[
-            "relative w-full rounded-2xl border border-n300 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
-            @width
-          ]}>
-            <div class="flex items-start justify-between gap-4 border-b border-n300 px-6 py-5">
-              <div class="space-y-1">
-                <h2 class="text-lg font-semibold text-n900">{@title}</h2>
-                <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
-              </div>
-              <button
-                type="button"
-                phx-click="close_modal"
-                class="-m-2 flex-none rounded-full p-2 text-n400 transition hover:bg-n200 hover:text-n900"
-                aria-label="Close"
-              >
-                <.icon name="hero-x-mark-mini" class="h-5 w-5" />
-              </button>
-            </div>
-            <div class="px-6 py-5">
-              {render_slot(@inner_block)}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-  end
-
-  defp icon_button(assigns) do
-    ~H"""
-    <button
-      type="button"
-      class={[
-        "rounded-lg border border-n300 bg-white p-2 transition",
-        (@variant == "danger" && "text-danger hover:bg-danger-bg") ||
-          "text-n400 hover:bg-n200 hover:text-n900"
-      ]}
-      {@rest}
-    >
-      <.icon name={@icon} class="h-4 w-4" />
-    </button>
-    """
-  end
-
   @impl true
   def render(assigns) do
     assigns =
@@ -634,7 +574,7 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
       )
 
     ~H"""
-    <section :if={@workspace} class="mx-auto max-w-5xl space-y-6">
+    <section :if={@workspace} class="px-4 py-10 sm:px-8 mx-auto max-w-5xl space-y-6">
       <nav class="flex items-center gap-1.5 text-[13px] text-n500">
         <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
         <span>/</span>
@@ -834,19 +774,17 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
                     <div class="flex flex-none items-center gap-2">
                       <.icon_button
                         icon="hero-pencil-square-mini"
-                        variant="default"
-                        rest={%{"phx-click" => "edit_field", "phx-value-id" => field.id}}
+                        aria-label="Edit"
+                        phx-click="edit_field"
+                        phx-value-id={field.id}
                       />
                       <.icon_button
                         icon="hero-trash-mini"
-                        variant="danger"
-                        rest={
-                          %{
-                            "phx-click" => "delete_field",
-                            "phx-value-id" => field.id,
-                            "data-confirm" => "Remove this field from the model?"
-                          }
-                        }
+                        aria-label="Delete"
+                        tone="danger"
+                        phx-click="delete_field"
+                        phx-value-id={field.id}
+                        data-confirm="Remove this field from the model?"
                       />
                     </div>
                   </div>
@@ -928,19 +866,17 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
                       <div class="flex flex-none items-center gap-2">
                         <.icon_button
                           icon="hero-pencil-square-mini"
-                          variant="default"
-                          rest={%{"phx-click" => "edit_item", "phx-value-id" => item.id}}
+                          aria-label="Edit"
+                          phx-click="edit_item"
+                          phx-value-id={item.id}
                         />
                         <.icon_button
                           icon="hero-trash-mini"
-                          variant="danger"
-                          rest={
-                            %{
-                              "phx-click" => "delete_item",
-                              "phx-value-id" => item.id,
-                              "data-confirm" => "Delete this item?"
-                            }
-                          }
+                          aria-label="Delete"
+                          tone="danger"
+                          phx-click="delete_item"
+                          phx-value-id={item.id}
+                          data-confirm="Delete this item?"
                         />
                       </div>
                     </div>
@@ -998,10 +934,10 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
       </div>
 
       <%!-- Catalog model modal --%>
-      <.modal_shell
+      <.modal
         :if={@active_modal == :model}
         title="Catalog model"
-        subtitle="Define the reusable schema for this shop."
+        text="Define the reusable schema for this shop."
       >
         <.simple_form for={@catalog_form} phx-change="validate_model" phx-submit="save_model">
           <.input field={@catalog_form[:name]} label="Model name" required />
@@ -1019,19 +955,19 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           />
 
           <:actions>
-            <.button type="button" variant="secondary" phx-click="close_modal">
+            <.button type="button" tone="secondary" phx-click="close_modal">
               Cancel
             </.button>
             <.button>Save model</.button>
           </:actions>
         </.simple_form>
-      </.modal_shell>
+      </.modal>
 
       <%!-- Field modal --%>
-      <.modal_shell
+      <.modal
         :if={@active_modal == :field}
         title={if @selected_field, do: "Edit field", else: "Add field"}
-        subtitle="Stored on the item metadata and included in the AI context."
+        text="Stored on the item metadata and included in the AI context."
       >
         <.simple_form for={@field_form} phx-change="validate_field" phx-submit="save_field">
           <input type="hidden" name="field[id]" value={(@selected_field && @selected_field.id) || ""} />
@@ -1064,20 +1000,20 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           />
 
           <:actions>
-            <.button type="button" variant="secondary" phx-click="close_modal">
+            <.button type="button" tone="secondary" phx-click="close_modal">
               Cancel
             </.button>
             <.button>{if @selected_field, do: "Update field", else: "Add field"}</.button>
           </:actions>
         </.simple_form>
-      </.modal_shell>
+      </.modal>
 
       <%!-- Item modal --%>
-      <.modal_shell
+      <.modal
         :if={@active_modal == :item}
-        width="max-w-2xl"
+        size="lg"
         title={if @selected_item, do: "Edit item", else: "New item"}
-        subtitle="Custom fields are saved separately and included in the AI context."
+        text="Custom fields are saved separately and included in the AI context."
       >
         <.simple_form for={@item_form} phx-change="validate_item" phx-submit="save_item" multipart>
           <input type="hidden" name="item[id]" value={(@selected_item && @selected_item.id) || ""} />
@@ -1143,13 +1079,13 @@ defmodule SokochatWeb.WorkspacesLive.Endpoint do
           </div>
 
           <:actions>
-            <.button type="button" variant="secondary" phx-click="close_modal">
+            <.button type="button" tone="secondary" phx-click="close_modal">
               Cancel
             </.button>
             <.button>{if @selected_item, do: "Update item", else: "Add item"}</.button>
           </:actions>
         </.simple_form>
-      </.modal_shell>
+      </.modal>
     </section>
     """
   end

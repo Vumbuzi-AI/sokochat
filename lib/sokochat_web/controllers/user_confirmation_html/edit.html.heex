@@ -1,14 +1,15 @@
-<div class="mx-auto max-w-sm">
-  <.header class="text-center">Confirm account</.header>
-
+<.auth_card
+  icon="seal-check"
+  title="Confirm account"
+  text="One more step. Confirm your account to start setting up your shop."
+>
   <.simple_form for={@conn.params["user"]} as={:user} action={~p"/users/confirm/#{@token}"}>
-    <:actions>
-      <.button class="w-full">Confirm my account</.button>
-    </:actions>
+    <.button size="lg" width="full" phx-disable-with="Confirming">Confirm my account</.button>
   </.simple_form>
 
-  <p class="text-center mt-4">
-    <.link href={~p"/users/register"}>Register</.link>
-    | <.link href={~p"/users/log_in"}>Log in</.link>
-  </p>
-</div>
+  <:footer>
+    <.link navigate={~p"/users/log_in"} class="soko-link">Log in</.link>
+    <span class="px-1.5 text-soko-ink-3">or</span>
+    <.link navigate={~p"/users/register"} class="soko-link">create an account</.link>
+  </:footer>
+</.auth_card>

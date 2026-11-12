@@ -20,6 +20,7 @@ defmodule Sokochat.Workspaces.Workspace do
     field :phone_number, :string
     field :about, :string
     field :shop_code, :string
+    field :marketplace, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end

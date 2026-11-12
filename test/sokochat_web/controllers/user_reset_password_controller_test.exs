@@ -109,7 +109,7 @@ defmodule SokochatWeb.UserResetPasswordControllerTest do
           }
         })
 
-      assert html_response(conn, 200) =~ "something went wrong"
+      assert html_response(conn, 200) =~ "Some details need another look"
     end
 
     test "does not reset password with invalid token", %{conn: conn} do

@@ -228,7 +228,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
   @impl true
   def render(assigns) do
     ~H"""
-    <section :if={@workspace} class="mx-auto max-w-3xl space-y-6">
+    <section :if={@workspace} class="px-4 py-10 sm:px-8 mx-auto max-w-3xl space-y-6">
       <nav class="flex items-center gap-1.5 text-[13px] text-n500">
         <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
         <span>/</span>
@@ -295,7 +295,7 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
                 Joined as <span class="font-mono text-[13px]">[shop:{@workspace.shop_code}]</span>
               </p>
               <.copy_field :if={@wa_me_url} id="shop-wa-me" label="Buyer link" value={@wa_me_url} />
-              <.button type="button" variant="danger" size="sm" phx-click="leave_shared_line">
+              <.button type="button" tone="danger" size="sm" phx-click="leave_shared_line">
                 Leave shared line
               </.button>
             </div>
@@ -410,68 +410,6 @@ defmodule SokochatWeb.WorkspacesLive.Meta do
         </div>
       </div>
     </section>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-
-  defp copy_field(assigns) do
-    ~H"""
-    <div id={"copy-field-#{@id}"} data-copy-field phx-hook="ClipboardCopy" data-copy={@value}>
-      <label for={@id} class="block text-sm font-medium text-n900">{@label}</label>
-      <div class="mt-1.5 flex items-center gap-2">
-        <div class="relative min-w-0 flex-1">
-          <input
-            id={@id}
-            type="text"
-            readonly
-            value={@value}
-            aria-describedby={"#{@id}-copy-error"}
-            class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
-          />
-          <span
-            data-copy-status
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-primary"
-          >
-          </span>
-        </div>
-        <button
-          id={"copy-#{@id}"}
-          type="button"
-          data-copy-button
-          class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 text-sm font-medium text-n900 transition hover:bg-n200"
-          title="Copy to clipboard"
-        >
-          <.icon name="hero-document-duplicate-mini" class="h-4 w-4" /> Copy
-        </button>
-      </div>
-      <p
-        id={"#{@id}-copy-error"}
-        data-copy-error
-        role="alert"
-        class="mt-1.5 text-xs text-red-700"
-        hidden
-      >
-      </p>
-    </div>
-    """
-  end
-
-  attr :done, :boolean, required: true
-  attr :label, :string, required: true
-
-  defp checklist_item(assigns) do
-    ~H"""
-    <div class="flex items-center gap-2.5">
-      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-primary" />
-      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-n500" />
-      <span class={if @done, do: "text-n900", else: "text-n400"}>{@label}</span>
-    </div>
     """
   end
 end

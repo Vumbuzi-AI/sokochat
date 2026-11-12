@@ -14,8 +14,8 @@ defmodule Sokochat.Meta.ShopCodeTest do
                ShopCode.extract("Hello there [SHOP:Royco]")
     end
 
-    test "empty remainder becomes Hello" do
-      assert {:ok, "brookside", "Hello"} = ShopCode.extract("[shop:brookside]")
+    test "empty remainder becomes a catalog browse ask" do
+      assert {:ok, "brookside", "What do you have?"} = ShopCode.extract("[shop:brookside]")
     end
 
     test "returns :none when there is no token" do

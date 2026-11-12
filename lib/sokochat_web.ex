@@ -89,6 +89,7 @@ defmodule SokochatWeb do
       import Phoenix.HTML
       # Core UI components
       import SokochatWeb.CoreComponents
+      import SokochatWeb.AuthComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

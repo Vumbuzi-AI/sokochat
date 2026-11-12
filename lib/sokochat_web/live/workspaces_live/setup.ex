@@ -43,6 +43,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:endpoint, nil)
      |> assign(:catalog, nil)
      |> assign(:selected_item, nil)
+     |> assign(:confirming, nil)
      |> assign(:selected_field, nil)
      |> assign(:item_values, %{})
      |> assign(:preview_json, nil)
@@ -107,9 +108,21 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   defp step_from_action(_action), do: :business
 
   defp step_title(:products), do: "Products"
-  defp step_title(:cta), do: "CTA Rules"
-  defp step_title(:meta), do: "Meta"
+  defp step_title(:cta), do: "Next steps"
+  defp step_title(:meta), do: "WhatsApp"
   defp step_title(_), do: "Business"
+
+  defp step_subtitle(:business, _assigns), do: "Shop profile"
+
+  defp step_subtitle(:products, %{catalog: %{id: id, items: items}}) when not is_nil(id) do
+    case length(items || []) do
+      1 -> "1 product"
+      count -> "#{count} products"
+    end
+  end
+
+  defp step_subtitle(:cta, %{cta_rules: rules}) when rules != [], do: "#{length(rules)} rules"
+  defp step_subtitle(_step, _assigns), do: nil
 
   @impl true
   def handle_event("set_lang", %{"lang" => lang}, socket) do
@@ -295,7 +308,8 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
     {:noreply,
      socket
-     |> put_flash(:info, "Field removed from the model.")
+     |> assign(:active_modal, nil)
+     |> put_flash(:info, "#{field.label} removed.")
      |> reload_products_state(clear_selected_item: false)}
   end
 
@@ -432,13 +446,21 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:active_modal, :item)}
   end
 
+  def handle_event("confirm_delete", %{"kind" => kind, "id" => id}, socket) do
+    {:noreply,
+     socket
+     |> assign(:confirming, confirmation(kind, id, socket.assigns))
+     |> assign(:active_modal, :confirm_delete)}
+  end
+
   def handle_event("delete_item", %{"id" => id}, socket) do
     item = Catalogs.get_item!(socket.assigns.catalog.id, normalize_id(id))
     {:ok, _} = Catalogs.delete_item(item)
 
     {:noreply,
      socket
-     |> put_flash(:info, "Item deleted.")
+     |> assign(:active_modal, nil)
+     |> put_flash(:info, "#{item.title} deleted.")
      |> reload_products_state()}
   end
 
@@ -494,7 +516,8 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
     {:noreply,
      socket
-     |> put_flash(:info, "CTA rule deleted.")
+     |> assign(:active_modal, nil)
+     |> put_flash(:info, "Rule deleted.")
      |> reload_cta_state()}
   end
 
@@ -758,260 +781,180 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       current_user={@current_user}
       tab={@active_step}
       title={@page_title}
+      subtitle={step_subtitle(@active_step, assigns)}
       flash={@flash}
     >
-      <div class="mx-auto w-full max-w-5xl">
-        <div class="rounded-lg border border-n100 bg-n50 p-6 shadow-[0_8px_24px_rgba(0,0,0,0.04)] lg:p-8">
-          <.business_step :if={@active_step == :business} {assigns} />
-          <.products_step :if={@active_step == :products} {assigns} />
-          <.cta_step :if={@active_step == :cta} {assigns} />
-          <.meta_step :if={@active_step == :meta} {assigns} />
-        </div>
-      </div>
+      <:actions :if={@active_step == :business}>
+        <.button form="business-form" size="sm" disabled={business_unchanged?(@business_form)}>
+          Save changes
+        </.button>
+      </:actions>
+      <:actions :if={@active_step == :products and not is_nil(@catalog.id)}>
+        <.button type="button" size="sm" phx-click="new_item">
+          <.icon name="plus" /> Add product
+        </.button>
+      </:actions>
+      <:actions :if={@active_step == :cta and @cta_rules != []}>
+        <.recommend_button recommending={@recommending} />
+        <.button type="button" size="sm" phx-click="open_add_rule">
+          <.icon name="plus" /> Add rule
+        </.button>
+      </:actions>
+
+      <.business_step :if={@active_step == :business} {assigns} />
+      <.products_step :if={@active_step == :products} {assigns} />
+      <.cta_step :if={@active_step == :cta} {assigns} />
+      <.meta_step :if={@active_step == :meta} {assigns} />
 
       <.catalog_model_modal :if={@active_modal == :model} {assigns} />
       <.field_modal :if={@active_modal == :field} {assigns} />
       <.item_modal :if={@active_modal == :item} {assigns} />
+      <.confirm_delete_modal :if={@active_modal == :confirm_delete} confirming={@confirming} />
       <.cta_rule_modal :if={@active_modal == :cta_rule} {assigns} />
     </.shell>
     """
   end
 
-  # --- step 1: business profile -------------------------------------------
+  # --- business ------------------------------------------------------------
 
   defp business_step(assigns) do
     ~H"""
-    <div class="space-y-6">
-      <div>
-        <h3 class="text-xl font-semibold text-n900">Business Profile</h3>
-        <p class="mt-1 text-sm text-n400">
-          Tell the assistant who you are. This context grounds every reply and powers
-          smart CTA recommendations — your phone and location feed call, WhatsApp, and
-          map CTAs automatically.
-        </p>
-      </div>
-
-      <.simple_form for={@business_form} phx-change="validate_business" phx-submit="save_business">
-        <div class="grid gap-4 sm:grid-cols-2">
-          <.input
-            field={@business_form[:company_name]}
-            label="Company name"
-            placeholder="Acme Retailers Ltd"
-          />
-          <.input
-            field={@business_form[:industry]}
-            label="Industry"
-            placeholder="Fashion, Electronics, Food..."
-          />
+    <.simple_form
+      id="business-form"
+      for={@business_form}
+      phx-change="validate_business"
+      phx-submit="save_business"
+      class="max-w-[880px] !gap-0"
+    >
+      <.section
+        title="Business profile"
+        text="Sokochat uses this to describe your shop when buyers ask."
+      >
+        <.input field={@business_form[:company_name]} label="Business name" placeholder="Soko Shoes" />
+        <div class="soko-field-row">
+          <.input field={@business_form[:industry]} label="Industry" placeholder="Footwear" />
           <.input
             field={@business_form[:phone_number]}
-            label="Phone number"
-            placeholder="+254700000000"
-          />
-          <.input
-            field={@business_form[:location]}
-            label="Location"
-            placeholder="Moi Avenue, Nairobi"
+            type="tel"
+            label="Phone"
+            placeholder="+254 712 345 678"
           />
         </div>
+        <.input field={@business_form[:location]} label="Location" placeholder="Moi Avenue, Nairobi" />
+      </.section>
+
+      <.section
+        title="About"
+        text="A few lines buyers might ask about, like delivery or opening hours."
+      >
         <.input
           field={@business_form[:about]}
           type="textarea"
-          label="About the business"
-          placeholder="What you sell, who you serve, your hours, delivery options, and anything the assistant should know."
+          label="Shop notes"
+          rows="4"
+          placeholder="We deliver in Nairobi the same day. Open Monday to Saturday, 9am to 7pm."
         />
+      </.section>
 
-        <:actions>
-          <.button disabled={business_unchanged?(@business_form)}>
-            Save business profile
+      <.section title="WhatsApp line" text={whatsapp_line_text(@workspace)}>
+        <div
+          :if={@workspace.shared_line_id && @wa_me_url}
+          class="flex items-center gap-3 rounded-[12px] border border-soko-line bg-soko-white px-4 py-3"
+        >
+          <.icon name="whatsapp-logo" class="h-4 w-4 flex-none text-soko-ink-2" />
+          <span class="min-w-0 flex-1 truncate text-sm">{display_link(@wa_me_url)}</span>
+          <.badge>Connected</.badge>
+          <.button
+            id="copy-wa-me"
+            type="button"
+            tone="secondary"
+            size="sm"
+            phx-hook="ClipboardCopy"
+            data-copy={@wa_me_url}
+          >
+            <.icon name="copy" /> Copy link
           </.button>
-        </:actions>
-      </.simple_form>
-    </div>
+        </div>
+        <div
+          :if={!(@workspace.shared_line_id && @wa_me_url)}
+          class="flex items-center gap-3 rounded-[12px] border border-soko-line bg-soko-white px-4 py-3"
+        >
+          <.icon name="whatsapp-logo" class="h-4 w-4 flex-none text-soko-ink-3" />
+          <span class="min-w-0 flex-1 text-sm text-soko-ink-2">Not connected yet</span>
+          <.button navigate={~p"/workspaces/#{@workspace.id}/connection"} tone="secondary" size="sm">
+            Connect
+          </.button>
+        </div>
+      </.section>
+    </.simple_form>
     """
   end
 
-  # --- step 2: products ---------------------------------------------------
+  defp whatsapp_line_text(workspace) do
+    "Buyers reach #{workspace.company_name || workspace.name} through the shared Sokochat number."
+  end
+
+  defp display_link(url), do: String.replace(url, ~r{^https?://}, "")
+
+  # --- products -----------------------------------------------------------
 
   defp products_step(assigns) do
     ~H"""
-    <div class="space-y-6">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 class="text-xl font-semibold text-n900">Products</h3>
-          <p class="mt-1 text-sm text-n400">
-            Set the categories you sell first, then add products. Each product picks one category, needs a cover image, and at least one variant priced in KES.
-          </p>
-        </div>
-        <.button :if={@catalog.id} type="button" phx-click="new_item">
-          <.icon name="hero-plus" class="h-4 w-4" /> Add product
-        </.button>
+    <div class="flex flex-col gap-4">
+      <div :if={!@catalog.id} class="grid min-h-[60vh] place-items-center">
+        <.empty
+          icon="package"
+          title="Set up your catalogue"
+          text="Tell Sokochat what you sell, then add products one by one."
+        >
+          <:actions>
+            <.button type="button" size="sm" phx-click="open_model">Set up catalogue</.button>
+          </:actions>
+        </.empty>
       </div>
 
-      <div class="space-y-6">
-        <.source_banner source="manual" active={@workspace.data_source} />
-        <div :if={!@catalog.id} class="space-y-6">
-          <.empty_state
-            icon="hero-squares-2x2"
-            title="Set up your catalog model"
-            body="Define a reusable schema for this shop, then add fields and items one by one without touching JSON."
+      <div :if={@catalog.id} class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Catalogue">
+          <button
+            :for={
+              {tab, label} <- [
+                {"manual", "Products"},
+                {"categories", "Categories"},
+                {"fields", "Fields"}
+              ]
+            }
+            type="button"
+            role="tab"
+            class="soko-chip"
+            data-active={to_string(products_tab(@active_tab) == tab)}
+            aria-selected={to_string(products_tab(@active_tab) == tab)}
+            phx-click="switch_tab"
+            phx-value-tab={tab}
           >
-            <.button type="button" phx-click="open_model">
-              <.icon name="hero-sparkles-mini" class="h-4 w-4" /> Set up catalog model
-            </.button>
-          </.empty_state>
+            {label}
+          </button>
         </div>
-
-        <div :if={@catalog.id} class="space-y-6">
-          <.categories_panel categories={Catalogs.shop_categories(@catalog)} query={@category_query} />
-
-          <%!-- fields --%>
-          <div class="rounded-lg border border-n300 bg-n100/40 p-4">
-            <div class="flex items-center justify-between">
-              <p class="text-[11px] font-semibold uppercase tracking-wider text-n400">
-                Custom fields
-              </p>
-              <button
-                type="button"
-                phx-click="new_field"
-                class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                <.icon name="hero-plus-mini" class="h-4 w-4" /> Add field
-              </button>
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <span
-                :for={field <- custom_fields(@catalog)}
-                class="group inline-flex items-center gap-1.5 rounded-full border border-n300 bg-n50 px-3 py-1 text-xs text-n800"
-              >
-                <span class="font-medium">{field.label}</span>
-                <span class="font-mono text-n400">{field.field_type}</span>
-                <button
-                  type="button"
-                  phx-click="edit_field"
-                  phx-value-id={field.id}
-                  class="text-n400 hover:text-primary"
-                >
-                  <.icon name="hero-pencil-square-mini" class="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  phx-click="delete_field"
-                  phx-value-id={field.id}
-                  data-confirm="Remove this field from the model?"
-                  class="text-n400 hover:text-red-600"
-                >
-                  <.icon name="hero-x-mark-mini" class="h-3.5 w-3.5" />
-                </button>
-              </span>
-              <span :if={@custom_fields == []} class="text-xs text-n400">
-                No extra fields yet. Core fields are already built in, and custom fields stay optional.
-              </span>
-            </div>
-          </div>
-
-          <div class="rounded-lg border border-n300 bg-n50 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-n400">
-              Base fields
-            </p>
-            <p class="mt-1 text-sm text-n500">
-              Every item already has these core fields. Keep custom fields for anything shop-specific.
-            </p>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Title
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Category
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Description
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Price
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Currency
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                URL
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Image
-              </span>
-              <span class="inline-flex items-center rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-                Status
-              </span>
-            </div>
-          </div>
-
-          <%!-- items as cards --%>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div
-              :for={item <- @catalog.items || []}
-              class="group flex items-center justify-between rounded-lg border border-n300 bg-n50 p-4 transition-all hover:border-primary/30"
-            >
-              <div class="flex min-w-0 items-center gap-3">
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-n300 bg-n200 text-n500">
-                  <img
-                    :if={item.image_url}
-                    src={item.image_url}
-                    alt={item.title}
-                    class="h-full w-full object-cover"
-                  />
-                  <.icon :if={!item.image_url} name="hero-photo" class="h-6 w-6" />
-                </div>
-                <div class="min-w-0">
-                  <h4 class="truncate text-sm font-semibold text-n900">{item.title}</h4>
-                  <p class="truncate font-mono text-xs text-n400">{variant_summary(item)}</p>
-                </div>
-              </div>
-              <div class="flex shrink-0 items-center gap-1">
-                <span class="inline-flex items-center rounded-full bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary">
-                  {item.status || "active"}
-                </span>
-                <button
-                  type="button"
-                  phx-click="edit_item"
-                  phx-value-id={item.id}
-                  class="p-1 text-n400 hover:text-n900"
-                >
-                  <.icon name="hero-pencil-square-mini" class="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  phx-click="delete_item"
-                  phx-value-id={item.id}
-                  data-confirm="Delete this item?"
-                  class="p-1 text-n400 hover:text-red-600"
-                >
-                  <.icon name="hero-trash-mini" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <.source_banner source="manual" active={@workspace.data_source} />
       </div>
 
-      <%!-- JSON API --%>
-      <div :if={@active_tab == "api"} class="space-y-5">
-        <.source_banner source="api" active={@workspace.data_source} />
-        <div
-          :if={@endpoint.last_fetched_at}
-          class="flex items-center gap-2 rounded-lg border border-[#B7EBCF] bg-[#E8FFF3] px-4 py-2.5 text-[13px] font-medium text-primary"
-        >
-          <.icon name="hero-check-circle-mini" class="h-4 w-4" />
-          Last fetched: {last_fetched_label(@endpoint.last_fetched_at)}
-        </div>
+      <div :if={@catalog.id && products_tab(@active_tab) == "manual"}>
+        <.products_table items={@catalog.items || []} />
+      </div>
 
-        <div
-          :if={@test_error}
-          role="alert"
-          class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-red-500 bg-red-50 px-4 py-3 text-[13px] text-n600"
-        >
-          <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-red-500" />
-          <span>{@test_error}</span>
-        </div>
+      <.categories_panel
+        :if={@catalog.id && @active_tab == "categories"}
+        categories={Catalogs.shop_categories(@catalog)}
+        query={@category_query}
+      />
+
+      <.fields_panel :if={@catalog.id && @active_tab == "fields"} fields={@custom_fields} />
+
+      <div :if={@active_tab == "api"} class="flex max-w-[640px] flex-col gap-4">
+        <.source_banner source="api" active={@workspace.data_source} />
+        <.banner :if={@endpoint.last_fetched_at}>
+          Last fetched {last_fetched_label(@endpoint.last_fetched_at)}
+        </.banner>
+        <.banner :if={@test_error} tone="danger">{@test_error}</.banner>
 
         <.simple_form for={@endpoint_form} phx-change="validate" phx-submit="submit">
           <.input field={@endpoint_form[:url]} label="URL" required />
@@ -1037,16 +980,15 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           <.input
             field={@endpoint_form[:refresh_strategy]}
             type="select"
-            label="Refresh strategy"
+            label="Refresh"
             options={[
               {"On demand", "on_demand"},
-              {"Every 60s", "poll_60s"},
-              {"Every 5 min", "poll_300s"}
+              {"Every 60 seconds", "poll_60s"},
+              {"Every 5 minutes", "poll_300s"}
             ]}
           />
-
           <:actions>
-            <.button type="submit" name="endpoint[action]" value="test" variant="secondary">
+            <.button type="submit" name="endpoint[action]" value="test" tone="secondary">
               Test connection
             </.button>
             <.button name="endpoint[action]" value="save">Save endpoint</.button>
@@ -1054,42 +996,135 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         </.simple_form>
       </div>
 
-      <%!-- AI context preview --%>
-      <div :if={@active_tab == "preview"} class="space-y-3">
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex items-center gap-2 rounded-lg border border-n300 bg-n100 px-4 py-2.5 text-[13px] text-n500">
-            <.icon name="hero-check-badge-mini" class="h-4 w-4 flex-none text-primary" />
-            <span>
-              Active source:
-              <span class="font-semibold text-n900">
-                {if @workspace.data_source == "api",
-                  do: "Live Sync (JSON API)",
-                  else: "Manual Catalog"}
-              </span>
-            </span>
-          </div>
-          <button
+      <div :if={@active_tab == "preview"} class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-soko-ink-2">
+            {preview_caption(@preview_label, @workspace.data_source)}
+          </p>
+          <.button
             type="button"
+            tone="secondary"
+            size="sm"
             phx-click="regenerate_ai_context"
-            phx-disable-with="Regenerating..."
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm font-medium text-n800 transition hover:border-primary hover:text-primary"
+            phx-disable-with="Regenerating"
           >
-            <.icon name="hero-arrow-path" class="h-4 w-4" /> Regenerate AI context
-          </button>
+            <.icon name="arrow-clockwise" /> Regenerate AI context
+          </.button>
         </div>
-        <p class="text-sm text-n400">
-          {@preview_label || "The shared business context"} the assistant reads for this workspace.
-        </p>
-        <div :if={@preview_json} class="overflow-hidden rounded-lg border border-n300 bg-n50">
-          <pre class="code-panel overflow-x-auto px-5 py-4"><%= @preview_json %></pre>
-        </div>
-        <p :if={!@preview_json} class="text-sm text-n400">
-          Nothing to preview yet. Add catalog items or connect an API first.
+        <pre
+          :if={@preview_json}
+          class="overflow-x-auto rounded-soko-14 border border-soko-line bg-soko-white px-5 py-4 font-mono text-xs leading-5"
+        ><%= @preview_json %></pre>
+        <p :if={!@preview_json} class="text-sm text-soko-ink-2">
+          Nothing to preview yet. Add products or connect a feed first.
         </p>
       </div>
     </div>
     """
   end
+
+  defp preview_caption(label, source) do
+    from = if source == "api", do: "your live feed", else: "your catalogue"
+    "#{label || "The shop context"} Sokochat reads from #{from}."
+  end
+
+  defp products_tab(tab) when tab in ["categories", "fields", "api", "preview"], do: tab
+  defp products_tab(_tab), do: "manual"
+
+  attr :items, :list, required: true
+
+  defp products_table(assigns) do
+    ~H"""
+    <div :if={@items == []} class="grid min-h-[50vh] place-items-center">
+      <.empty
+        icon="package"
+        title="No products yet"
+        text="Add your first product so Sokochat can answer buyers with it."
+      />
+    </div>
+
+    <.table :if={@items != []} id="products" rows={@items} row_id={&"item-#{&1.id}"}>
+      <:col :let={item} label="Product">
+        <span class="flex min-w-0 items-center gap-3">
+          <img :if={item.image_url} src={item.image_url} alt="" class="soko-thumb" />
+          <span :if={!item.image_url} class="soko-thumb grid place-items-center text-soko-ink-3">
+            <.icon name="image" class="h-4 w-4" />
+          </span>
+          <span class="truncate font-medium">{item.title}</span>
+        </span>
+      </:col>
+      <:col :let={item} label="Category">
+        <span class="text-soko-ink-2">{category_of(item)}</span>
+      </:col>
+      <:col :let={item} label="Variants">
+        <span class="text-soko-ink-2">{variant_count_label(item)}</span>
+      </:col>
+      <:col :let={item} label="From" align="right">{price_from_label(item)}</:col>
+      <:col :let={item} label="Status">
+        <.badge tone={status_tone(item.status)}>{status_label(item.status)}</.badge>
+      </:col>
+      <:action :let={item}>
+        <.icon_button
+          icon="pencil-simple"
+          phx-click="edit_item"
+          phx-value-id={item.id}
+          aria-label={"Edit #{item.title}"}
+        />
+        <.icon_button
+          icon="trash"
+          phx-click="confirm_delete"
+          phx-value-kind="item"
+          phx-value-id={item.id}
+          aria-label={"Delete #{item.title}"}
+        />
+      </:action>
+    </.table>
+    """
+  end
+
+  defp variant_count_label(item) do
+    case variants_of(item) do
+      [] -> "One price"
+      [_] -> "1 variant"
+      variants -> "#{length(variants)} variants"
+    end
+  end
+
+  defp price_from_label(item) do
+    prices =
+      item
+      |> variants_of()
+      |> Enum.map(& &1["price"])
+      |> Enum.reject(&is_nil/1)
+
+    case {prices, item.price} do
+      {[], nil} -> "No price"
+      {[], price} -> kes(price)
+      {prices, _} -> kes(Enum.min(prices))
+    end
+  end
+
+  defp kes(price) when is_number(price) do
+    whole = price |> round() |> Integer.to_string()
+
+    grouped =
+      whole
+      |> String.reverse()
+      |> String.graphemes()
+      |> Enum.chunk_every(3)
+      |> Enum.map_join(",", &Enum.join/1)
+      |> String.reverse()
+
+    "KES #{grouped}"
+  end
+
+  defp kes(price), do: "KES #{format_kes(price)}"
+
+  defp status_tone(status) when status in [nil, "active"], do: "success"
+  defp status_tone(_status), do: "neutral"
+
+  defp status_label(nil), do: "Active"
+  defp status_label(status), do: String.capitalize(status)
 
   attr :categories, :list, required: true
   attr :query, :string, required: true
@@ -1103,53 +1138,56 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       )
 
     ~H"""
-    <div class="rounded-lg border border-n300 bg-n50 p-4">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-n400">Categories</p>
-          <p class="mt-1 text-sm text-n500">
-            Choose what you sell. Products pick from this list once.
-          </p>
-        </div>
-      </div>
+    <div class="max-w-[640px] rounded-soko-14 border border-soko-line bg-soko-white p-4">
+      <h2 class="soko-section-title">Categories</h2>
+      <p class="soko-section-text">Choose what you sell. Each product picks one.</p>
 
       <form
         id="shop-categories"
         phx-change="filter_categories"
         phx-submit="add_category"
-        class="mt-3 flex gap-2"
+        class="mt-4 flex items-end gap-2"
       >
-        <div class="relative min-w-0 flex-1">
-          <input
-            type="search"
-            name="category[query]"
-            value={@query}
-            autocomplete="off"
-            placeholder="Search or type a category"
-            class="block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
-          />
-          <div
-            :if={String.trim(@query) != "" and @suggestions != []}
-            class="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-n300 bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-          >
-            <button
-              :for={name <- @suggestions}
-              type="button"
-              phx-click="add_category"
-              phx-value-name={name}
-              class="block w-full px-3.5 py-2 text-left text-sm text-n900 hover:bg-n100"
-            >
-              {name}
-            </button>
-          </div>
-        </div>
-        <.button type="submit" variant="secondary">Add</.button>
+        <.input
+          type="search"
+          name="category[query]"
+          id="category-query"
+          value={@query}
+          label="Category"
+          autocomplete="off"
+          placeholder="Search or type a category"
+          class="min-w-0 flex-1"
+        />
+        <.button type="submit" tone="secondary"><.icon name="plus" /> Add</.button>
       </form>
 
-      <div class="mt-3 flex flex-wrap gap-2">
+      <div
+        :if={String.trim(@query) != ""}
+        class="mt-2 rounded-[12px] border border-soko-line bg-soko-white p-1"
+      >
+        <button
+          :for={name <- @suggestions}
+          type="button"
+          phx-click="add_category"
+          phx-value-name={name}
+          class="flex h-9 w-full items-center justify-between rounded-lg px-2 text-left text-sm hover:bg-soko-hover"
+        >
+          {name} <span class="soko-mono text-soko-ink-3">Suggested</span>
+        </button>
+        <button
+          type="submit"
+          form="shop-categories"
+          class="flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-medium text-soko-forest hover:bg-soko-hover"
+        >
+          <.icon name="plus" class="h-4 w-4" /> Add “{String.trim(@query)}” as a new category
+        </button>
+      </div>
+
+      <p class="soko-mono mt-4 text-soko-ink-3">Your categories · {length(@categories)}</p>
+      <div class="mt-2 flex flex-wrap gap-2">
         <span
           :for={name <- @categories}
-          class="inline-flex items-center gap-1.5 rounded-full border border-n300 bg-n100 px-3 py-1 text-xs font-medium text-n800"
+          class="inline-flex h-7 items-center gap-1.5 rounded-full bg-soko-stage pl-3 pr-2 text-sm font-medium"
         >
           {name}
           <button
@@ -1157,126 +1195,154 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             phx-click="remove_category"
             phx-value-name={name}
             aria-label={"Remove #{name}"}
-            class="text-n400 hover:text-red-600"
+            class="grid h-4 w-4 place-items-center text-soko-ink-2 hover:text-soko-danger"
           >
-            <.icon name="hero-x-mark-mini" class="h-3.5 w-3.5" />
+            <.icon name="x" class="h-3 w-3" />
           </button>
         </span>
-        <span :if={@categories == []} class="text-xs text-n400">
-          No categories yet. Search the list or type your own, then add.
+        <span :if={@categories == []} class="text-sm text-soko-ink-2">
+          No categories yet. Search the list or type your own.
         </span>
       </div>
     </div>
     """
   end
 
-  # --- step 3: cta rules --------------------------------------------------
+  attr :fields, :list, required: true
+
+  defp fields_panel(assigns) do
+    ~H"""
+    <div class="max-w-[640px] rounded-soko-14 border border-soko-line bg-soko-white p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="soko-section-title">Fields</h2>
+          <p class="soko-section-text">
+            Every product has a name, category, description, price, photo and status. Add fields for anything else buyers ask about.
+          </p>
+        </div>
+        <.button type="button" tone="secondary" size="sm" phx-click="new_field">
+          <.icon name="plus" /> Add field
+        </.button>
+      </div>
+
+      <div class="mt-4 overflow-hidden rounded-[12px] border border-soko-line">
+        <div
+          :for={field <- @fields}
+          class="flex items-center gap-3 border-b border-soko-divider px-4 py-3 last:border-b-0"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">{field.label}</p>
+            <p :if={field.help_text} class="truncate text-xs text-soko-ink-2">{field.help_text}</p>
+          </div>
+          <.badge tone="neutral">{humanize_field_type(field.field_type)}</.badge>
+          <.badge :if={field.required} tone="waiting">Required</.badge>
+          <.icon_button
+            icon="pencil-simple"
+            phx-click="edit_field"
+            phx-value-id={field.id}
+            aria-label={"Edit #{field.label}"}
+          />
+          <.icon_button
+            icon="trash"
+            phx-click="confirm_delete"
+            phx-value-kind="field"
+            phx-value-id={field.id}
+            aria-label={"Remove #{field.label}"}
+          />
+        </div>
+        <p :if={@fields == []} class="px-4 py-6 text-center text-sm text-soko-ink-2">
+          No extra fields yet.
+        </p>
+      </div>
+    </div>
+    """
+  end
+
+  defp humanize_field_type("image_url"), do: "Image link"
+  defp humanize_field_type("url"), do: "Link"
+  defp humanize_field_type("boolean"), do: "Yes or no"
+  defp humanize_field_type("textarea"), do: "Long text"
+  defp humanize_field_type(type) when is_binary(type), do: String.capitalize(type)
+  defp humanize_field_type(_type), do: "Text"
+
+  # --- cta rules ------------------------------------------------------------
 
   defp cta_step(assigns) do
     ~H"""
-    <div class="space-y-6">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h3 class="text-xl font-semibold text-n900">Intent Parsing Call-to-Actions</h3>
-          <p class="mt-1 text-sm text-n400">
-            Direct the AI assistant to provide interactive links or triggers based on user queries.
-          </p>
-        </div>
-        <div :if={@cta_rules != []} class="flex shrink-0 items-center gap-2">
-          <.recommend_button recommending={@recommending} variant="secondary" />
-          <.button type="button" phx-click="open_add_rule">
-            <.icon name="hero-plus-mini" class="h-4 w-4" /> Add rule
-          </.button>
-        </div>
-      </div>
+    <div class="flex max-w-[880px] flex-col gap-4">
+      <p class="text-sm text-soko-ink-2">
+        Tell Sokochat which next step to offer when a buyer asks, like a call, a map pin or a link.
+      </p>
 
       <.cta_suggestions :if={@cta_suggestions != []} suggestions={@cta_suggestions} />
 
-      <.empty_state
+      <div
         :if={@cta_rules == [] and @cta_suggestions == []}
-        icon="hero-bolt"
-        title="No Custom Response Rules Established"
-        body="Tell the assistant which call-to-action to attach when a buyer asks for the next step — price, location, or how to order. Or let AI suggest rules from your products."
+        class="grid min-h-[50vh] place-items-center"
       >
-        <div class="flex flex-wrap items-center justify-center gap-2">
-          <.recommend_button recommending={@recommending} variant="primary" />
-          <.button type="button" variant="secondary" phx-click="open_add_rule">
-            <.icon name="hero-plus-mini" class="h-4 w-4" /> Add manually
-          </.button>
-        </div>
-      </.empty_state>
-
-      <div :if={@cta_rules != []} class="space-y-4">
-        <div
-          :for={rule <- @cta_rules}
-          id={"cta-rule-#{rule.id}"}
-          class="group rounded-lg border border-n300 bg-n50 p-5 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_4px_16px_rgba(15,156,92,0.04)]"
+        <.empty
+          icon="cursor-click"
+          title="No rules yet"
+          text="Add a rule for each thing buyers ask for, or let Sokochat suggest rules from your products."
         >
-          <div class="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div class="flex items-start gap-3.5">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-n50 shadow-sm shadow-primary/20">
-                <.icon name={cta_icon(rule.cta_type)} class="h-5 w-5" />
-              </div>
-              <div>
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-xs font-semibold uppercase tracking-wider text-n400">
-                    Rule #{rule.priority}
-                  </span>
-                  <span class="inline-flex items-center rounded-md border border-primary/10 bg-primary-light px-2 py-0.5 text-xs font-medium text-primary">
-                    {humanize_cta_type(rule.cta_type)}
-                  </span>
-                </div>
-                <h4 class="mt-0.5 text-base font-semibold text-n900">{rule.trigger_description}</h4>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-6 border-t border-n200 pt-3 md:justify-end md:border-t-0 md:pt-0">
-              <div class="md:text-right">
-                <span class="block text-[11px] font-bold uppercase tracking-wider text-n400">
-                  Payload
-                </span>
-                <span class="mt-0.5 block truncate rounded border border-n300 bg-n200 px-2 py-1 font-mono text-sm text-n800 md:max-w-[220px]">
-                  {payload_summary(rule)}
-                </span>
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  phx-click="edit_rule"
-                  phx-value-id={rule.id}
-                  class="rounded-md p-2 text-n500 transition-colors hover:bg-primary-light hover:text-primary"
-                >
-                  <.icon name="hero-pencil-square-mini" class="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  phx-click="delete_rule"
-                  phx-value-id={rule.id}
-                  data-confirm="Delete this CTA rule?"
-                  class="rounded-md p-2 text-n400 transition-colors hover:bg-red-50 hover:text-red-600"
-                >
-                  <.icon name="hero-trash-mini" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          <:actions>
+            <.recommend_button recommending={@recommending} tone="primary" />
+            <.button type="button" tone="secondary" size="sm" phx-click="open_add_rule">
+              Add manually
+            </.button>
+          </:actions>
+        </.empty>
       </div>
+
+      <.table :if={@cta_rules != []} id="cta-rules" rows={@cta_rules} row_id={&"cta-rule-#{&1.id}"}>
+        <:col :let={rule} label="#">
+          <span class="font-mono text-xs text-soko-ink-3">{rule.priority}</span>
+        </:col>
+        <:col :let={rule} label="When the buyer">
+          <span class="font-medium">{rule.trigger_description}</span>
+        </:col>
+        <:col :let={rule} label="Action">
+          <span class="inline-flex items-center gap-2 text-soko-ink-2">
+            <.icon name={cta_icon(rule.cta_type)} class="h-4 w-4" />
+            {humanize_cta_type(rule.cta_type)}
+          </span>
+        </:col>
+        <:col :let={rule} label="Sends">
+          <span class="block max-w-[220px] truncate font-mono text-xs text-soko-ink-2">
+            {payload_summary(rule)}
+          </span>
+        </:col>
+        <:action :let={rule}>
+          <.icon_button
+            icon="pencil-simple"
+            phx-click="edit_rule"
+            phx-value-id={rule.id}
+            aria-label="Edit rule"
+          />
+          <.icon_button
+            icon="trash"
+            phx-click="confirm_delete"
+            phx-value-kind="rule"
+            phx-value-id={rule.id}
+            aria-label="Delete rule"
+          />
+        </:action>
+      </.table>
     </div>
     """
   end
 
   attr :recommending, :boolean, required: true
-  attr :variant, :string, default: "secondary"
+  attr :tone, :string, default: "secondary"
 
   defp recommend_button(assigns) do
     ~H"""
-    <.button type="button" variant={@variant} phx-click="recommend_ctas" disabled={@recommending}>
+    <.button type="button" tone={@tone} size="sm" phx-click="recommend_ctas" disabled={@recommending}>
       <.icon
-        name={if @recommending, do: "hero-arrow-path-mini", else: "hero-sparkles-mini"}
-        class={"h-4 w-4 #{if @recommending, do: "animate-spin"}"}
+        name={if @recommending, do: "arrow-clockwise", else: "sparkle"}
+        class={@recommending && "animate-spin"}
       />
-      {if @recommending, do: "Generating...", else: "Recommend based on my product"}
+      {if @recommending, do: "Suggesting", else: "Suggest rules"}
     </.button>
     """
   end
@@ -1285,231 +1351,150 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp cta_suggestions(assigns) do
     ~H"""
-    <div class="space-y-3 rounded-lg border border-primary/30 bg-primary-light/30 p-4">
-      <div class="flex items-center gap-2 text-sm font-semibold text-primary">
-        <.icon name="hero-sparkles-mini" class="h-4 w-4" />
-        AI-suggested rules — review and add the ones you want
-      </div>
-      <div
-        :for={{suggestion, index} <- Enum.with_index(@suggestions)}
-        class="flex flex-col gap-3 rounded-lg border border-n300 bg-n50 p-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div class="flex items-start gap-3">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary">
+    <div class="flex flex-col gap-2">
+      <p class="soko-mono text-soko-ink-3">Suggested · review and add the ones you want</p>
+      <div class="overflow-hidden rounded-soko-14 border border-soko-line bg-soko-white">
+        <div
+          :for={{suggestion, index} <- Enum.with_index(@suggestions)}
+          class="flex items-center gap-3 border-b border-soko-divider px-4 py-3 last:border-b-0"
+        >
+          <span class="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-soko-stage text-soko-forest">
             <.icon name={cta_icon(suggestion["cta_type"])} class="h-4 w-4" />
-          </div>
-          <div class="min-w-0">
-            <span class="inline-flex items-center rounded-md border border-primary/10 bg-primary-light px-2 py-0.5 text-xs font-medium text-primary">
-              {humanize_cta_type(suggestion["cta_type"])}
-            </span>
-            <h4 class="mt-1 text-sm font-semibold text-n900">{suggestion["trigger_description"]}</h4>
-            <p class="mt-0.5 truncate font-mono text-xs text-n400">
-              {suggestion_summary(suggestion)}
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">{suggestion["trigger_description"]}</p>
+            <p class="truncate text-xs text-soko-ink-2">
+              {humanize_cta_type(suggestion["cta_type"])} · {suggestion_summary(suggestion)}
             </p>
           </div>
-        </div>
-        <div class="flex shrink-0 items-center gap-2">
-          <button
+          <.button
             type="button"
+            tone="secondary"
+            size="sm"
             phx-click="add_suggestion"
             phx-value-index={index}
-            class="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-n50 transition hover:opacity-90"
           >
-            <.icon name="hero-plus-mini" class="h-4 w-4" /> Add
-          </button>
-          <button
-            type="button"
+            <.icon name="plus" /> Add
+          </.button>
+          <.icon_button
+            icon="x"
             phx-click="dismiss_suggestion"
             phx-value-index={index}
-            class="rounded-md p-2 text-n400 transition hover:bg-n200 hover:text-n900"
             aria-label="Dismiss suggestion"
-          >
-            <.icon name="hero-x-mark-mini" class="h-4 w-4" />
-          </button>
+          />
         </div>
       </div>
     </div>
     """
   end
 
-  # --- step 4: meta -------------------------------------------------------
+  # --- meta -------------------------------------------------------------------
 
   defp meta_step(assigns) do
     ~H"""
-    <div class="space-y-6">
-      <div>
-        <h3 class="text-xl font-semibold text-n900">Meta Verification Pipeline</h3>
-        <p class="mt-1 text-sm text-n400">
-          Connect this workspace to WhatsApp with a dedicated number, or join the account
-          <.link navigate={~p"/shared-line"} class="font-medium text-primary hover:underline">
-            shared line
-          </.link>
-          so several shops share one GS1 number.
-        </p>
-      </div>
-
-      <div
-        :if={@meta_configured}
-        class="flex items-start gap-4 rounded-lg border border-primary/20 bg-primary-light/60 p-4"
+    <div class="flex max-w-[880px] flex-col">
+      <.section
+        title="Meta Verification Pipeline"
+        text="Connect this shop to WhatsApp with its own number, or join the shared line so several shops use one number."
       >
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-light text-primary">
-          <.icon name="hero-shield-check-mini" class="h-5 w-5" />
-        </div>
-        <div>
-          <h4 class="text-sm font-semibold text-n900">Pre-Live Stage Validated</h4>
-          <p class="mt-0.5 text-xs leading-relaxed text-n400">
-            Your catalog and message parser are live. Secure token pipelines to operate over
-            production WhatsApp.
+        <.banner :if={@meta_configured}>
+          <p class="font-medium">Pre-Live Stage Validated</p>
+          <p class="text-soko-ink-2">
+            Your catalogue and replies are ready. Add your Meta details to go live on your own number.
           </p>
-        </div>
-      </div>
+        </.banner>
+        <.link navigate={~p"/shared-line"} class="soko-link text-sm">Manage the shared line</.link>
+      </.section>
 
-      <div
+      <.section
         :if={@shared_line && @shared_line.id}
-        class="space-y-4 rounded-lg border border-n300 p-4"
+        title="Use the shared line"
+        text="Buyers open a prefilled wa.me link and land in this shop."
       >
-        <div>
-          <h4 class="text-sm font-semibold text-n900">Use the shared line</h4>
-          <p class="mt-1 text-xs text-n400">
-            Join the account number. Buyers open a prefilled wa.me link and land in this shop.
-          </p>
-        </div>
-
-        <div :if={is_nil(@workspace.shared_line_id)} class="flex flex-col gap-3 sm:flex-row">
-          <form phx-change="update_shop_code" class="flex-1">
-            <label class="block text-sm font-medium text-n900">Shop code</label>
-            <input
-              type="text"
-              name="shop_code"
-              value={@shop_code}
-              class="mt-1.5 w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900"
-            />
+        <div :if={is_nil(@workspace.shared_line_id)} class="flex items-end gap-2">
+          <form phx-change="update_shop_code" class="min-w-0 flex-1">
+            <.input type="text" name="shop_code" id="shop-code" value={@shop_code} label="Shop code" />
           </form>
-          <div class="flex items-end">
-            <button
-              type="button"
-              phx-click="join_shared_line"
-              class="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
-            >
-              Join shared line
-            </button>
-          </div>
+          <.button type="button" phx-click="join_shared_line">Join shared line</.button>
         </div>
 
-        <div :if={@workspace.shared_line_id} class="space-y-3">
-          <p class="text-sm text-n900">
-            Joined as <span class="font-mono text-[13px]">[shop:{@workspace.shop_code}]</span>
+        <div :if={@workspace.shared_line_id} class="flex flex-col gap-3">
+          <p class="text-sm">
+            Joined as <span class="font-mono text-xs">[shop:{@workspace.shop_code}]</span>
           </p>
           <.copy_field :if={@wa_me_url} id="shop-wa-me" label="Buyer link" value={@wa_me_url} />
-          <button
-            type="button"
-            phx-click="leave_shared_line"
-            class="text-sm font-medium text-danger hover:underline"
-          >
-            Leave shared line
-          </button>
-        </div>
-      </div>
-
-      <div :if={is_nil(@workspace.shared_line_id)} class="space-y-6">
-        <div
-          :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
-          role="alert"
-          class={[
-            "flex items-start gap-2 rounded-lg border border-l-4 px-4 py-3 text-[13px]",
-            alert_classes(alert.tone)
-          ]}
-        >
-          <.icon name={alert_icon(alert.tone)} class="mt-0.5 h-4 w-4 flex-none" />
-          <div class="space-y-1">
-            <p class="font-semibold">{alert.title}</p>
-            <p>{alert.body}</p>
+          <div>
+            <.button type="button" tone="secondary" size="sm" phx-click="leave_shared_line">
+              Leave shared line
+            </.button>
           </div>
         </div>
+      </.section>
 
-        <div
-          :if={@connection.last_error}
-          role="alert"
-          class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-red-500 bg-red-50 px-4 py-3 text-[13px] text-n600"
+      <.section
+        :if={is_nil(@workspace.shared_line_id)}
+        title="Your own number"
+        text="The access token is encrypted. Saving new details sets the connection back to pending until the webhook is verified again."
+      >
+        <.banner
+          :for={alert <- meta_alerts(@connection, @data_ingestion_configured, @cta_rules_configured)}
+          tone={banner_tone(alert.tone)}
         >
-          <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-red-500" />
-          <span>{@connection.last_error}</span>
-        </div>
+          <p class="font-medium">{alert.title}</p>
+          <p>{alert.body}</p>
+        </.banner>
+
+        <.banner :if={@connection.last_error} tone="danger">{@connection.last_error}</.banner>
 
         <.simple_form for={@meta_form} phx-change="validate" phx-submit="save">
-          <div class="grid gap-4 md:grid-cols-2">
+          <div class="soko-field-row">
             <.input field={@meta_form[:phone_number_id]} label="Phone Number ID" required />
             <.input field={@meta_form[:waba_id]} label="WhatsApp Business Account ID" required />
           </div>
           <.input
             field={@meta_form[:access_token]}
             type="password"
-            label="Meta Permanent API Secret Token"
+            label="Permanent access token"
             required
             autocomplete="off"
           />
-          <p class="-mt-3 text-[13px] text-n400">
-            The access token is encrypted at rest. Saving new credentials resets the connection to
-            <span class="font-medium">pending</span>
-            until the webhook is re-verified.
-          </p>
-
           <:actions>
-            <.button>Save credentials</.button>
+            <.button size="sm">Save details</.button>
           </:actions>
         </.simple_form>
+      </.section>
 
-        <div :if={persisted?(@connection)} class="space-y-5 border-t border-n300 pt-6">
-          <div>
-            <h4 class="text-base font-semibold text-n900">Webhook setup</h4>
-            <p class="mt-1 text-sm text-n400">
-              In your Meta app, open WhatsApp → Configuration → Webhooks, paste these values, then
-              subscribe to the <span class="font-medium">messages</span> field.
-            </p>
-          </div>
-          <.copy_field
-            id="webhook-url"
-            label="Callback URL"
-            value={webhook_url(@socket, @workspace.slug)}
+      <.section
+        :if={is_nil(@workspace.shared_line_id) and persisted?(@connection)}
+        title="Webhook"
+        text="In your Meta app, open WhatsApp, Configuration, Webhooks. Paste these values and subscribe to messages."
+      >
+        <.copy_field
+          id="webhook-url"
+          label="Callback URL"
+          value={webhook_url(@socket, @workspace.slug)}
+        />
+        <.copy_field id="verify-token" label="Verify token" value={@connection.verify_token} />
+        <div class="flex flex-col gap-2 rounded-[12px] border border-soko-line bg-soko-white p-4">
+          <.checklist_item done={true} label="Details saved" />
+          <.checklist_item
+            done={not is_nil(@connection.webhook_verified_at)}
+            label={"Webhook verified, #{verified_label(@connection.webhook_verified_at)}"}
           />
-          <.copy_field id="verify-token" label="Verify token" value={@connection.verify_token} />
-
-          <div class="space-y-3 rounded-lg border border-n300 bg-n100/50 p-4 text-sm">
-            <.checklist_item done={true} label="Credentials saved" />
-            <.checklist_item
-              done={not is_nil(@connection.webhook_verified_at)}
-              label={"Webhook verified — #{verified_label(@connection.webhook_verified_at)}"}
-            />
-            <.checklist_item
-              done={@connection.status == "active"}
-              label="Connection active and ready to receive messages"
-            />
-          </div>
+          <.checklist_item
+            done={@connection.status == "active"}
+            label="Connection active and ready for messages"
+          />
         </div>
-      </div>
+      </.section>
     </div>
     """
   end
+
+  defp banner_tone(:warning), do: "waiting"
+  defp banner_tone(_tone), do: "info"
 
   # --- shared small components --------------------------------------------
-
-  attr :icon, :string, required: true
-  attr :title, :string, required: true
-  attr :body, :string, required: true
-  slot :inner_block, required: true
-
-  defp empty_state(assigns) do
-    ~H"""
-    <div class="rounded-lg border border-dashed border-n300 bg-n100/50 px-4 py-10 text-center">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-light text-primary">
-        <.icon name={@icon} class="h-6 w-6" />
-      </div>
-      <h3 class="mt-4 text-sm font-semibold text-n900">{@title}</h3>
-      <p class="mx-auto mt-1 max-w-sm text-xs text-n400">{@body}</p>
-      <div class="mt-6">{render_slot(@inner_block)}</div>
-    </div>
-    """
-  end
 
   attr :source, :string, required: true
   attr :active, :string, required: true
@@ -1518,110 +1503,22 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     assigns = assign(assigns, :is_active, assigns.source == assigns.active)
 
     ~H"""
-    <div
-      :if={@is_active}
-      class="flex items-center gap-2 rounded-lg border border-[#B7EBCF] bg-[#E8FFF3] px-4 py-2.5 text-[13px] font-medium text-primary"
-    >
-      <.icon name="hero-check-badge-mini" class="h-4 w-4 flex-none" />
-      <span>Active AI source — the assistant reads this data.</span>
-    </div>
-    <div
-      :if={not @is_active}
-      class="flex items-center justify-between gap-3 rounded-lg border border-n300 bg-n100 px-4 py-2.5 text-[13px] text-n500"
-    >
-      <span class="flex items-center gap-2">
-        <.icon name="hero-eye-slash-mini" class="h-4 w-4 flex-none" />
-        Not the active source — the AI ignores this data right now.
-      </span>
-      <.button type="button" size="sm" phx-click="set_data_source" phx-value-source={@source}>
-        <.icon name="hero-bolt-mini" class="h-3.5 w-3.5" /> Set as AI source
-      </.button>
-    </div>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-
-  defp copy_field(assigns) do
-    ~H"""
-    <div>
-      <label class="block text-sm font-medium text-n900">{@label}</label>
-      <div class="mt-1.5 flex items-center gap-2">
-        <input
-          id={@id}
-          type="text"
-          readonly
-          value={@value}
-          class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
-        />
-        <button
-          id={"copy-#{@id}"}
-          type="button"
-          phx-hook="ClipboardCopy"
-          data-copy={@value}
-          class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 text-sm font-medium text-n900 transition hover:bg-n200"
-          title="Copy to clipboard"
-        >
-          <.icon name="hero-document-duplicate-mini" class="h-4 w-4" /> Copy
-        </button>
-      </div>
-    </div>
-    """
-  end
-
-  attr :done, :boolean, required: true
-  attr :label, :string, required: true
-
-  defp checklist_item(assigns) do
-    ~H"""
-    <div class="flex items-center gap-2.5">
-      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-primary" />
-      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-n500" />
-      <span class={if @done, do: "text-n900", else: "text-n400"}>{@label}</span>
-    </div>
-    """
-  end
-
-  attr :title, :string, required: true
-  attr :subtitle, :string, default: nil
-  attr :width, :string, default: "max-w-lg"
-  slot :inner_block, required: true
-
-  defp modal_shell(assigns) do
-    ~H"""
-    <div class="fixed inset-0 z-50" phx-window-keydown="close_modal" phx-key="escape">
-      <div
-        class="fixed inset-0 bg-n900/40 transition-opacity"
-        phx-click="close_modal"
-        aria-hidden="true"
+    <span :if={@is_active} class="inline-flex items-center gap-2 text-xs text-soko-ink-2">
+      <.badge>AI source</.badge>
+      Sokochat answers from this
+    </span>
+    <span :if={not @is_active} class="inline-flex items-center gap-2 text-xs text-soko-ink-2">
+      <.badge tone="neutral">Not in use</.badge>
+      <.button
+        type="button"
+        tone="secondary"
+        size="sm"
+        phx-click="set_data_source"
+        phx-value-source={@source}
       >
-      </div>
-      <div class="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
-        <div class={[
-          "relative flex max-h-[calc(100dvh-48px)] w-full flex-col overflow-hidden rounded-2xl border border-n300 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
-          @width
-        ]}>
-          <div class="flex shrink-0 items-start justify-between gap-4 border-b border-n300 px-6 py-4">
-            <div class="min-w-0 space-y-1">
-              <h2 class="text-lg font-semibold text-n900">{@title}</h2>
-              <p :if={@subtitle} class="text-sm leading-6 text-n400">{@subtitle}</p>
-            </div>
-            <.button
-              type="button"
-              variant="ghost"
-              size="icon"
-              phx-click="close_modal"
-              aria-label="Close"
-            >
-              <.icon name="hero-x-mark" class="h-4 w-4" />
-            </.button>
-          </div>
-          <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">{render_slot(@inner_block)}</div>
-        </div>
-      </div>
-    </div>
+        Use as AI source
+      </.button>
+    </span>
     """
   end
 
@@ -1629,37 +1526,36 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp catalog_model_modal(assigns) do
     ~H"""
-    <.modal_shell title="Catalog model" subtitle="Define the reusable schema for this shop.">
+    <.modal id="catalog-model" title="Catalogue" text="Tell Sokochat what your catalogue holds.">
       <.simple_form for={@catalog_form} phx-change="validate_model" phx-submit="save_model">
-        <.input field={@catalog_form[:name]} label="Model name" required />
+        <.input field={@catalog_form[:name]} label="Catalogue name" required />
         <.input
           field={@catalog_form[:entity_label]}
-          label="Item label"
+          label="You sell"
           placeholder="product, service, menu item"
           required
         />
         <.input
           field={@catalog_form[:context_notes]}
           type="textarea"
-          label="Context notes"
-          placeholder="Tell the AI what the catalog means and how to read it."
+          label="Notes for Sokochat"
+          placeholder="How to read the catalogue, like sizes are EU and prices are per pair."
         />
         <:actions>
-          <.button type="button" variant="secondary" phx-click="close_modal">
-            Cancel
-          </.button>
-          <.button>Save model</.button>
+          <.button type="button" tone="secondary" phx-click="close_modal">Cancel</.button>
+          <.button>Save catalogue</.button>
         </:actions>
       </.simple_form>
-    </.modal_shell>
+    </.modal>
     """
   end
 
   defp field_modal(assigns) do
     ~H"""
-    <.modal_shell
+    <.modal
+      id="field-modal"
       title={if @selected_field, do: "Edit field", else: "Add field"}
-      subtitle="Stored on the item metadata and included in the AI context."
+      text="Saved on each product and included in replies."
     >
       <.simple_form for={@field_form} phx-change="validate_field" phx-submit="save_field">
         <input type="hidden" name="field[id]" value={(@selected_field && @selected_field.id) || ""} />
@@ -1672,43 +1568,106 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         <.input
           field={@field_form[:field_type]}
           type="select"
-          label="Field type"
+          label="Type"
           options={[
             {"Text", "text"},
-            {"Textarea", "textarea"},
+            {"Long text", "textarea"},
             {"Number", "number"},
-            {"URL", "url"},
-            {"Image URL", "image_url"},
-            {"Boolean", "boolean"},
+            {"Link", "url"},
+            {"Image link", "image_url"},
+            {"Yes or no", "boolean"},
             {"JSON", "json"}
           ]}
         />
-        <.input field={@field_form[:required]} type="checkbox" label="Required field" />
+        <.input field={@field_form[:required]} type="checkbox" label="Required" />
         <.input
           field={@field_form[:help_text]}
           type="textarea"
           label="Help text"
-          placeholder="Optional guidance for the shop owner"
+          rows="2"
+          placeholder="Shown under the field when you add a product"
         />
         <:actions>
-          <.button type="button" variant="secondary" phx-click="close_modal">
-            Cancel
-          </.button>
-          <.button>{if @selected_field, do: "Update field", else: "Add field"}</.button>
+          <.button type="button" tone="secondary" phx-click="close_modal">Cancel</.button>
+          <.button>{if @selected_field, do: "Save field", else: "Add field"}</.button>
         </:actions>
       </.simple_form>
-    </.modal_shell>
+    </.modal>
     """
+  end
+
+  attr :confirming, :map, required: true
+
+  defp confirm_delete_modal(assigns) do
+    ~H"""
+    <.modal
+      id="confirm-delete"
+      tone="danger"
+      size="sm"
+      title={@confirming.title}
+      text={@confirming.text}
+    >
+      <:actions>
+        <.button type="button" tone="secondary" phx-click="close_modal">Cancel</.button>
+        <.button
+          type="button"
+          tone="danger"
+          phx-click={@confirming.event}
+          phx-value-id={@confirming.id}
+        >
+          <.icon name="trash" /> {@confirming.label}
+        </.button>
+      </:actions>
+    </.modal>
+    """
+  end
+
+  defp confirmation("item", id, assigns) do
+    item = Catalogs.get_item!(assigns.catalog.id, normalize_id(id))
+
+    %{
+      event: "delete_item",
+      id: item.id,
+      title: "Delete #{item.title}?",
+      text:
+        "Sokochat stops offering it to buyers. Its photos and prices are removed. You can't undo this.",
+      label: "Delete product"
+    }
+  end
+
+  defp confirmation("field", id, assigns) do
+    field = Catalogs.get_field!(assigns.catalog.id, normalize_id(id))
+
+    %{
+      event: "delete_field",
+      id: field.id,
+      title: "Remove #{field.label}?",
+      text: "It comes off every product, along with what you saved in it. You can't undo this.",
+      label: "Remove field"
+    }
+  end
+
+  defp confirmation("rule", id, assigns) do
+    rule = CTARules.get_cta_rule!(id, assigns.workspace.id)
+
+    %{
+      event: "delete_rule",
+      id: rule.id,
+      title: "Delete this rule?",
+      text: "Sokochat stops offering this next step when buyers ask: #{rule.trigger_description}",
+      label: "Delete rule"
+    }
   end
 
   defp item_modal(assigns) do
     assigns = assign(assigns, :can_save, product_can_save?(assigns))
 
     ~H"""
-    <.modal_shell
-      width="max-w-2xl"
+    <.modal
+      id="item-modal"
+      size="lg"
       title={if @selected_item, do: "Edit product", else: "New product"}
-      subtitle="Name, one cover image, and variant prices in KES. Extra images are optional."
+      text="Name, one cover photo and a price for each variant in KES."
     >
       <.form
         for={@item_form}
@@ -1716,193 +1675,174 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         phx-submit="save_item"
         phx-debounce="200"
         multipart
-        class="space-y-5"
+        class="soko-form"
       >
         <input type="hidden" name="item[id]" value={(@selected_item && @selected_item.id) || ""} />
         <input type="hidden" name="item[status]" value="active" />
-        <.input field={@item_form[:title]} label="Name" required />
+        <.input field={@item_form[:title]} label="Name" placeholder="Nike Shox" required />
+        <.input
+          type="select"
+          id="item-category"
+          name="item[category]"
+          label="Category"
+          required
+          prompt="Select a category"
+          options={category_options(@catalog, @category_draft)}
+          value={@category_draft}
+          hint={Catalogs.shop_categories(@catalog) == [] && "Add categories on Products first."}
+        />
         <.input field={@item_form[:description]} type="textarea" label="Description" rows="3" />
-        <div>
-          <label class="block text-[13px] font-semibold leading-6 text-n900">
-            Category<span class="text-danger" aria-hidden="true"> *</span>
-          </label>
-          <select
-            name="item[category]"
-            required
-            class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">Select a category</option>
-            <option
-              :for={name <- category_options(@catalog, @category_draft)}
-              value={name}
-              selected={name == @category_draft}
-            >
-              {name}
-            </option>
-          </select>
-          <p :if={Catalogs.shop_categories(@catalog) == []} class="mt-1.5 text-xs leading-5 text-n400">
-            Add categories on the Products page first.
-          </p>
-        </div>
 
-        <div class="space-y-3">
+        <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-semibold text-n900">
-                Variants<span class="text-danger" aria-hidden="true"> *</span>
-              </h3>
-              <p class="text-xs leading-5 text-n400">At least one. Prices are in KES.</p>
+              <p class="soko-label">Variants</p>
+              <p class="soko-hint">At least one, like a size. Prices in KES.</p>
             </div>
             <.button
               type="button"
-              variant="secondary"
+              tone="secondary"
               size="sm"
               phx-click="add_variant"
               disabled={length(@variant_drafts) >= 4}
             >
-              <.icon name="hero-plus" class="h-4 w-4" /> Add variant
+              <.icon name="plus" /> Add variant
             </.button>
           </div>
           <div :for={{slot, index} <- Enum.with_index(@variant_drafts)} class="flex items-end gap-2">
             <input type="hidden" name={"item[variants][#{index}][slot]"} value={index} />
-            <div class="min-w-0 flex-1">
-              <label class="block text-[13px] font-semibold leading-6 text-n900">
-                Name<span class="text-danger" aria-hidden="true"> *</span>
-              </label>
-              <input
-                type="text"
-                name={"item[variants][#{index}][label]"}
-                value={slot["label"]}
-                aria-required="true"
-                class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <div class="w-32 shrink-0">
-              <label class="block text-[13px] font-semibold leading-6 text-n900">
-                KES<span class="text-danger" aria-hidden="true"> *</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                name={"item[variants][#{index}][price]"}
-                value={slot["price"]}
-                aria-required="true"
-                class="mt-1.5 block w-full rounded-lg border border-n300 bg-n50 px-3.5 py-2.5 text-[15px] text-n900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <.button
-              type="button"
-              variant="ghost"
-              size="icon"
+            <.input
+              type="text"
+              id={"variant-#{index}-label"}
+              name={"item[variants][#{index}][label]"}
+              value={slot["label"]}
+              label="Name"
+              placeholder="EU 42"
+              aria-required="true"
+              class="min-w-0 flex-1"
+            />
+            <.input
+              type="number"
+              id={"variant-#{index}-price"}
+              name={"item[variants][#{index}][price]"}
+              value={slot["price"]}
+              label="KES"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              aria-required="true"
+              class="w-32 flex-none"
+            />
+            <.icon_button
+              icon="x"
+              class="mb-[3px]"
               phx-click="remove_variant"
               phx-value-index={index}
               disabled={length(@variant_drafts) == 1}
               aria-label="Remove variant"
-            >
-              <.icon name="hero-x-mark" class="h-4 w-4" />
-            </.button>
+            />
           </div>
         </div>
 
-        <div :if={@details_open} class="form-reveal space-y-5">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="space-y-2">
-              <h3 class="text-sm font-semibold text-n900">
-                Cover image<span class="text-danger" aria-hidden="true"> *</span>
-              </h3>
-              <p class="text-xs leading-5 text-n400">JPG, PNG, or WEBP.</p>
+        <div :if={@details_open} class="form-reveal flex flex-col gap-4">
+          <div class="soko-field-row">
+            <div class="flex flex-col gap-2">
+              <p class="soko-label">Cover image</p>
               <img
                 :if={@selected_item && @selected_item.image_url}
                 src={@selected_item.image_url}
                 alt=""
-                class="h-16 w-16 rounded-lg object-cover"
+                class="soko-thumb h-16 w-16"
               />
-              <.live_file_input upload={@uploads.cover} class={file_input_class()} />
+              <div class="soko-box">
+                <.live_file_input upload={@uploads.cover} class="soko-control" />
+              </div>
+              <p class="soko-hint">JPG, PNG or WEBP.</p>
             </div>
-            <div class="space-y-2">
-              <h3 class="text-sm font-semibold text-n900">Extra images</h3>
-              <p class="text-xs leading-5 text-n400">Optional. Up to four.</p>
+            <div class="flex flex-col gap-2">
+              <p class="soko-label">More photos</p>
               <div :if={extra_images(@selected_item) != []} class="flex flex-wrap gap-2">
                 <img
                   :for={url <- extra_images(@selected_item)}
                   src={url}
                   alt=""
-                  class="h-16 w-16 rounded-lg object-cover"
+                  class="soko-thumb h-16 w-16"
                 />
               </div>
-              <.live_file_input upload={@uploads.extras} class={file_input_class()} />
+              <div class="soko-box">
+                <.live_file_input upload={@uploads.extras} class="soko-control" />
+              </div>
+              <p class="soko-hint">Optional. Up to four.</p>
             </div>
           </div>
 
-          <div :if={@custom_fields != []} class="space-y-3">
+          <div :if={@custom_fields != []} class="flex flex-col gap-3">
             <div>
-              <h3 class="text-sm font-semibold text-n900">Custom fields</h3>
-              <p class="text-xs leading-5 text-n400">
-                Stored with the product and included in replies.
-              </p>
+              <p class="soko-label">More details</p>
+              <p class="soko-hint">Saved with the product and used in replies.</p>
             </div>
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="soko-field-row">
               <.custom_field :for={field <- @custom_fields} field={field} values={@item_values} />
             </div>
           </div>
         </div>
 
-        <div class="-mx-6 -mb-5 flex items-center justify-end gap-2 border-t border-n300 px-6 py-4">
-          <.button type="button" variant="secondary" phx-click="close_modal">Cancel</.button>
+        <div class="soko-form-actions">
+          <.button type="button" tone="secondary" phx-click="close_modal">Cancel</.button>
           <.button disabled={not @can_save}>
-            {if @selected_item, do: "Update product", else: "Add product"}
+            {if @selected_item, do: "Save product", else: "Add product"}
           </.button>
         </div>
       </.form>
-    </.modal_shell>
+    </.modal>
     """
   end
 
   defp cta_rule_modal(assigns) do
     ~H"""
-    <.modal_shell
-      width="max-w-2xl"
-      title={if @editing_rule, do: "Edit CTA rule", else: "Add CTA rule"}
-      subtitle="Focus each rule on one buyer intent so the assistant can pick the first matching action."
+    <.modal
+      id="cta-rule"
+      size="lg"
+      title={if @editing_rule, do: "Edit rule", else: "Add rule"}
+      text="One buyer request per rule. Sokochat uses the first rule that matches."
     >
       <.simple_form for={@cta_form} phx-change="validate_rule" phx-submit="save_rule">
         <.input
           field={@cta_form[:trigger_description]}
           type="textarea"
-          label="Trigger description"
-          placeholder="When the buyer asks about price or wants to buy"
+          label="When the buyer"
+          rows="2"
+          placeholder="asks about price or wants to buy"
           required
         />
-        <.input
-          field={@cta_form[:cta_type]}
-          type="select"
-          label="CTA type"
-          options={RuleForm.cta_type_options()}
-        />
-        <.input field={@cta_form[:priority]} type="number" label="Priority" min="1" required />
+        <div class="soko-field-row">
+          <.input
+            field={@cta_form[:cta_type]}
+            type="select"
+            label="Action"
+            options={RuleForm.cta_type_options()}
+          />
+          <.input field={@cta_form[:priority]} type="number" label="Order" min="1" required />
+        </div>
 
         <%= case @cta_form[:cta_type].value do %>
           <% "website" -> %>
             <.input
               field={@cta_form[:url]}
-              label="Website URL"
-              placeholder="https://example.com/checkout"
+              label="Website link"
+              placeholder="https://sokoshoes.co.ke/checkout"
             />
           <% "phone" -> %>
-            <.input field={@cta_form[:phone_number]} label="Phone number" placeholder="+254700000000" />
+            <.input field={@cta_form[:phone_number]} label="Phone" placeholder="+254 712 345 678" />
           <% "whatsapp" -> %>
             <.input
               field={@cta_form[:whatsapp_number]}
               label="WhatsApp number"
-              placeholder="+254700000000"
+              placeholder="+254 712 345 678"
             />
           <% "reply_buttons" -> %>
-            <div class="space-y-4 rounded-lg border border-n300 bg-n200 p-4">
-              <div>
-                <h3 class="text-sm font-semibold text-n900">Reply button labels</h3>
-                <p class="text-sm text-n400">Add up to three button labels.</p>
-              </div>
+            <div class="flex flex-col gap-3 rounded-[12px] border border-soko-line bg-soko-white p-4">
+              <p class="soko-label">Reply buttons <span class="soko-hint">Up to three.</span></p>
               <.input
                 :for={field_name <- RuleForm.button_fields()}
                 field={@cta_form[field_name]}
@@ -1910,17 +1850,11 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
               />
             </div>
           <% "list_message" -> %>
-            <div class="space-y-4 rounded-lg border border-n300 bg-n200 p-4">
-              <div>
-                <h3 class="text-sm font-semibold text-n900">List items</h3>
-                <p class="text-sm text-n400">
-                  Only rows with both a title and description are saved.
-                </p>
-              </div>
-              <div
-                :for={index <- RuleForm.list_item_indexes()}
-                class="grid gap-3 rounded-lg border border-n300 bg-n50 p-4 sm:grid-cols-2"
-              >
+            <div class="flex flex-col gap-3 rounded-[12px] border border-soko-line bg-soko-white p-4">
+              <p class="soko-label">
+                List items <span class="soko-hint">Rows need a title and a description.</span>
+              </p>
+              <div :for={index <- RuleForm.list_item_indexes()} class="soko-field-row">
                 <.input
                   field={@cta_form[String.to_atom("list_item_#{index}_title")]}
                   label={"Item #{index} title"}
@@ -1932,7 +1866,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
               </div>
             </div>
           <% "location" -> %>
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="soko-field-row">
               <.input field={@cta_form[:location_latitude]} type="number" step="any" label="Latitude" />
               <.input
                 field={@cta_form[:location_longitude]}
@@ -1947,20 +1881,18 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             <.input
               field={@cta_form[:custom_template]}
               type="textarea"
-              label="Custom template"
-              placeholder="Share the showroom map and invite the buyer to pick a visit time."
+              label="Message"
+              placeholder="Share the shop map and ask the buyer when they'd like to visit."
             />
           <% _ -> %>
         <% end %>
 
         <:actions>
-          <.button type="button" variant="secondary" phx-click="close_modal">
-            Cancel
-          </.button>
-          <.button>{if @editing_rule, do: "Save changes", else: "Create rule"}</.button>
+          <.button type="button" tone="secondary" phx-click="close_modal">Cancel</.button>
+          <.button>{if @editing_rule, do: "Save rule", else: "Add rule"}</.button>
         </:actions>
       </.simple_form>
-    </.modal_shell>
+    </.modal>
     """
   end
 
@@ -1968,60 +1900,37 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   attr :values, :map, required: true
 
   defp custom_field(assigns) do
+    assigns = assign(assigns, :name, "item[metadata][#{assigns.field.key}]")
+
     ~H"""
-    <div class="space-y-1.5">
-      <label class="block text-sm font-medium text-n900">
-        {@field.label}<span :if={@field.required} class="text-danger" aria-hidden="true"> *</span>
-      </label>
-      <%= case @field.field_type do %>
-        <% "textarea" -> %>
-          <textarea
-            name={"item[metadata][#{@field.key}]"}
-            required={@field.required}
-            class="min-h-[110px] w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
-          ><%= Map.get(@values, @field.key, "") %></textarea>
-        <% "boolean" -> %>
-          <input type="hidden" name={"item[metadata][#{@field.key}]"} value="false" />
-          <label class="inline-flex items-center gap-2 text-sm text-n400">
-            <input
-              type="checkbox"
-              name={"item[metadata][#{@field.key}]"}
-              value="true"
-              checked={truthy?(Map.get(@values, @field.key))}
-              class="h-4 w-4 rounded border-n300 text-primary focus:ring-primary"
-            />
-            <span>Enabled</span>
-          </label>
-        <% "number" -> %>
-          <input
-            type="number"
-            step="any"
-            name={"item[metadata][#{@field.key}]"}
-            value={Map.get(@values, @field.key, "")}
-            required={@field.required}
-            class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
-          />
-        <% type when type in ["url", "image_url"] -> %>
-          <input
-            type="url"
-            name={"item[metadata][#{@field.key}]"}
-            value={Map.get(@values, @field.key, "")}
-            required={@field.required}
-            class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
-          />
-        <% _ -> %>
-          <input
-            type="text"
-            name={"item[metadata][#{@field.key}]"}
-            value={Map.get(@values, @field.key, "")}
-            required={@field.required}
-            class="w-full rounded-lg border border-n300 bg-n50 px-3 py-2 text-sm text-n900 shadow-sm outline-none transition focus:border-primary"
-          />
-      <% end %>
-      <p :if={@field.help_text} class="text-xs leading-5 text-n400">{@field.help_text}</p>
-    </div>
+    <%= case @field.field_type do %>
+      <% "boolean" -> %>
+        <.input
+          type="checkbox"
+          id={"meta-#{@field.key}"}
+          name={@name}
+          label={@field.label}
+          checked={truthy?(Map.get(@values, @field.key))}
+        />
+      <% type -> %>
+        <.input
+          type={custom_input_type(type)}
+          id={"meta-#{@field.key}"}
+          name={@name}
+          label={@field.label}
+          hint={@field.help_text}
+          value={Map.get(@values, @field.key, "")}
+          required={@field.required}
+          step={type == "number" && "any"}
+        />
+    <% end %>
     """
   end
+
+  defp custom_input_type("textarea"), do: "textarea"
+  defp custom_input_type("number"), do: "number"
+  defp custom_input_type(type) when type in ["url", "image_url"], do: "url"
+  defp custom_input_type(_type), do: "text"
 
   # ========================================================================
   # state loading
@@ -2548,10 +2457,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     values |> Map.get(field.key) |> to_string() |> String.trim() != ""
   end
 
-  defp file_input_class do
-    "block w-full text-sm text-n500 file:mr-3 file:inline-flex file:h-8 file:cursor-pointer file:items-center file:rounded-md file:border-0 file:bg-[#efefef] file:px-2.5 file:text-sm file:font-medium file:text-[#161616]"
-  end
-
   defp slots_from_item(item) do
     existing =
       item
@@ -2630,19 +2535,6 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   end
 
   defp category_of(_), do: ""
-
-  defp variant_summary(item) do
-    case variants_of(item) do
-      [] ->
-        if item.price, do: "KES #{format_kes(item.price)}", else: "No price"
-
-      variants ->
-        floor = variants |> Enum.map(& &1["price"]) |> Enum.reject(&is_nil/1) |> Enum.min()
-        count = length(variants)
-        label = if count == 1, do: "variant", else: "variants"
-        "KES #{format_kes(floor)} · #{count} #{label}"
-    end
-  end
 
   defp format_kes(nil), do: ""
   defp format_kes(price) when is_integer(price), do: Integer.to_string(price)
@@ -2923,14 +2815,4 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp maybe_add_missing(items, _label, true), do: items
   defp maybe_add_missing(items, label, false), do: items ++ [label]
-
-  defp alert_classes(:warning),
-    do: "border-[#FFD9A0] border-l-[#C77700] bg-[#FFF8ED] text-[#7A4A00]"
-
-  defp alert_classes(:info), do: "border-[#BFD7FF] border-l-[#2F6FED] bg-[#F4F8FF] text-[#23448E]"
-  defp alert_classes(:success), do: "border-[#B7EBCF] border-l-primary bg-[#E8FFF3] text-primary"
-
-  defp alert_icon(:warning), do: "hero-exclamation-triangle-mini"
-  defp alert_icon(:info), do: "hero-information-circle-mini"
-  defp alert_icon(:success), do: "hero-check-circle-mini"
 end

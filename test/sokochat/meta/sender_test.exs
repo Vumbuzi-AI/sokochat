@@ -181,7 +181,10 @@ defmodule Sokochat.Meta.SenderTest do
       Req.Test.expect(__MODULE__.SharedSendStub, fn conn ->
         version = Application.get_env(:sokochat, :meta)[:graph_api_version]
         assert conn.request_path == "/#{version}/#{shared_line.phone_number_id}/messages"
-        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer #{shared_line.access_token}"]
+
+        assert Plug.Conn.get_req_header(conn, "authorization") == [
+                 "Bearer #{shared_line.access_token}"
+               ]
 
         Req.Test.json(conn, %{"messages" => [%{"id" => "wamid.SHARED_OUT"}]})
       end)

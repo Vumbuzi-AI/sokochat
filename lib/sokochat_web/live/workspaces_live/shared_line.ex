@@ -54,9 +54,9 @@ defmodule SokochatWeb.WorkspacesLive.SharedLine do
 
   defp webhook_url(socket), do: url(socket, ~p"/webhooks/whatsapp")
 
-  defp status_badge_class("active"), do: "border-[#B7EBCF] bg-[#E8FFF3] text-primary"
-  defp status_badge_class("error"), do: "border-[#FFCDD2] bg-danger-bg text-danger"
-  defp status_badge_class(_), do: "border-n300 bg-n200 text-n400"
+  defp status_tone("active"), do: "success"
+  defp status_tone("error"), do: "danger"
+  defp status_tone(_), do: "waiting"
 
   defp status_label("active"), do: "Active"
   defp status_label("error"), do: "Error"
@@ -68,187 +68,93 @@ defmodule SokochatWeb.WorkspacesLive.SharedLine do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="mx-auto max-w-3xl space-y-6">
-      <nav class="flex items-center gap-1.5 text-[13px] text-n500">
-        <.link navigate={~p"/workspaces"} class="transition hover:text-n400">Workspaces</.link>
-        <span>/</span>
-        <span class="text-n400">Shared WhatsApp line</span>
-      </nav>
-
-      <div class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
-          <h1 class="text-[22px] font-bold tracking-tight text-n900">Shared WhatsApp line</h1>
-          <p class="max-w-2xl text-sm leading-6 text-n400">
-            One Cloud API number for every shop under this account. Buyers message the same
-            number; a shop code in the first message (or a shop picker) chooses which workspace
-            answers.
-          </p>
-        </div>
-
-        <div class="space-y-6 px-8 py-6">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-n400">Status</span>
-            <span class={[
-              "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold",
-              status_badge_class(@shared_line.status)
-            ]}>
+    <.stage_page title="Shared WhatsApp line" current_user={@current_user}>
+      <div class="soko-panel mx-auto max-w-[960px] p-6">
+        <.section
+          title="Shared WhatsApp line"
+          text="One WhatsApp number for every shop on this account. A shop code in the first message, or a shop picker, decides which shop answers."
+        >
+          <div class="flex items-center gap-2 text-sm text-soko-ink-2">
+            Status
+            <.badge tone={status_tone(@shared_line.status)}>
               {status_label(@shared_line.status)}
-            </span>
+            </.badge>
           </div>
-
-          <div
-            :if={@shared_line.last_error}
-            role="alert"
-            class="flex items-start gap-2 rounded-lg border border-[#FFCDD2] border-l-4 border-l-danger bg-danger-bg px-4 py-3 text-[13px] text-n400"
-          >
-            <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-4 w-4 flex-none text-danger" />
-            <span>{@shared_line.last_error}</span>
-          </div>
-
+          <.banner :if={@shared_line.last_error} tone="danger">{@shared_line.last_error}</.banner>
           <.simple_form for={@form} phx-change="validate" phx-submit="save">
-            <.input field={@form[:phone_number_id]} label="Phone Number ID" required />
-            <.input field={@form[:waba_id]} label="WhatsApp Business Account ID" required />
+            <div class="soko-field-row">
+              <.input field={@form[:phone_number_id]} label="Phone Number ID" required />
+              <.input field={@form[:waba_id]} label="WhatsApp Business Account ID" required />
+            </div>
             <.input
               field={@form[:display_phone]}
-              label="Display phone (E.164 digits)"
-              placeholder="254700123456"
+              label="Display phone"
+              placeholder="254712345678"
+              hint="Digits only, with the country code. Used in each shop's wa.me link."
               required
             />
             <.input
               field={@form[:access_token]}
               type="password"
-              label="Access Token"
+              label="Access token"
+              hint="Saving sets the status back to pending until the webhook is verified again."
               required
               autocomplete="off"
             />
-            <p class="-mt-3 text-[13px] text-n400">
-              Display phone is used in shop <span class="font-medium">wa.me</span>
-              links. Saving credentials resets status to pending until the webhook is re-verified.
-            </p>
-
             <:actions>
-              <.button>Save shared line</.button>
+              <.button size="sm">Save shared line</.button>
             </:actions>
           </.simple_form>
-        </div>
-      </div>
+        </.section>
 
-      <div
-        :if={persisted?(@shared_line)}
-        class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
-      >
-        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
-          <h2 class="text-[17px] font-bold tracking-tight text-n900">Webhook setup</h2>
-          <p class="text-sm leading-6 text-n400">
-            Point Meta's app webhook at this single URL (not a per-workspace slug), then
-            subscribe to the <span class="font-medium">messages</span> field.
-          </p>
-        </div>
-
-        <div class="space-y-5 px-8 py-6">
+        <.section
+          :if={persisted?(@shared_line)}
+          title="Webhook"
+          text="Point your Meta app webhook at this one URL, then subscribe to messages."
+        >
           <.copy_field id="shared-webhook-url" label="Callback URL" value={webhook_url(@socket)} />
           <.copy_field
             id="shared-verify-token"
             label="Verify token"
             value={@shared_line.verify_token}
           />
-        </div>
-      </div>
+          <div class="flex flex-col gap-2 rounded-[12px] border border-soko-line bg-soko-white p-4">
+            <.checklist_item done={true} label="Details saved" />
+            <.checklist_item
+              done={not is_nil(@shared_line.webhook_verified_at)}
+              label={"Webhook verified, #{verified_label(@shared_line.webhook_verified_at)}"}
+            />
+            <.checklist_item
+              done={@shared_line.status == "active"}
+              label="Shared line active and ready for messages"
+            />
+          </div>
+        </.section>
 
-      <div
-        :if={persisted?(@shared_line)}
-        class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
-      >
-        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
-          <h2 class="text-[17px] font-bold tracking-tight text-n900">Setup checklist</h2>
-        </div>
-        <div class="space-y-3 px-8 py-6 text-sm">
-          <.checklist_item done={true} label="Credentials saved" />
-          <.checklist_item
-            done={not is_nil(@shared_line.webhook_verified_at)}
-            label={"Webhook verified — #{verified_label(@shared_line.webhook_verified_at)}"}
-          />
-          <.checklist_item
-            done={@shared_line.status == "active"}
-            label="Shared line active and ready to receive messages"
-          />
-        </div>
-      </div>
-
-      <div
-        :if={persisted?(@shared_line)}
-        class="overflow-hidden rounded-2xl border border-n300 bg-n50 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
-      >
-        <div class="space-y-1.5 border-b border-n300 px-8 py-6">
-          <h2 class="text-[17px] font-bold tracking-tight text-n900">Shops on this line</h2>
-          <p class="text-sm leading-6 text-n400">
-            Join a workspace from its Meta connection page. Each shop gets a
-            <span class="font-medium">wa.me</span> link with a prefilled shop code.
-          </p>
-        </div>
-        <div class="px-8 py-6">
-          <p :if={@shops == []} class="text-sm text-n400">No shops have joined yet.</p>
-          <ul :if={@shops != []} class="space-y-3 text-sm">
-            <li :for={shop <- @shops} class="flex flex-col gap-1 rounded-lg border border-n300 p-3">
-              <div class="flex items-center justify-between gap-3">
-                <span class="font-medium text-n900">{shop.name}</span>
-                <span class="font-mono text-xs text-n400">[shop:{shop.shop_code}]</span>
-              </div>
-              <.link
-                navigate={~p"/workspaces/#{shop.id}/connection"}
-                class="text-xs font-medium text-primary hover:underline"
-              >
-                Open workspace connection
-              </.link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-
-  defp copy_field(assigns) do
-    ~H"""
-    <div>
-      <label class="block text-sm font-medium text-n900">{@label}</label>
-      <div class="mt-1.5 flex items-center gap-2">
-        <input
-          id={@id}
-          type="text"
-          readonly
-          value={@value}
-          class="w-full rounded-lg border border-n300 bg-n200 px-3 py-2 font-mono text-[13px] text-n900"
-        />
-        <button
-          id={"copy-#{@id}"}
-          type="button"
-          phx-hook="ClipboardCopy"
-          data-copy={@value}
-          class="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg border border-n300 bg-n50 px-3 text-sm font-medium text-n900 transition hover:bg-n200"
-          title="Copy to clipboard"
+        <.section
+          :if={persisted?(@shared_line)}
+          title="Shops on this line"
+          text="Each shop gets a wa.me link with its shop code filled in."
         >
-          <.icon name="hero-document-duplicate-mini" class="h-4 w-4" /> Copy
-        </button>
+          <p :if={@shops == []} class="text-sm text-soko-ink-2">No shops have joined yet.</p>
+          <div
+            :if={@shops != []}
+            class="overflow-hidden rounded-[12px] border border-soko-line bg-soko-white"
+          >
+            <.link
+              :for={shop <- @shops}
+              navigate={~p"/workspaces/#{shop.id}/connection"}
+              class="flex items-center gap-3 border-b border-soko-divider px-4 py-3 last:border-b-0 hover:bg-soko-hover"
+            >
+              <.avatar seed={shop.id} size="sm" />
+              <span class="flex-1 text-sm font-medium">{shop.name}</span>
+              <span class="font-mono text-xs text-soko-ink-3">[shop:{shop.shop_code}]</span>
+              <.icon name="caret-right" class="h-4 w-4 text-soko-ink-3" />
+            </.link>
+          </div>
+        </.section>
       </div>
-    </div>
-    """
-  end
-
-  attr :done, :boolean, required: true
-  attr :label, :string, required: true
-
-  defp checklist_item(assigns) do
-    ~H"""
-    <div class="flex items-center gap-2.5">
-      <.icon :if={@done} name="hero-check-circle-mini" class="h-5 w-5 flex-none text-primary" />
-      <.icon :if={not @done} name="hero-minus-circle-mini" class="h-5 w-5 flex-none text-n500" />
-      <span class={if @done, do: "text-n900", else: "text-n400"}>{@label}</span>
-    </div>
+    </.stage_page>
     """
   end
 end

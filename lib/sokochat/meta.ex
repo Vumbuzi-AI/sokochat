@@ -144,7 +144,6 @@ defmodule Sokochat.Meta do
     end
   end
 
-
   def change_shared_line(%SharedLine{} = shared_line, attrs \\ %{}) do
     SharedLine.credentials_changeset(shared_line, attrs)
   end
@@ -168,7 +167,10 @@ defmodule Sokochat.Meta do
   @doc "Lists workspaces that are members of the shared line."
   def list_shared_line_shops(shared_line_id) do
     Workspace
-    |> where([workspace], workspace.shared_line_id == ^shared_line_id)
+    |> where(
+      [workspace],
+      workspace.shared_line_id == ^shared_line_id and not workspace.marketplace
+    )
     |> order_by([workspace], asc: workspace.name)
     |> Repo.all()
   end
@@ -212,7 +214,7 @@ defmodule Sokochat.Meta do
     name = workspace.name || code
 
     text =
-      "Hi, I'd like help from #{name} [shop:#{code}]"
+      "What do you have at #{name}? [shop:#{code}]"
       |> URI.encode_www_form()
 
     "https://wa.me/#{digits_only(phone)}?text=#{text}"

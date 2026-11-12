@@ -1,0 +1,96 @@
+/*
+ * Sokochat v2 design tokens. Mirrors the token set on the Doop canvas
+ * (https://doop.design/c/nbdU_ygDzg). Change values there first, then here.
+ * Dark applies to Desk and Auth only; marketing stays light.
+ */
+
+@font-face {
+  font-family: "OGARANYA";
+  src:
+    url("/fonts/OGARANYA-Regular.woff2") format("woff2"),
+    url("/fonts/OGARANYA-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-soko-ink: #171717;
+  --color-soko-ink-2: #5e5e5e;
+  --color-soko-ink-3: #8a8a8c;
+  --color-soko-line: #e3e3e5;
+  --color-soko-line-2: #d2d2d5;
+  --color-soko-white: #ffffff;
+  --color-soko-base: #f9f9fa;
+  --color-soko-stage: #efeff0;
+  --color-soko-forest: #0a5e44;
+  --color-soko-forest-hover: #084c37;
+  --color-soko-forest-press: #063a2a;
+  --color-soko-mint: #a0e3c0;
+  --color-soko-mint-wash: #e4f5ec;
+  --color-soko-danger: #c9271d;
+  --color-soko-danger-hover: #a51f17;
+  --color-soko-danger-wash: #fcebe9;
+  --color-soko-amber: #9a5b00;
+  --color-soko-amber-wash: #fdf2df;
+  --color-soko-wa-chat: #efeae2;
+  --color-soko-wa-out: #d9fdd3;
+  --color-soko-wa-green: #008069;
+  --color-soko-field: #ffffff;
+  --color-soko-hover: #f4f4f5;
+  --color-soko-divider: #e3e3e5;
+  --color-soko-track: #d2d2d5;
+  --color-soko-on-forest: #ffffff;
+  --color-soko-on-ink: #ffffff;
+  --color-soko-scrim: rgb(23 23 23 / 0.4);
+
+  --radius-soko-6: 6px;
+  --radius-soko-10: 10px;
+  --radius-soko-14: 14px;
+  --radius-soko-20: 20px;
+  --radius-soko-28: 28px;
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "OGARANYA", Georgia, serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-weight-display: 400;
+
+  --leading-soko-display: 1.02;
+  --leading-soko-heading: 1.15;
+  --leading-soko-body: 1.5;
+  --tracking-soko-display: -0.015em;
+  --tracking-soko-heading: -0.01em;
+  --tracking-soko-ui: -0.01em;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --color-soko-ink: #ededee;
+  --color-soko-ink-2: #a6a6a8;
+  --color-soko-ink-3: #8e8e91;
+  --color-soko-line: transparent;
+  --color-soko-line-2: transparent;
+  --color-soko-white: #2a2a2b;
+  --color-soko-base: #252526;
+  --color-soko-stage: #202021;
+  --color-soko-forest: #5cc496;
+  --color-soko-forest-hover: #6ed0a4;
+  --color-soko-forest-press: #4db487;
+  --color-soko-mint: #2b6b52;
+  --color-soko-mint-wash: #1c3a2e;
+  --color-soko-danger: #d93a31;
+  --color-soko-danger-hover: #f0675e;
+  --color-soko-danger-wash: #3a2422;
+  --color-soko-amber: #e0a84a;
+  --color-soko-amber-wash: #3a2f1c;
+  --color-soko-field: #343435;
+  --color-soko-hover: #2f2f30;
+  --color-soko-divider: #303031;
+  --color-soko-track: #48484a;
+  --color-soko-on-forest: #0b2a1f;
+  --color-soko-on-ink: #171717;
+  --color-soko-scrim: rgb(12 12 13 / 0.62);
+
+  color-scheme: dark;
+}

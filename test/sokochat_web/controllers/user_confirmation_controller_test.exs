@@ -13,7 +13,7 @@ defmodule SokochatWeb.UserConfirmationControllerTest do
     test "renders the resend confirmation page", %{conn: conn} do
       conn = get(conn, ~p"/users/confirm")
       response = html_response(conn, 200)
-      assert response =~ "Resend confirmation instructions"
+      assert response =~ "Resend confirmation link"
     end
   end
 
