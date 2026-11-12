@@ -87,3 +87,16 @@ manual-only Coolify task `/app/bin/sokochat eval 'Sokochat.Release.setup_marketp
 after setting `MARKETPLACE_SHARED_LINE_ID` and deploying. This starts no additional
 HTTP server or job queues, enrolls unassigned manual shops transactionally, and
 prints only workspace IDs and counts. Do not use the local preview fixture in production.
+
+## Live rollout: 12 November 2026
+
+Phoenix and Pi were deployed through Coolify from `b9f80aa` on
+`sean/soko-chat-engine`. The existing active production shared line is database
+ID 1; Phoenix now has `MARKETPLACE_SHARED_LINE_ID=1` at runtime. The release
+setup completed, enrolled one previously unassigned manual shop, and created
+marketplace workspace 4. Its owner-only preview is `/workspaces/4/playground`.
+Existing line memberships were preserved. The scheduled-task API returned server
+errors, so setup ran through a temporary post-deployment hook, removed afterward.
+No local fixture or demo passwords were copied. Both applications reported healthy;
+HTTPS and Pi readiness were checked. WhatsApp delivery and app UI remain for human
+verification; tests were not run by the assistant.
