@@ -10,7 +10,11 @@ defmodule SokochatWeb.WorkspacesLiveTest do
   setup {Req.Test, :verify_on_exit!}
 
   setup do
-    on_exit(fn -> Application.delete_env(:sokochat, :endpoint_req_options) end)
+    on_exit(fn ->
+      Application.delete_env(:sokochat, :endpoint_req_options)
+      Application.delete_env(:sokochat, :website_req_options)
+    end)
+
     :ok
   end
 
@@ -148,6 +152,82 @@ defmodule SokochatWeb.WorkspacesLiveTest do
 
     assert html =~ "Field key"
     refute html =~ ~s(name="field[label]")
+  end
+
+  test "a new workspace reads the website into AI content", %{conn: conn} do
+    user = user_fixture()
+
+    Req.Test.expect(SiteStub, fn conn ->
+      Req.Test.html(conn, """
+      <html>
+        <head>
+          <title>Soko Shoes</title>
+          <meta name="description" content="Nairobi sneaker shop.">
+        </head>
+        <body><p>EU sizes, same-day delivery.</p></body>
+      </html>
+      """)
+    end)
+
+    Application.put_env(:sokochat, :website_req_options, plug: {Req.Test, SiteStub})
+
+    {:ok, view, html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/new")
+
+    Req.Test.allow(SiteStub, self(), view.pid)
+
+    assert html =~ "Website"
+    assert html =~ "Logo"
+    refute html =~ "AI instructions"
+
+    view
+    |> form("form", workspace: %{name: "Soko Shoes", website_url: "https://example.com"})
+    |> render_submit()
+
+    workspace = Sokochat.Workspaces.get_home_workspace(user.id)
+    assert workspace.name == "Soko Shoes"
+    assert workspace.website_url == "https://example.com"
+    assert workspace.ai_instructions =~ "Business: Soko Shoes"
+    assert workspace.ai_instructions =~ "Nairobi sneaker shop."
+
+    {:ok, _shop, shop_html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}")
+
+    assert shop_html =~ "AI content"
+    assert shop_html =~ "Business: Soko Shoes"
+  end
+
+  test "cancel on a new workspace leaves the form", %{conn: conn} do
+    user = user_fixture()
+    home = workspace_fixture(user)
+
+    {:ok, view, _html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/new")
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             view |> element("button", "Cancel") |> render_click()
+
+    assert to == ~p"/workspaces/#{home.id}"
+  end
+
+  test "cancel with no shop opens account settings", %{conn: conn} do
+    user = user_fixture()
+
+    {:ok, view, _html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/new")
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             view |> element("button", "Cancel") |> render_click()
+
+    assert to == ~p"/users/settings"
   end
 
   test "workspaces index opens the home workspace", %{conn: conn} do

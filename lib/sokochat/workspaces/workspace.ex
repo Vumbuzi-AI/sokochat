@@ -19,6 +19,8 @@ defmodule Sokochat.Workspaces.Workspace do
     field :location, :string
     field :phone_number, :string
     field :about, :string
+    field :logo_url, :string
+    field :website_url, :string
     field :shop_code, :string
     field :marketplace, :boolean, default: false
 
@@ -40,6 +42,8 @@ defmodule Sokochat.Workspaces.Workspace do
       :location,
       :phone_number,
       :about,
+      :logo_url,
+      :website_url,
       :shared_line_id,
       :shop_code
     ])
@@ -47,6 +51,10 @@ defmodule Sokochat.Workspaces.Workspace do
     |> validate_length(:name, min: 2, max: 120)
     |> validate_length(:ai_instructions, max: 5000)
     |> validate_length(:about, max: 2000)
+    |> validate_length(:logo_url, max: 2000)
+    |> update_change(:website_url, &blank_to_nil/1)
+    |> validate_length(:website_url, max: 500)
+    |> validate_website_url()
     |> validate_length(:shop_code, max: 64)
     |> validate_format(:shop_code, ~r/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/,
       message: "must be lowercase letters, numbers, and hyphens"
@@ -58,6 +66,28 @@ defmodule Sokochat.Workspaces.Workspace do
     |> foreign_key_constraint(:shared_line_id)
     |> unique_constraint(:slug, name: :workspaces_account_id_slug_index)
     |> unique_constraint([:shared_line_id, :shop_code])
+  end
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp validate_website_url(changeset) do
+    validate_change(changeset, :website_url, fn :website_url, url ->
+      case URI.parse(url) do
+        %URI{scheme: scheme, host: host}
+        when scheme in ["http", "https"] and is_binary(host) and host != "" ->
+          []
+
+        _ ->
+          [website_url: "must start with https://"]
+      end
+    end)
   end
 
   defp maybe_require_shop_code(changeset) do

@@ -870,6 +870,19 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       </.section>
 
       <.section
+        title="AI content"
+        text="Filled from your website when the shop is created. Sokochat uses this in replies. Change anything that is off."
+      >
+        <.input
+          field={@business_form[:ai_instructions]}
+          type="textarea"
+          label="What Sokochat should know"
+          rows="6"
+          placeholder="We sell sneakers in Nairobi. Sizes are EU. Prices are in KES. Same-day delivery inside the city."
+        />
+      </.section>
+
+      <.section
         title="About"
         text="A few lines buyers might ask about, like delivery or opening hours."
       >

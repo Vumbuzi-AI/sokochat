@@ -264,4 +264,35 @@ defmodule Sokochat.Meta.SenderTest do
       assert reason =~ "WA_* values in .env"
     end
   end
+
+  describe "show_typing/2" do
+    test "marks the inbound message read and asks Meta to show typing" do
+      workspace = workspace_fixture(user_fixture())
+      connection = connection_fixture(workspace)
+
+      Req.Test.expect(__MODULE__.TypingStub, fn conn ->
+        version = Application.get_env(:sokochat, :meta)[:graph_api_version]
+        assert conn.method == "POST"
+        assert conn.request_path == "/#{version}/#{connection.phone_number_id}/messages"
+
+        body =
+          conn
+          |> Req.Test.raw_body()
+          |> IO.iodata_to_binary()
+          |> Jason.decode!()
+
+        assert body["messaging_product"] == "whatsapp"
+        assert body["status"] == "read"
+        assert body["message_id"] == "wamid.IN123"
+        assert body["typing_indicator"] == %{"type" => "text"}
+        refute Map.has_key?(body, "to")
+
+        Req.Test.json(conn, %{"success" => true})
+      end)
+
+      Process.put(:meta_req_options, plug: {Req.Test, __MODULE__.TypingStub})
+
+      assert {:ok, :shown} = Sender.show_typing(connection, "wamid.IN123")
+    end
+  end
 end

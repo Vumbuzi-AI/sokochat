@@ -80,6 +80,8 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
 
       :ok
     else
+      show_typing(connection, args["whatsapp_message_id"])
+
       if Sokochat.AI.Intelligence.agentic?() do
         case Dispatcher.dispatch(workspace_id, phone_number, message_text, :whatsapp,
                wait: false,
@@ -108,6 +110,19 @@ defmodule Sokochat.Workers.ProcessInboundMessage do
             {:error, reason}
         end
       end
+    end
+  end
+
+  defp show_typing(_connection, id) when id in [nil, ""], do: :ok
+
+  defp show_typing(connection, message_id) do
+    case Sender.show_typing(connection, message_id) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("WhatsApp typing indicator failed: #{inspect(reason)}")
+        :ok
     end
   end
 

@@ -194,8 +194,10 @@ defmodule SokochatWeb.CoreComponents do
         phx-connected={hide_flash("#client-error")}
         hidden
       >
-        {gettext("Reconnecting")}
-        <.icon name="arrow-clockwise" class="soko-toast-spin h-3 w-3" />
+        <span class="soko-toast-line">
+          {gettext("Trying to reconnect")}
+          <.icon name="arrow-clockwise" class="soko-toast-spin" />
+        </span>
       </.flash>
       <.flash
         id="server-error"
@@ -205,8 +207,10 @@ defmodule SokochatWeb.CoreComponents do
         phx-connected={hide_flash("#server-error")}
         hidden
       >
-        {gettext("Getting back on track")}
-        <.icon name="arrow-clockwise" class="soko-toast-spin h-3 w-3" />
+        <span class="soko-toast-line">
+          {gettext("Trying to reconnect")}
+          <.icon name="arrow-clockwise" class="soko-toast-spin" />
+        </span>
       </.flash>
     </div>
     """
@@ -1033,6 +1037,7 @@ defmodule SokochatWeb.CoreComponents do
   defp show_flash(js \\ %JS{}, selector) do
     JS.show(js,
       to: selector,
+      display: "inline-flex",
       time: 200,
       transition: {"soko-toast-enter", "soko-toast-enter-from", "soko-toast-enter-to"}
     )

@@ -26,6 +26,28 @@ defmodule Sokochat.Meta.Sender do
     |> send_messages(connection, to)
   end
 
+  @doc """
+  Marks an inbound WhatsApp message as read and shows the typing indicator.
+
+  Meta keeps the dots up for 25 seconds, or until the reply is sent. `message_id`
+  is the inbound `wamid`, not an id we generated.
+  """
+  def show_typing(connection, message_id)
+      when is_struct(connection, Connection) or is_struct(connection, SharedLine) do
+    message_id = message_id |> to_string() |> String.trim()
+
+    if message_id == "" do
+      {:error, :missing_message}
+    else
+      post(connection, %{
+        messaging_product: "whatsapp",
+        status: "read",
+        message_id: message_id,
+        typing_indicator: %{type: "text"}
+      })
+    end
+  end
+
   @doc "Sends exactly one outbox part without transport retries or media fallbacks."
   def send_outbox_message(connection, to, message),
     do:
@@ -95,6 +117,33 @@ defmodule Sokochat.Meta.Sender do
   end
 
   defp send_message(connection, to, message), do: do_send(connection, to, message, true)
+
+  defp post(connection, body) do
+    options =
+      req_options()
+      |> Keyword.merge(
+        url: "#{base_url()}/#{connection.phone_number_id}/messages",
+        headers: [
+          {"authorization", "Bearer #{connection.access_token}"},
+          {"content-type", "application/json"}
+        ],
+        json: body,
+        retry: false,
+        receive_timeout: 8_000
+      )
+
+    case Req.post(options) do
+      {:ok, %Req.Response{status: status}} when status in 200..299 ->
+        {:ok, :shown}
+
+      {:ok, %Req.Response{status: status, body: response_body}} ->
+        {:error, format_api_error(status, response_body)}
+
+      {:error, reason} ->
+        Logger.warning("WhatsApp typing indicator failed: #{inspect(reason)}")
+        {:error, "transport error: #{inspect(reason)}"}
+    end
+  end
 
   defp do_send(connection, to, message, retry_media?, overrides \\ []) do
     phone_number_id = connection.phone_number_id

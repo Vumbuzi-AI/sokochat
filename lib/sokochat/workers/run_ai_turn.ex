@@ -12,8 +12,11 @@ defmodule Sokochat.Workers.RunAiTurn do
   def timeout(_job), do: 45_000
 
   alias Sokochat.Repo
+  alias Sokochat.{Meta, Meta.Sender}
   alias Sokochat.Conversations.{AiTurn, Conversation, DurableTurns}
   alias Sokochat.AI.PiClient
+
+  require Logger
 
   @impl true
   def perform(%Oban.Job{args: %{"turn_id" => id}}) do
@@ -24,7 +27,35 @@ defmodule Sokochat.Workers.RunAiTurn do
     end
   end
 
+  # Meta drops the typing indicator after 25 seconds. Refresh it on each
+  # later window while this WhatsApp turn is still queued.
+  defp refresh_typing(%AiTurn{source_key: "whatsapp:" <> message_id} = turn) do
+    elapsed = DateTime.diff(DateTime.utc_now(), turn.inserted_at, :second)
+
+    if elapsed >= 18 and rem(elapsed, 20) < 3 do
+      case Meta.connection_for_send(turn.workspace_id) do
+        nil ->
+          :ok
+
+        connection ->
+          case Sender.show_typing(connection, message_id) do
+            {:ok, _} ->
+              :ok
+
+            {:error, reason} ->
+              Logger.warning("WhatsApp typing refresh failed: #{inspect(reason)}")
+          end
+      end
+    else
+      :ok
+    end
+  end
+
+  defp refresh_typing(_turn), do: :ok
+
   defp run(turn) do
+    refresh_typing(turn)
+
     cond do
       DateTime.diff(DateTime.utc_now(), turn.inserted_at) > 900 ->
         DurableTurns.fail(
