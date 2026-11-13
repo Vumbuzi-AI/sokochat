@@ -816,7 +816,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           Save changes
         </.button>
       </:actions>
-      <:actions :if={@active_step == :products and not is_nil(@catalog.id)}>
+      <:actions :if={
+        @active_step == :products and not is_nil(@catalog.id) and (@catalog.items || []) != []
+      }>
         <.button type="button" size="sm" phx-click="new_item">
           <.icon name="plus" /> Add product
         </.button>
@@ -1080,7 +1082,11 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         icon="package"
         title="No products yet"
         text="Add your first product so Sokochat can answer buyers with it."
-      />
+      >
+        <:actions>
+          <.button type="button" phx-click="new_item"><.icon name="plus" /> Add product</.button>
+        </:actions>
+      </.empty>
     </div>
 
     <.table :if={@items != []} id="products" rows={@items} row_id={&"item-#{&1.id}"}>
@@ -1730,12 +1736,10 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
         <input type="hidden" name="item[id]" value={(@selected_item && @selected_item.id) || ""} />
         <input type="hidden" name="item[status]" value="active" />
         <.input field={@item_form[:title]} label="Name" placeholder="Nike Shox" required />
-        <.input
-          type="select"
+        <.select_menu
           id="item-category"
           name="item[category]"
           label="Category"
-          required
           prompt="Select a category"
           options={category_options(@catalog, @category_draft)}
           value={@category_draft}

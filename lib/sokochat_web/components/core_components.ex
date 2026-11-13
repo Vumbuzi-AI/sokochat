@@ -682,6 +682,60 @@ defmodule SokochatWeb.CoreComponents do
     """
   end
 
+  @doc "A styled single-choice menu for product categories."
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :label, :string, required: true
+  attr :options, :list, required: true
+  attr :value, :string, default: nil
+  attr :prompt, :string, default: "Select an option"
+  attr :hint, :any, default: nil
+
+  def select_menu(assigns) do
+    ~H"""
+    <div id={@id} class="soko-field soko-select-menu" phx-hook="SelectMenu">
+      <label id={@id <> "-label"} for={@id <> "-trigger"} class="soko-label">{@label}</label>
+      <input type="hidden" name={@name} value={@value || ""} />
+      <button
+        id={@id <> "-trigger"}
+        type="button"
+        data-trigger
+        class="soko-box soko-select-trigger"
+        aria-haspopup="listbox"
+        aria-expanded="false"
+        aria-controls={@id <> "-options"}
+        aria-labelledby={@id <> "-label " <> @id <> "-value"}
+      >
+        <span id={@id <> "-value"} data-label class={is_nil(@value) && "text-soko-ink-3"}>
+          {if @value in [nil, ""], do: @prompt, else: @value}
+        </span>
+        <.icon name="caret-down" class="h-4 w-4 text-soko-ink-2" />
+      </button>
+      <div
+        id={@id <> "-options"}
+        role="listbox"
+        aria-labelledby={@id <> "-label"}
+        class="soko-select-options"
+        hidden
+      >
+        <button
+          :for={option <- @options}
+          type="button"
+          role="option"
+          data-option
+          data-value={option}
+          aria-selected={option == @value}
+          tabindex="-1"
+        >
+          <span>{option}</span> <.icon :if={option == @value} name="check" class="h-4 w-4" />
+        </button>
+        <p :if={@options == []} class="soko-hint px-3 py-2">Add a category on Products first.</p>
+      </div>
+      <p :if={@hint} class="soko-hint">{@hint}</p>
+    </div>
+    """
+  end
+
   @doc """
   Renders a Soko Empty state. Centre it in the content panel.
   """

@@ -362,6 +362,9 @@ select.soko-control option {
 }
 
 input[type="file"].soko-control {
+  height: auto;
+  padding-block: 8px;
+  line-height: 30px;
   font-size: 14px;
   cursor: pointer;
 }
@@ -1581,4 +1584,43 @@ input[type="file"].soko-control::file-selector-button {
   .soko-toast-spin {
     animation: none;
   }
+}
+
+/* Product category menu shares the field boundary and token palette. */
+.soko-select-menu { position: relative; }
+.soko-select-trigger { width: 100%; justify-content: space-between; cursor: pointer; text-align: start; }
+.soko-select-trigger:focus-visible { outline: 3px solid var(--color-soko-mint); border-color: var(--color-soko-forest); }
+.soko-select-options {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--color-soko-field);
+  border: 1px solid var(--color-soko-line-2);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .08);
+}
+.soko-select-options[hidden] { display: none; }
+.soko-select-options [role="option"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--color-soko-ink);
+  text-align: start;
+  font-size: 14px;
+  cursor: pointer;
+}
+.soko-select-options [aria-selected="true"],
+.soko-select-options [role="option"]:focus,
+.soko-select-options [role="option"]:hover {
+  background: var(--color-soko-mint-wash);
+  color: var(--color-soko-forest);
+  outline: none;
 }

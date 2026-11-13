@@ -23,7 +23,9 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 import {DashboardShell} from "./dashboard-shell.js"
 
-let Hooks = {}
+import {SelectMenu} from "./select-menu.js"
+
+let Hooks = {SelectMenu}
 
 Hooks.ClipboardCopy = {
   mounted() {
