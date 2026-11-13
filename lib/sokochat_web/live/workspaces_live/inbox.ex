@@ -137,6 +137,12 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
             <small>Buyer</small>
             <p>{@selected.phone_number}</p>
           </div>
+          <div :if={@selected.fulfillment} class="soko-inbox-buyer">
+            <small>Collection and delivery</small>
+            <p class="whitespace-pre-line">
+              {Sokochat.Marketplace.Fulfillment.summary(@selected.fulfillment)}
+            </p>
+          </div>
           <.banner tone="info">
             Contact the buyer to confirm size, stock, delivery and payment. This request has not been paid.
           </.banner>

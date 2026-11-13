@@ -105,7 +105,11 @@ defmodule Sokochat.MarketplaceTest do
                "preview_buyer",
                "hello",
                :playground,
-               "server welcome", wait: false, marketplace_reply: reply, source_key: "welcome-two")
+               "server welcome",
+               wait: false,
+               marketplace_reply: reply,
+               source_key: "welcome-two"
+             )
 
     assert Repo.get!(AiTurn, first.id).fixed_reply["reply"] == reply.reply
     assert DurableTurns.earlier_pending?(second)
@@ -151,5 +155,118 @@ defmodule Sokochat.MarketplaceEnrollmentTest do
     refute shop.marketplace
     assert String.length(shop.shop_code) <= 64
     assert shop.account_id == seller.id
+  end
+
+  test "delivery snapshots belong to the buyer and seller, and changed fees require review",
+       ctx do
+    {:ok, seller} =
+      Sokochat.Workspaces.update_workspace(ctx.a, %{
+        delivery_enabled: true,
+        delivery_rates: [%{area: "CBD", fee: "150"}]
+      })
+
+    [rate] = seller.delivery_rates
+    phone = "254700111222"
+    {:ok, draft} = Orders.draft(ctx.marketplace, phone, ctx.shoe.id, "delivery-test")
+    assert {:error, :fulfillment_changed} = Orders.confirm(ctx.marketplace, phone, draft.id)
+    build = fn _ -> Sokochat.Marketplace.Fulfillment.build_quote(seller, rate.id) end
+
+    assert {:error, :unavailable} =
+             Orders.set_fulfillment(ctx.marketplace, "254700999999", draft.id, build)
+
+    assert {:ok, _} = Orders.set_fulfillment(ctx.marketplace, phone, draft.id, build)
+    assert Orders.pending_address(ctx.marketplace, phone).id == draft.id
+    assert {:error, :fulfillment_changed} = Orders.confirm(ctx.marketplace, phone, draft.id)
+
+    assert {:ok, _} =
+             Orders.set_fulfillment(ctx.marketplace, phone, draft.id, fn order ->
+               {:ok,
+                order.fulfillment
+                |> Map.put("address", "Building A, Nairobi CBD")
+                |> Map.put("awaiting_address", false)}
+             end)
+
+    {:ok, seller} =
+      Sokochat.Workspaces.update_workspace(seller, %{
+        delivery_rates: [%{id: rate.id, area: "CBD", fee: "200"}]
+      })
+
+    assert {:error, :fulfillment_changed} = Orders.confirm(ctx.marketplace, phone, draft.id)
+
+    assert {:ok, _} =
+             Orders.set_fulfillment(ctx.marketplace, phone, draft.id, fn _ ->
+               {:ok, quote} = Sokochat.Marketplace.Fulfillment.build_quote(seller, rate.id)
+
+               {:ok,
+                quote
+                |> Map.put("address", "Building A, Nairobi CBD")
+                |> Map.put("awaiting_address", false)}
+             end)
+
+    assert {:ok, confirmed} = Orders.confirm(ctx.marketplace, phone, draft.id)
+    assert confirmed.fulfillment["fee"] == "200"
+    assert [%{id: id}] = Orders.list(ctx.a.id)
+    assert id == confirmed.id
+    assert Orders.list(ctx.b.id) == []
+
+    assert {:error, :unavailable} =
+             Orders.set_fulfillment(ctx.marketplace, phone, draft.id, build)
+  end
+
+  test "WhatsApp delivery choices build sender-compatible rows and collect an address before review",
+       ctx do
+    {:ok, seller} =
+      Sokochat.Workspaces.update_workspace(ctx.a, %{
+        delivery_enabled: true,
+        delivery_rates: [%{area: "CBD", fee: "150"}]
+      })
+
+    [rate] = seller.delivery_rates
+    phone = "254700123456"
+    {:ok, draft} = Orders.draft(ctx.marketplace, phone, ctx.shoe.id, "chat-delivery")
+
+    {:dispatch, _, _, opts} =
+      Sokochat.Marketplace.Chat.route(
+        ctx.line,
+        phone,
+        "Delivery",
+        "fulfill:#{draft.id}:delivery",
+        "choose-delivery"
+      )
+
+    reply = Keyword.fetch!(opts, :marketplace_reply)
+    [message] = Sokochat.Meta.Sender.build_messages(reply.cta, reply.reply)
+    assert [%{rows: rows}] = message.interactive.action.sections
+
+    assert Enum.any?(
+             rows,
+             &(&1.id == "fulfill:#{draft.id}:#{rate.id}" && &1.description =~ "150")
+           )
+
+    {:dispatch, _, _, _} =
+      Sokochat.Marketplace.Chat.route(
+        ctx.line,
+        phone,
+        "CBD",
+        "fulfill:#{draft.id}:#{rate.id}",
+        "choose-zone"
+      )
+
+    assert Orders.pending_address(ctx.marketplace, phone).id == draft.id
+
+    {:dispatch, _, _, opts} =
+      Sokochat.Marketplace.Chat.route(
+        ctx.line,
+        phone,
+        "Building A, Kimathi Street, Nairobi",
+        nil,
+        "delivery-address"
+      )
+
+    reply = Keyword.fetch!(opts, :marketplace_reply)
+    assert reply.reply =~ "Building A, Kimathi Street, Nairobi"
+    assert reply.reply =~ "KES 150"
+    assert Enum.any?(reply.cta["payload"]["buttons"], &(&1["id"] == "confirm:#{draft.id}"))
+    assert is_nil(Orders.pending_address(ctx.marketplace, phone))
   end
 end

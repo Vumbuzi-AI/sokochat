@@ -39,6 +39,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
      |> assign(:category_draft, "")
      |> assign(:category_query, "")
      |> assign(:details_open, false)
+     |> assign(:finding_location, false)
      # products / data ingestion
      |> assign(:endpoint, nil)
      |> assign(:catalog, nil)
@@ -143,6 +144,54 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       |> Map.put(:action, :validate)
 
     {:noreply, assign_form(socket, :business_form, changeset)}
+  end
+
+  def handle_event("add_delivery_rate", _params, socket) do
+    {params, rates} = delivery_form_params(socket)
+    rates = if length(rates) < 8, do: rates ++ [%{"area" => "", "fee" => ""}], else: rates
+
+    changeset =
+      Workspaces.change_workspace(
+        socket.assigns.workspace,
+        Map.put(params, "delivery_rates", rates)
+      )
+
+    {:noreply, assign_form(socket, :business_form, changeset)}
+  end
+
+  def handle_event("remove_delivery_rate", %{"index" => index}, socket) do
+    {params, rates} = delivery_form_params(socket)
+    rates = List.delete_at(rates, String.to_integer(index))
+
+    changeset =
+      Workspaces.change_workspace(
+        socket.assigns.workspace,
+        Map.put(params, "delivery_rates", rates)
+      )
+
+    {:noreply, assign_form(socket, :business_form, changeset)}
+  end
+
+  def handle_event("find_business_location", _params, socket) do
+    url = Changeset.get_field(socket.assigns.business_form.source, :website_url)
+
+    if is_binary(url) and String.trim(url) != "" and not socket.assigns.finding_location do
+      id = socket.assigns.workspace.id
+
+      {:noreply,
+       socket
+       |> assign(:finding_location, true)
+       |> start_async({:website_location, id, url}, fn ->
+         Sokochat.Workspaces.Website.profile(url)
+       end)}
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         "Add your website, or enter the address and delivery details below."
+       )}
+    end
   end
 
   def handle_event("save_business", %{"workspace" => params}, socket) do
@@ -699,6 +748,49 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     {:noreply, reset_playground(socket)}
   end
 
+  def handle_async({:website_location, id, url}, {:ok, {:ok, details}}, socket) do
+    socket = assign(socket, :finding_location, false)
+
+    if socket.assigns.workspace.id == id and
+         Changeset.get_field(socket.assigns.business_form.source, :website_url) == url do
+      source = socket.assigns.business_form.source
+      suggestions = Map.take(details, ["location", "opening_hours", "map_url"])
+
+      params =
+        Enum.reduce(suggestions, source.params || %{}, fn {key, value}, acc ->
+          if Changeset.get_field(source, String.to_existing_atom(key)) in [nil, ""],
+            do: Map.put(acc, key, value),
+            else: acc
+        end)
+
+      message =
+        if suggestions == %{},
+          do: "No address or hours found. Enter your details below.",
+          else:
+            "Website checked. Empty fields were filled where details were found. Review them, then save."
+
+      {:noreply,
+       socket
+       |> assign_form(
+         :business_form,
+         Workspaces.change_workspace(socket.assigns.workspace, params)
+       )
+       |> put_flash(:info, message)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_async({:website_location, _id, _url}, _failure, socket) do
+    {:noreply,
+     socket
+     |> assign(:finding_location, false)
+     |> put_flash(
+       :error,
+       "Could not read the website. Enter the address and delivery details below, or try again."
+     )}
+  end
+
   @impl true
   def handle_async({:dispatch_message, dispatch_ref}, {:ok, {:ok, %{prepared: prepared}}}, socket) do
     if socket.assigns.active_dispatch_ref == dispatch_ref do
@@ -846,6 +938,33 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   # --- business ------------------------------------------------------------
 
+  defp delivery_form_params(socket) do
+    source = socket.assigns.business_form.source
+    params = source.params || %{}
+
+    rates =
+      case params["delivery_rates"] do
+        rates when is_map(rates) ->
+          rates
+          |> Enum.sort_by(fn {key, _} -> String.to_integer(key) end)
+          |> Enum.map(&elem(&1, 1))
+
+        rates when is_list(rates) ->
+          rates
+
+        _ ->
+          Enum.map(Changeset.get_field(source, :delivery_rates), fn rate ->
+            %{
+              "id" => rate.id,
+              "area" => rate.area,
+              "fee" => rate.fee && Decimal.to_string(rate.fee)
+            }
+          end)
+      end
+
+    {params, rates}
+  end
+
   defp business_step(assigns) do
     ~H"""
     <.simple_form
@@ -869,7 +988,90 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
             placeholder="+254 712 345 678"
           />
         </div>
-        <.input field={@business_form[:location]} label="Location" placeholder="Moi Avenue, Nairobi" />
+        <.input
+          field={@business_form[:website_url]}
+          type="url"
+          label="Website (optional)"
+          placeholder="https://yourshop.com"
+        />
+        <.button
+          type="button"
+          tone="secondary"
+          size="sm"
+          phx-click="find_business_location"
+          disabled={@finding_location}
+        >
+          {if @finding_location, do: "Finding details…", else: "Find details from website"}
+        </.button>
+        <p class="soko-hint">
+          Only empty address, map and hours fields are filled. Review, then save. No website? Enter your details below.
+        </p>
+      </.section>
+
+      <.section
+        title="Collection and delivery"
+        text="Buyers choose before confirming an order. Enter your delivery fees in KES."
+      >
+        <.input
+          field={@business_form[:pickup_enabled]}
+          type="checkbox"
+          label="Allow collection in store"
+        />
+        <.input
+          field={@business_form[:location]}
+          label="Pickup address"
+          placeholder="Building, shop number, street and town"
+        />
+        <.input
+          field={@business_form[:opening_hours]}
+          label="Opening hours"
+          placeholder="Monday–Saturday, 9am–6pm"
+        />
+        <.input
+          field={@business_form[:map_url]}
+          type="url"
+          label="Map link (optional)"
+          placeholder="https://maps.google.com/…"
+        />
+        <.input field={@business_form[:delivery_enabled]} type="checkbox" label="Offer delivery" />
+        <input
+          :if={Changeset.get_field(@business_form.source, :delivery_rates) == []}
+          type="hidden"
+          name="workspace[delivery_rates]"
+          value=""
+        />
+        <.inputs_for :let={rate} field={@business_form[:delivery_rates]}>
+          <div class="grid grid-cols-[minmax(0,1fr)_100px_32px] items-end gap-3">
+            <.input field={rate[:area]} label="Delivery area" placeholder="Nairobi CBD" />
+            <.input field={rate[:fee]} type="number" label="Fee (KES)" min="0" step="0.01" />
+            <.icon_button
+              icon="x"
+              aria-label="Remove delivery area"
+              phx-click="remove_delivery_rate"
+              phx-value-index={rate.index}
+            />
+          </div>
+        </.inputs_for>
+        <.error :for={{:delivery_rates, error} <- @business_form.source.errors}>
+          {translate_error(error)}
+        </.error>
+        <.button
+          type="button"
+          tone="secondary"
+          size="sm"
+          phx-click="add_delivery_rate"
+          disabled={length(Changeset.get_field(@business_form.source, :delivery_rates)) >= 8}
+        >
+          <.icon name="plus" /> Add delivery area
+        </.button>
+        <.input
+          field={@business_form[:delivery_quote_outside]}
+          type="checkbox"
+          label="Accept other areas for a delivery quote"
+        />
+        <p class="soko-hint">
+          Other areas show “Delivery fee to be confirmed by the seller.” A fee of 0 means free delivery. Up to eight areas.
+        </p>
       </.section>
 
       <.section

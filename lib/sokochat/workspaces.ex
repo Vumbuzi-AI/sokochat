@@ -112,7 +112,9 @@ defmodule Sokochat.Workspaces do
 
   defp normalize_attrs(attrs) do
     for {key, value} <- Map.new(attrs), into: %{} do
-      {to_string(key), value}
+      key = to_string(key)
+      value = if key == "delivery_rates" and value == "", do: [], else: value
+      {key, value}
     end
   end
 

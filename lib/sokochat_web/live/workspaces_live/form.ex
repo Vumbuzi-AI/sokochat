@@ -134,11 +134,13 @@ defmodule SokochatWeb.WorkspacesLive.Form do
     if url == "" do
       {workspace, "Workspace created.", nil}
     else
-      case Website.brief(url) do
-        {:ok, brief} ->
-          case Workspaces.update_workspace(workspace, %{"ai_instructions" => brief}) do
+      case Website.profile(url) do
+        {:ok, details} ->
+          case Workspaces.update_workspace(workspace, details) do
             {:ok, updated} ->
-              {updated, "Workspace created. AI content is filled from your website.", nil}
+              {updated,
+               "Workspace created. Review the website details under Business, then set collection and delivery.",
+               nil}
 
             {:error, _changeset} ->
               {workspace, "Workspace created.", nil}

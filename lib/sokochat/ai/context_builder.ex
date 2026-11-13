@@ -72,6 +72,8 @@ defmodule Sokochat.AI.ContextBuilder do
       {"Company", workspace_field(workspace, :company_name)},
       {"Industry", workspace_field(workspace, :industry)},
       {"Location", workspace_field(workspace, :location)},
+      {"Opening hours", workspace_field(workspace, :opening_hours)},
+      {"Map", workspace_field(workspace, :map_url)},
       {"Phone", workspace_field(workspace, :phone_number)},
       {"About", workspace_field(workspace, :about)}
     ]

@@ -63,4 +63,25 @@ defmodule Sokochat.WorkspacesTest do
       assert updated_workspace.ai_instructions == "Only answer using the latest product data."
     end
   end
+
+  test "removing the last delivery area persists and collection requires an address" do
+    workspace = workspace_fixture(user_fixture())
+    assert {:error, changeset} = Workspaces.update_workspace(workspace, %{pickup_enabled: true})
+    assert errors_on(changeset).location == ["can't be blank"]
+
+    assert {:ok, workspace} =
+             Workspaces.update_workspace(workspace, %{
+               delivery_enabled: true,
+               delivery_rates: [%{area: "CBD", fee: "0"}]
+             })
+
+    assert length(workspace.delivery_rates) == 1
+    assert {:ok, workspace} = Workspaces.update_workspace(workspace, %{"delivery_rates" => ""})
+    assert workspace.delivery_rates == []
+
+    assert {:error, changeset} =
+             Workspaces.update_workspace(workspace, %{delivery_quote_outside: false})
+
+    assert errors_on(changeset).delivery_rates == ["add an area or accept delivery quotes"]
+  end
 end

@@ -9,6 +9,7 @@ defmodule Sokochat.Marketplace.OrderRequest do
     field :phone_number, :string
     field :source_key, :string
     field :product, :map
+    field :fulfillment, :map
     field :status, :string, default: "draft"
     field :requested_at, :utc_datetime
     field :contacted_at, :utc_datetime

@@ -67,9 +67,25 @@ defmodule Sokochat.Marketplace.Orders do
           current = Marketplace.product_context(item)
           if current != order.product, do: Repo.rollback(:changed)
 
+          shop =
+            Repo.one!(
+              from s in Sokochat.Workspaces.Workspace,
+                where: s.id == ^order.workspace_id,
+                lock: "FOR SHARE"
+            )
+
+          fulfillment =
+            if is_nil(order.fulfillment) && !Sokochat.Marketplace.Fulfillment.configured?(shop),
+              do: %{"method" => "merchant", "fee" => nil},
+              else: order.fulfillment
+
+          if !Sokochat.Marketplace.Fulfillment.valid?(shop, fulfillment),
+            do: Repo.rollback(:fulfillment_changed)
+
           order
           |> Ecto.Changeset.change(
             status: "requested",
+            fulfillment: fulfillment,
             requested_at: DateTime.utc_now() |> DateTime.truncate(:second)
           )
           |> Repo.update!()
@@ -83,6 +99,68 @@ defmodule Sokochat.Marketplace.Orders do
       error ->
         error
     end
+  end
+
+  def get_draft(workspace, phone, id) do
+    from(o in OrderRequest,
+      where:
+        o.id == ^(Marketplace.parse_id(id) || 0) and o.shared_line_id == ^workspace.shared_line_id and
+          o.phone_number == ^phone
+    )
+    |> Repo.one()
+    |> case do
+      %{status: "draft"} = order ->
+        if DateTime.diff(DateTime.utc_now(), order.inserted_at) <= 1800,
+          do: {:ok, order},
+          else: {:error, :expired}
+
+      _ ->
+        {:error, :unavailable}
+    end
+  end
+
+  def set_fulfillment(workspace, phone, id, build) do
+    Repo.transaction(fn ->
+      order =
+        Repo.one(
+          from o in OrderRequest,
+            where:
+              o.id == ^(Marketplace.parse_id(id) || 0) and
+                o.shared_line_id == ^workspace.shared_line_id and o.phone_number == ^phone,
+            lock: "FOR UPDATE"
+        )
+
+      if is_nil(order) || order.status != "draft", do: Repo.rollback(:unavailable)
+      if DateTime.diff(DateTime.utc_now(), order.inserted_at) > 1800, do: Repo.rollback(:expired)
+
+      case build.(order) do
+        {:ok, details} -> order |> Ecto.Changeset.change(fulfillment: details) |> Repo.update!()
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  def pending_address(workspace, phone) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-1800, :second)
+
+    Repo.one(
+      from o in OrderRequest,
+        where:
+          o.shared_line_id == ^workspace.shared_line_id and o.phone_number == ^phone and
+            o.status == "draft" and o.inserted_at > ^cutoff and
+            fragment("?->>'awaiting_address' = 'true'", o.fulfillment),
+        order_by: [desc: o.id],
+        limit: 1
+    )
+  end
+
+  def cancel_address(workspace, phone) do
+    from(o in OrderRequest,
+      where:
+        o.shared_line_id == ^workspace.shared_line_id and o.phone_number == ^phone and
+          o.status == "draft" and fragment("?->>'awaiting_address' = 'true'", o.fulfillment)
+    )
+    |> Repo.update_all(set: [fulfillment: nil])
   end
 
   @doc """

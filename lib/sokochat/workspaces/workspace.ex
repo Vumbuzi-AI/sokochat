@@ -17,6 +17,12 @@ defmodule Sokochat.Workspaces.Workspace do
     field :company_name, :string
     field :industry, :string
     field :location, :string
+    field :pickup_enabled, :boolean, default: false
+    field :opening_hours, :string
+    field :map_url, :string
+    field :delivery_enabled, :boolean, default: false
+    field :delivery_quote_outside, :boolean, default: true
+    embeds_many :delivery_rates, Sokochat.Workspaces.DeliveryRate, on_replace: :delete
     field :phone_number, :string
     field :about, :string
     field :logo_url, :string
@@ -40,6 +46,11 @@ defmodule Sokochat.Workspaces.Workspace do
       :company_name,
       :industry,
       :location,
+      :pickup_enabled,
+      :opening_hours,
+      :map_url,
+      :delivery_enabled,
+      :delivery_quote_outside,
       :phone_number,
       :about,
       :logo_url,
@@ -47,6 +58,22 @@ defmodule Sokochat.Workspaces.Workspace do
       :shared_line_id,
       :shop_code
     ])
+    |> cast_embed(:delivery_rates)
+    |> validate_length(:delivery_rates, max: 8)
+    |> validate_length(:location, max: 500)
+    |> validate_length(:opening_hours, max: 500)
+    |> validate_length(:map_url, max: 2000)
+    |> validate_change(:map_url, fn :map_url, url ->
+      case URI.parse(url) do
+        %URI{scheme: scheme, host: host}
+        when scheme in ["https", "http"] and is_binary(host) and host != "" ->
+          []
+
+        _ ->
+          [map_url: "must be an http or https link"]
+      end
+    end)
+    |> validate_fulfillment()
     |> validate_required([:account_id, :name, :slug, :language])
     |> validate_length(:name, min: 2, max: 120)
     |> validate_length(:ai_instructions, max: 5000)
@@ -66,6 +93,26 @@ defmodule Sokochat.Workspaces.Workspace do
     |> foreign_key_constraint(:shared_line_id)
     |> unique_constraint(:slug, name: :workspaces_account_id_slug_index)
     |> unique_constraint([:shared_line_id, :shop_code])
+  end
+
+  defp validate_fulfillment(changeset) do
+    changeset =
+      if get_field(changeset, :pickup_enabled),
+        do: validate_required(changeset, [:location]),
+        else: changeset
+
+    rates = get_field(changeset, :delivery_rates) || []
+    areas = Enum.map(rates, &String.downcase(String.trim(&1.area || "")))
+
+    changeset =
+      if length(Enum.uniq(areas)) != length(areas),
+        do: add_error(changeset, :delivery_rates, "must have different area names"),
+        else: changeset
+
+    if get_field(changeset, :delivery_enabled) && rates == [] &&
+         !get_field(changeset, :delivery_quote_outside),
+       do: add_error(changeset, :delivery_rates, "add an area or accept delivery quotes"),
+       else: changeset
   end
 
   defp blank_to_nil(nil), do: nil

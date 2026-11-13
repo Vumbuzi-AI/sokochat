@@ -22,6 +22,146 @@ defmodule Sokochat.Workspaces.Website do
 
   def brief(_url), do: {:error, "Use a link starting with https://"}
 
+  @doc "Extracts factual contact details from structured markup; never guesses delivery fees."
+  def profile(url) do
+    with {:ok, uri} <- public_uri(url), {:ok, html} <- fetch(uri, 3) do
+      details = extract_details(html, uri)
+
+      details =
+        if Map.has_key?(details, "location") do
+          details
+        else
+          with {:ok, doc} <- Floki.parse_document(html),
+               href when is_binary(href) <- contact_link(doc),
+               {:ok, contact} <- public_uri(href, uri),
+               true <- contact.host == uri.host,
+               {:ok, body} <- fetch(contact, 2) do
+            Map.merge(extract_details(body, contact), details)
+          else
+            _ -> details
+          end
+        end
+
+      case readable(html) do
+        {:ok, brief} -> {:ok, Map.put(details, "ai_instructions", brief)}
+        _ -> {:ok, details}
+      end
+    end
+  end
+
+  defp contact_link(doc) do
+    doc
+    |> Floki.find("a[href]")
+    |> Enum.find_value(fn node ->
+      href = List.first(Floki.attribute(node, "href")) || ""
+      if Regex.match?(~r/(contact|location|visit-us)/i, href), do: href
+    end)
+  end
+
+  defp extract_details(html, uri) do
+    with {:ok, doc} <- Floki.parse_document(html) do
+      objects =
+        doc
+        |> Floki.find("script[type='application/ld+json']")
+        |> Enum.flat_map(fn node ->
+          case Jason.decode(Floki.text(node, js: true)) do
+            {:ok, data} -> json_objects(data)
+            _ -> []
+          end
+        end)
+
+      address =
+        Enum.find_value(objects, fn obj -> format_address(obj["address"]) end) ||
+          nonempty(Floki.text(Floki.find(doc, "address, [itemprop='address']")))
+
+      hours =
+        Enum.find_value(objects, fn obj ->
+          case obj["openingHours"] do
+            value when is_binary(value) ->
+              nonempty(value)
+
+            values when is_list(values) ->
+              values |> Enum.filter(&is_binary/1) |> Enum.join("; ") |> nonempty()
+
+            _ ->
+              format_hours(obj["openingHoursSpecification"])
+          end
+        end)
+
+      map =
+        doc
+        |> Floki.find("a[href]")
+        |> Floki.attribute("href")
+        |> Enum.find_value(fn href ->
+          case URI.merge(uri, href) do
+            %URI{scheme: scheme, host: host} = link
+            when scheme in ["http", "https"] and is_binary(host) ->
+              if host in ["maps.google.com", "maps.app.goo.gl", "goo.gl"] or
+                   (host in ["google.com", "www.google.com"] and
+                      String.starts_with?(link.path || "", "/maps")),
+                 do: URI.to_string(link)
+
+            _ ->
+              nil
+          end
+        end)
+
+      %{"location" => address, "opening_hours" => hours, "map_url" => map}
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+      |> Map.new()
+    else
+      _ -> %{}
+    end
+  end
+
+  defp format_hours(specs) when is_list(specs) do
+    specs |> Enum.map(&format_hours/1) |> Enum.reject(&is_nil/1) |> Enum.join("; ") |> nonempty()
+  end
+
+  defp format_hours(%{"opens" => opens, "closes" => closes} = spec)
+       when is_binary(opens) and is_binary(closes) do
+    days =
+      List.wrap(spec["dayOfWeek"])
+      |> Enum.filter(&is_binary/1)
+      |> Enum.map(&List.last(String.split(&1, "/")))
+      |> Enum.join(", ")
+
+    nonempty("#{days} #{opens}–#{closes}")
+  end
+
+  defp format_hours(_), do: nil
+
+  defp json_objects(list) when is_list(list), do: Enum.flat_map(list, &json_objects/1)
+
+  defp json_objects(map) when is_map(map),
+    do: [map | Enum.flat_map(Map.values(map), &json_objects/1)]
+
+  defp json_objects(_), do: []
+  defp format_address(value) when is_binary(value), do: nonempty(value)
+
+  defp format_address(value) when is_map(value) do
+    [
+      value["streetAddress"],
+      value["addressLocality"],
+      value["addressRegion"],
+      value["postalCode"]
+    ]
+    |> Enum.filter(&is_binary/1)
+    |> Enum.reject(&(String.trim(&1) == ""))
+    |> Enum.uniq()
+    |> Enum.join(", ")
+    |> nonempty()
+  end
+
+  defp format_address(_), do: nil
+
+  defp nonempty(value) do
+    case value |> collapse() |> String.slice(0, 500) do
+      "" -> nil
+      text -> text
+    end
+  end
+
   defp public_uri(url, base \\ nil)
 
   defp public_uri(url, base) when is_binary(url) do
