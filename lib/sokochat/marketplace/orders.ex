@@ -23,7 +23,10 @@ defmodule Sokochat.Marketplace.Orders do
             inserted_at: now,
             updated_at: now
           }
-        ], on_conflict: :nothing, conflict_target: [:shared_line_id, :source_key])
+        ],
+        on_conflict: :nothing,
+        conflict_target: [:shared_line_id, :source_key]
+      )
 
       {:ok,
        Repo.get_by!(OrderRequest,
@@ -82,12 +85,47 @@ defmodule Sokochat.Marketplace.Orders do
     end
   end
 
+  @doc """
+  Counts of order requests still waiting for the merchant, keyed by workspace id.
+
+  Drafts and contacted requests are not included.
+  """
+  def pending_counts([]), do: %{}
+
+  def pending_counts(workspace_ids) when is_list(workspace_ids) do
+    from(o in OrderRequest,
+      where: o.workspace_id in ^workspace_ids and o.status == "requested",
+      group_by: o.workspace_id,
+      select: {o.workspace_id, count(o.id)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
   def list(workspace_id) do
     from(o in OrderRequest,
       where: o.workspace_id == ^workspace_id and o.status != "draft",
       order_by: [desc: o.requested_at, desc: o.id]
     )
     |> Repo.all()
+  end
+
+  @doc "Marks every open request for the shop as contacted and tells open desks."
+  def mark_all_contacted(workspace_id) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    query =
+      from o in OrderRequest,
+        where: o.workspace_id == ^workspace_id and o.status == "requested"
+
+    case Repo.update_all(query, set: [status: "contacted", contacted_at: now, updated_at: now]) do
+      {count, _} when count > 0 ->
+        Phoenix.PubSub.broadcast(Sokochat.PubSub, topic(workspace_id), :orders_changed)
+        {:ok, count}
+
+      _ ->
+        {:ok, 0}
+    end
   end
 
   def mark_contacted(workspace_id, id) do

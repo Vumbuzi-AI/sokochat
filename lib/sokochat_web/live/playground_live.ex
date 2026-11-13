@@ -189,6 +189,7 @@ defmodule SokochatWeb.PlaygroundLive do
       subtitle="Test replies"
       flush
       flash={@flash}
+      inbox_counts={@inbox_counts}
     >
       <:actions>
         <.button type="button" tone="secondary" size="sm" phx-click="clear_chat">

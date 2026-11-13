@@ -809,6 +809,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       title={@page_title}
       subtitle={step_subtitle(@active_step, assigns)}
       flash={@flash}
+      inbox_counts={@inbox_counts}
     >
       <:actions :if={@active_step == :business}>
         <.button form="business-form" size="sm" disabled={business_unchanged?(@business_form)}>

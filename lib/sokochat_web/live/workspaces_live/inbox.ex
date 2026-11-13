@@ -25,6 +25,16 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
     {:noreply, socket |> assign(:selected_id, Marketplace.parse_id(id)) |> reload()}
   end
 
+  def handle_event("clear_all", _params, socket) do
+    case Orders.mark_all_contacted(socket.assigns.workspace.id) do
+      {:ok, count} when count > 0 ->
+        {:noreply, socket |> put_flash(:info, "Cleared #{count} requests.") |> reload()}
+
+      _ ->
+        {:noreply, socket |> put_flash(:info, "Nothing to clear.") |> reload()}
+    end
+  end
+
   def handle_event("mark_contacted", %{"id" => id}, socket) do
     case Orders.mark_contacted(socket.assigns.workspace.id, id) do
       :ok ->
@@ -47,6 +57,7 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
 
     socket
     |> assign(:orders, orders)
+    |> assign(:pending_count, Enum.count(orders, &(&1.status == "requested")))
     |> assign(:selected, selected)
     |> assign(:selected_id, selected && selected.id)
   end
@@ -62,8 +73,20 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
       title="Inbox"
       subtitle="Order requests"
       flash={@flash}
+      inbox_counts={@inbox_counts}
       flush
     >
+      <:actions :if={@pending_count > 0}>
+        <.button
+          type="button"
+          tone="secondary"
+          size="sm"
+          phx-click="clear_all"
+          phx-disable-with="Clearing…"
+        >
+          Clear all
+        </.button>
+      </:actions>
       <div :if={@orders == []} class="soko-inbox-empty">
         <.empty
           title="No order requests yet"

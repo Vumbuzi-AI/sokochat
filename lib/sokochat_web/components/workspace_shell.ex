@@ -11,6 +11,7 @@ defmodule SokochatWeb.WorkspaceShell do
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil
   attr :flush, :boolean, default: false, doc: "drop the panel padding for full-bleed content"
+  attr :inbox_counts, :map, default: %{}, doc: "pending order requests by workspace id"
   attr :flash, :map, default: %{}
   slot :actions
   slot :inner_block, required: true
@@ -34,6 +35,7 @@ defmodule SokochatWeb.WorkspaceShell do
         tab={@tab}
         sections={@sections}
         account={@current_user.email}
+        inbox_counts={@inbox_counts}
       />
 
       <section data-panel class="soko-desk-main" aria-labelledby="workspace-title">
@@ -85,6 +87,7 @@ defmodule SokochatWeb.WorkspaceShell do
             tab={@tab}
             sections={@sections}
             account={@current_user.email}
+            inbox_counts={@inbox_counts}
             close
           />
         </div>
@@ -99,13 +102,20 @@ defmodule SokochatWeb.WorkspaceShell do
   attr :tab, :atom, required: true
   attr :sections, :list, required: true
   attr :account, :string, required: true
+  attr :inbox_counts, :map, default: %{}
   attr :close, :boolean, default: false
 
   defp sidebar(assigns) do
     ~H"""
     <aside class="soko-sidebar">
       <div class="soko-sidebar-top">
-        <.switcher list={@list} workspace={@workspace} workspaces={@workspaces} tab={@tab} />
+        <.switcher
+          list={@list}
+          workspace={@workspace}
+          workspaces={@workspaces}
+          tab={@tab}
+          inbox_counts={@inbox_counts}
+        />
         <.icon_button :if={@close} icon="x" data-drawer-close aria-label="Close navigation" />
       </div>
 
@@ -125,6 +135,7 @@ defmodule SokochatWeb.WorkspaceShell do
               <.icon name={item.icon} weight={if item.id == @tab, do: "fill", else: "regular"} />
             </span>
             <span class="soko-nav-label">{item.label}</span>
+            <.notice_pill :if={item.id == :inbox} count={notice_count(@inbox_counts, @workspace.id)} />
           </.link>
         <% end %>
       </nav>
@@ -151,13 +162,17 @@ defmodule SokochatWeb.WorkspaceShell do
   attr :workspace, :map, required: true
   attr :workspaces, :list, required: true
   attr :tab, :atom, required: true
+  attr :inbox_counts, :map, default: %{}
 
   defp switcher(assigns) do
+    assigns = assign(assigns, :others, others_count(assigns.inbox_counts, assigns.workspace.id))
+
     ~H"""
     <details id={"workspace-switcher-#{@list}"} class="soko-switcher" data-switcher>
-      <summary aria-label={"Switch shop. Current: #{@workspace.name}"}>
+      <summary aria-label={switcher_label(@workspace.name, @others)}>
         <img src={~p"/images/logo.png"} alt="" width="28" height="28" class="soko-mark" />
         <span class="soko-switcher-name">{@workspace.name}</span>
+        <.notice_pill count={@others} />
         <span class="soko-switcher-caret" aria-hidden="true">
           <.icon name="caret-down" class="h-3.5 w-3.5" />
         </span>
@@ -173,6 +188,7 @@ defmodule SokochatWeb.WorkspaceShell do
         >
           <.avatar seed={ws.id} size="sm" />
           <span class="min-w-0 flex-1 truncate">{ws.name}</span>
+          <.notice_pill :if={ws.id != @workspace.id} count={notice_count(@inbox_counts, ws.id)} />
           <.icon :if={ws.id == @workspace.id} name="check" />
         </.link>
         <div class="soko-switcher-divider"></div>
@@ -190,6 +206,35 @@ defmodule SokochatWeb.WorkspaceShell do
     </details>
     """
   end
+
+  attr :count, :integer, required: true
+
+  defp notice_pill(assigns) do
+    ~H"""
+    <span
+      :if={@count > 0}
+      class="soko-nav-count"
+      data-tone="alert"
+      aria-label={"#{@count} to address"}
+    >
+      {if @count > 99, do: "99+", else: @count}
+    </span>
+    """
+  end
+
+  defp notice_count(counts, id), do: Map.get(counts || %{}, id, 0)
+
+  defp others_count(counts, current_id) do
+    (counts || %{})
+    |> Map.drop([current_id])
+    |> Map.values()
+    |> Enum.sum()
+  end
+
+  defp switcher_label(name, 0), do: "Switch shop. Current: #{name}"
+
+  defp switcher_label(name, count),
+    do: "Switch shop. Current: #{name}. #{count} to address in other shops."
 
   defp tab_path(workspace_id, :products), do: ~p"/workspaces/#{workspace_id}/products"
   defp tab_path(workspace_id, :playground), do: ~p"/workspaces/#{workspace_id}/playground"

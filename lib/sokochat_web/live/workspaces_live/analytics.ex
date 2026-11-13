@@ -61,6 +61,7 @@ defmodule SokochatWeb.WorkspacesLive.Analytics do
       title="Analytics"
       subtitle="Messages and next steps"
       flash={@flash}
+      inbox_counts={@inbox_counts}
     >
       <.overview overview={@overview} />
     </.shell>

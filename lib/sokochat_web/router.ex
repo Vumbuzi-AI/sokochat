@@ -94,7 +94,10 @@ defmodule SokochatWeb.Router do
     pipe_through [:browser]
 
     live_session :require_authenticated_user,
-      on_mount: [{SokochatWeb.UserAuth, :ensure_authenticated}] do
+      on_mount: [
+        {SokochatWeb.UserAuth, :ensure_authenticated},
+        {SokochatWeb.DeskNotices, :default}
+      ] do
       live "/workspaces", WorkspacesLive.Index, :index
       live "/workspaces/new", WorkspacesLive.Form, :new
       live "/shared-line", WorkspacesLive.SharedLine, :edit

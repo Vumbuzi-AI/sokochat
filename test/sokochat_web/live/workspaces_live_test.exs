@@ -5,6 +5,7 @@ defmodule SokochatWeb.WorkspacesLiveTest do
   import Sokochat.AccountsFixtures
   import Sokochat.CatalogsFixtures
   import Sokochat.EndpointsFixtures
+  import Sokochat.MetaFixtures
   import Sokochat.WorkspacesFixtures
 
   setup {Req.Test, :verify_on_exit!}
@@ -228,6 +229,50 @@ defmodule SokochatWeb.WorkspacesLiveTest do
              view |> element("button", "Cancel") |> render_click()
 
     assert to == ~p"/users/settings"
+  end
+
+  test "inbox and the shop switcher show requests that still need a reply", %{conn: conn} do
+    user = user_fixture()
+    line = shared_line_fixture(user)
+    here = shop_workspace_fixture(user, line, %{name: "Soko Shoes"})
+    there = shop_workspace_fixture(user, line, %{name: "Soko Bags"})
+
+    order_request!(here, line, "here-1")
+    order_request!(there, line, "there-1")
+
+    {:ok, view, _html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{here.id}/inbox")
+
+    assert has_element?(view, "a[data-id='inbox'] .soko-nav-count", "1")
+    assert has_element?(view, "#workspace-switcher-dock > summary .soko-nav-count", "1")
+    assert has_element?(view, "#workspace-switcher-dock a", "Soko Bags")
+
+    order_request!(there, line, "there-2")
+
+    Phoenix.PubSub.broadcast(
+      Sokochat.PubSub,
+      Sokochat.Marketplace.Orders.topic(there.id),
+      :orders_changed
+    )
+
+    _ = :sys.get_state(view.pid)
+
+    assert has_element?(view, "#workspace-switcher-dock > summary .soko-nav-count", "2")
+    assert has_element?(view, "a[data-id='inbox'] .soko-nav-count", "1")
+  end
+
+  defp order_request!(workspace, line, key) do
+    Sokochat.Repo.insert!(%Sokochat.Marketplace.OrderRequest{
+      workspace_id: workspace.id,
+      shared_line_id: line.id,
+      phone_number: "254700000001",
+      source_key: key,
+      product: %{"title" => "Nike Shox"},
+      status: "requested",
+      requested_at: DateTime.utc_now() |> DateTime.truncate(:second)
+    })
   end
 
   test "workspaces index opens the home workspace", %{conn: conn} do
