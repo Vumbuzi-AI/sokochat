@@ -149,12 +149,70 @@ defmodule SokochatWeb.ProductsLiveTest do
     assert item.metadata["images"] == []
   end
 
-  defp product_params do
+  test "a variant keeps its own photo", %{conn: conn} do
+    user = user_fixture()
+    workspace = workspace_fixture(user)
+
+    {:ok, view, _html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/workspaces/#{workspace.id}/products")
+
+    view
+    |> element("button[phx-value-tab=\"categories\"]")
+    |> render_click()
+
+    view
+    |> form("#shop-categories", category: %{query: "Sneakers"})
+    |> render_submit()
+
+    view |> element("button", "Add product") |> render_click()
+
+    view
+    |> form("form[phx-submit=\"save_item\"]",
+      item: product_params("Nike Shox", "Sneakers", "EU 43")
+    )
+    |> render_change()
+
+    cover =
+      file_input(view, "form[phx-submit=\"save_item\"]", :cover, [
+        %{name: "cover.png", content: @png, type: "image/png"}
+      ])
+
+    render_upload(cover, "cover.png")
+
+    side =
+      file_input(view, "form[phx-submit=\"save_item\"]", :variant_0, [
+        %{name: "side.png", content: @png, type: "image/png"}
+      ])
+
+    render_upload(side, "side.png")
+
+    html =
+      view
+      |> form("form[phx-submit=\"save_item\"]",
+        item: product_params("Nike Shox", "Sneakers", "EU 43")
+      )
+      |> render_submit()
+
+    assert html =~ "Product saved."
+    assert html =~ "1 photo"
+
+    catalog = Catalogs.get_catalog(workspace.id)
+    item = Enum.find(catalog.items, &(&1.title == "Nike Shox"))
+    [variant] = item.metadata["variants"]
+
+    assert variant["label"] == "EU 43"
+    assert variant["image_url"] =~ "/uploads/catalogs/#{catalog.id}/"
+    refute variant["image_url"] == item.image_url
+  end
+
+  defp product_params(title \\ "Mango", category \\ "Fruit", label \\ "1kg") do
     %{
-      "title" => "Mango",
+      "title" => title,
       "description" => "Ripe",
-      "category" => "Fruit",
-      "variants" => %{"0" => %{"label" => "1kg", "price" => "120"}}
+      "category" => category,
+      "variants" => %{"0" => %{"label" => label, "price" => "120"}}
     }
   end
 end

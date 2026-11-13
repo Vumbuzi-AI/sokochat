@@ -82,7 +82,8 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
        accept: ~w(.jpg .jpeg .png .webp),
        max_entries: 4,
        max_file_size: 8_000_000
-     ), layout: false}
+     )
+     |> allow_variant_uploads(), layout: false}
   end
 
   @impl true
@@ -321,6 +322,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       |> Map.put(:action, :validate)
 
     drafts = drafts_from(item_params["variants"])
+    socket = keep_latest_variant_uploads(socket)
 
     values =
       case item_params["metadata"] do
@@ -341,11 +343,11 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   end
 
   def handle_event("save_item", %{"item" => item_params}, socket) do
-    variants = parse_variants(item_params["variants"])
+    slots = drafts_from(item_params["variants"])
     existing = socket.assigns.selected_item
 
     cond do
-      variants == [] ->
+      not Enum.any?(slots, &complete_variant?/1) ->
         {:noreply,
          put_flash(socket, :error, "Add at least one variant with a name and a KES price.")}
 
@@ -355,38 +357,12 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       true ->
         case store_product_images(socket, socket.assigns.catalog.id, existing) do
           {:ok, socket, cover, extras} ->
-            metadata =
-              ((existing && existing.metadata) || %{})
-              |> Map.put("variants", variants)
-              |> Map.put("images", extras)
-              |> Map.put("category", blank_to_nil(item_params["category"]))
-              |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
-              |> Map.new()
+            case attach_variant_images(socket, socket.assigns.catalog.id, slots) do
+              {:error, socket, message} ->
+                {:noreply, put_flash(socket, :error, message)}
 
-            attrs = %{
-              "id" => item_params["id"],
-              "title" => item_params["title"],
-              "description" => item_params["description"],
-              "currency" => "KES",
-              "price" => variant_floor(variants),
-              "image_url" => cover,
-              "status" => item_params["status"] || "active",
-              "source" => "manual",
-              "metadata" => metadata
-            }
-
-            case Catalogs.upsert_item(socket.assigns.catalog, attrs) do
-              {:ok, _item} ->
-                {:noreply,
-                 socket
-                 |> clear_item_uploads()
-                 |> put_flash(:info, "Product saved.")
-                 |> assign(:active_modal, nil)
-                 |> reload_products_state()}
-
-              {:error, %Changeset{} = changeset} ->
-                {:noreply,
-                 assign_form(socket, :item_form, Map.put(changeset, :action, :validate))}
+              {:ok, socket, variants} ->
+                persist_item(socket, item_params, existing, variants, cover, extras)
             end
 
           {:error, socket, message} ->
@@ -395,12 +371,47 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     end
   end
 
+  defp persist_item(socket, item_params, existing, variants, cover, extras) do
+    metadata =
+      ((existing && existing.metadata) || %{})
+      |> Map.put("variants", variants)
+      |> Map.put("images", extras)
+      |> Map.put("category", blank_to_nil(item_params["category"]))
+      |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
+      |> Map.new()
+
+    attrs = %{
+      "id" => item_params["id"],
+      "title" => item_params["title"],
+      "description" => item_params["description"],
+      "currency" => "KES",
+      "price" => variant_floor(variants),
+      "image_url" => cover,
+      "status" => item_params["status"] || "active",
+      "source" => "manual",
+      "metadata" => metadata
+    }
+
+    case Catalogs.upsert_item(socket.assigns.catalog, attrs) do
+      {:ok, _item} ->
+        {:noreply,
+         socket
+         |> clear_item_uploads()
+         |> put_flash(:info, "Product saved.")
+         |> assign(:active_modal, nil)
+         |> reload_products_state()}
+
+      {:error, %Changeset{} = changeset} ->
+        {:noreply, assign_form(socket, :item_form, Map.put(changeset, :action, :validate))}
+    end
+  end
+
   def handle_event("add_variant", _params, socket) do
     drafts = socket.assigns.variant_drafts
 
     drafts =
       if length(drafts) < @variant_slots do
-        drafts ++ [%{"label" => "", "price" => ""}]
+        drafts ++ [blank_variant(drafts)]
       else
         drafts
       end
@@ -410,10 +421,25 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   def handle_event("remove_variant", %{"index" => index}, socket) do
     index = String.to_integer(index)
-    drafts = List.delete_at(socket.assigns.variant_drafts, index)
+    {slot, drafts} = List.pop_at(socket.assigns.variant_drafts, index)
+    socket = cancel_variant_upload(socket, slot)
     drafts = if drafts == [], do: empty_variant_slots(), else: drafts
 
     {:noreply, assign(socket, :variant_drafts, drafts)}
+  end
+
+  def handle_event("clear_variant_photo", %{"index" => index}, socket) do
+    index = String.to_integer(index)
+    drafts = socket.assigns.variant_drafts
+    slot = Enum.at(drafts, index) || %{}
+    socket = cancel_variant_upload(socket, slot)
+
+    slot =
+      slot
+      |> Map.put("image_url", "")
+      |> Map.put("clear_image", "true")
+
+    {:noreply, assign(socket, :variant_drafts, List.replace_at(drafts, index, slot))}
   end
 
   def handle_event("new_item", _params, socket) do
@@ -1083,12 +1109,22 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   end
 
   defp variant_count_label(item) do
-    case variants_of(item) do
-      [] -> "One price"
-      [_] -> "1 variant"
-      variants -> "#{length(variants)} variants"
-    end
+    variants = variants_of(item)
+
+    base =
+      case variants do
+        [] -> "One price"
+        [_] -> "1 variant"
+        list -> "#{length(list)} variants"
+      end
+
+    photos = Enum.count(variants, &variant_photo?/1)
+    photo_label = if photos == 1, do: "1 photo", else: "#{photos} photos"
+    if photos > 0, do: "#{base} · #{photo_label}", else: base
   end
+
+  defp variant_photo?(%{"image_url" => url}) when is_binary(url) and url != "", do: true
+  defp variant_photo?(_variant), do: false
 
   defp price_from_label(item) do
     prices =
@@ -1667,7 +1703,7 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
       id="item-modal"
       size="lg"
       title={if @selected_item, do: "Edit product", else: "New product"}
-      text="Name, one cover photo and a price for each variant in KES."
+      text="Name, one cover photo and a price for each variant in KES. A variant can have its own photo."
     >
       <.form
         for={@item_form}
@@ -1697,7 +1733,9 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           <div class="flex items-center justify-between gap-3">
             <div>
               <p class="soko-label">Variants</p>
-              <p class="soko-hint">At least one, like a size. Prices in KES.</p>
+              <p class="soko-hint">
+                At least one, like a size or colour. Add a photo when that one looks different. Prices in KES.
+              </p>
             </div>
             <.button
               type="button"
@@ -1709,39 +1747,13 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
               <.icon name="plus" /> Add variant
             </.button>
           </div>
-          <div :for={{slot, index} <- Enum.with_index(@variant_drafts)} class="flex items-end gap-2">
-            <input type="hidden" name={"item[variants][#{index}][slot]"} value={index} />
-            <.input
-              type="text"
-              id={"variant-#{index}-label"}
-              name={"item[variants][#{index}][label]"}
-              value={slot["label"]}
-              label="Name"
-              placeholder="EU 42"
-              aria-required="true"
-              class="min-w-0 flex-1"
-            />
-            <.input
-              type="number"
-              id={"variant-#{index}-price"}
-              name={"item[variants][#{index}][price]"}
-              value={slot["price"]}
-              label="KES"
-              min="0"
-              step="1"
-              inputmode="numeric"
-              aria-required="true"
-              class="w-32 flex-none"
-            />
-            <.icon_button
-              icon="x"
-              class="mb-[3px]"
-              phx-click="remove_variant"
-              phx-value-index={index}
-              disabled={length(@variant_drafts) == 1}
-              aria-label="Remove variant"
-            />
-          </div>
+          <.variant_row
+            :for={{slot, index} <- Enum.with_index(@variant_drafts)}
+            slot={slot}
+            index={index}
+            uploads={@uploads}
+            only={length(@variant_drafts) == 1}
+          />
         </div>
 
         <div :if={@details_open} class="form-reveal flex flex-col gap-4">
@@ -2397,7 +2409,99 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
 
   defp image_error(reason) when is_binary(reason), do: reason
 
-  defp empty_variant_slots, do: [%{"label" => "", "price" => ""}]
+  defp allow_variant_uploads(socket) do
+    Enum.reduce(0..(@variant_slots - 1), socket, fn index, socket ->
+      allow_upload(socket, :"variant_#{index}",
+        accept: ~w(.jpg .jpeg .png .webp),
+        max_entries: 8,
+        auto_upload: true,
+        max_file_size: 8_000_000
+      )
+    end)
+  end
+
+  defp keep_latest_variant_uploads(socket) do
+    Enum.reduce(0..(@variant_slots - 1), socket, fn index, socket ->
+      name = :"variant_#{index}"
+
+      case socket.assigns.uploads[name].entries do
+        entries when length(entries) > 1 ->
+          entries
+          |> Enum.drop(-1)
+          |> Enum.reduce(socket, fn entry, socket -> cancel_upload(socket, name, entry.ref) end)
+
+        _ ->
+          socket
+      end
+    end)
+  end
+
+  defp cancel_variant_upload(socket, %{"upload" => upload}) do
+    name = String.to_existing_atom(variant_upload_name(upload))
+
+    Enum.reduce(socket.assigns.uploads[name].entries, socket, fn entry, socket ->
+      cancel_upload(socket, name, entry.ref)
+    end)
+  end
+
+  defp cancel_variant_upload(socket, _slot), do: socket
+
+  defp variant_upload_name(name) do
+    name = to_string(name || "")
+    allowed = Enum.map(0..(@variant_slots - 1), &"variant_#{&1}")
+    if name in allowed, do: name, else: "variant_0"
+  end
+
+  defp attach_variant_images(socket, catalog_id, slots) do
+    Enum.reduce_while(slots, {:ok, socket, []}, fn slot, {:ok, socket, acc} ->
+      label = String.trim(slot["label"] || "")
+      price = parse_price(slot["price"])
+
+      if label == "" or is_nil(price) do
+        {:cont, {:ok, socket, acc}}
+      else
+        case variant_image(socket, catalog_id, slot) do
+          {:ok, socket, url} ->
+            variant = %{"label" => label, "price" => price}
+            variant = if url, do: Map.put(variant, "image_url", url), else: variant
+            {:cont, {:ok, socket, acc ++ [variant]}}
+
+          {:error, socket, message} ->
+            {:halt, {:error, socket, message}}
+        end
+      end
+    end)
+  end
+
+  defp variant_image(socket, catalog_id, slot) do
+    name = String.to_existing_atom(variant_upload_name(slot["upload"]))
+
+    case consume_images(socket, name, catalog_id) do
+      {:ok, [url | _]} ->
+        {:ok, socket, url}
+
+      {:ok, []} ->
+        url = if slot["clear_image"] == "true", do: nil, else: blank_to_nil(slot["image_url"])
+        {:ok, socket, url}
+
+      {:error, message} ->
+        {:error, socket, message}
+    end
+  end
+
+  defp empty_variant_slots, do: [blank_variant([])]
+
+  defp blank_variant(existing) do
+    used = MapSet.new(Enum.map(existing, & &1["upload"]))
+
+    upload =
+      Enum.find_value(0..(@variant_slots - 1), "variant_0", fn index ->
+        name = "variant_#{index}"
+        if name in used, do: nil, else: name
+      end)
+
+    %{"label" => "", "price" => "", "image_url" => "", "upload" => upload, "clear_image" => ""}
+  end
 
   defp product_can_save?(assigns) do
     product_basics?(assigns.item_form[:title].value, assigns.variant_drafts) and
@@ -2461,8 +2565,15 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
     existing =
       item
       |> variants_of()
-      |> Enum.map(fn variant ->
-        %{"label" => variant["label"] || "", "price" => format_kes(variant["price"])}
+      |> Enum.with_index()
+      |> Enum.map(fn {variant, index} ->
+        %{
+          "label" => variant["label"] || "",
+          "price" => format_kes(variant["price"]),
+          "image_url" => variant["image_url"] || "",
+          "upload" => "variant_#{index}",
+          "clear_image" => ""
+        }
       end)
       |> Enum.take(@variant_slots)
 
@@ -2480,22 +2591,94 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
           :error -> 0
         end
       end)
-      |> Enum.map(fn {_key, row} ->
-        %{"label" => row["label"] || "", "price" => row["price"] || ""}
+      |> Enum.with_index()
+      |> Enum.map(fn {{_key, row}, index} ->
+        %{
+          "label" => row["label"] || "",
+          "price" => row["price"] || "",
+          "image_url" => row["image_url"] || "",
+          "upload" => variant_upload_name(row["upload"] || "variant_#{index}"),
+          "clear_image" => row["clear_image"] || ""
+        }
       end)
       |> Enum.take(@variant_slots)
 
     if parsed == [], do: empty_variant_slots(), else: parsed
   end
 
-  defp parse_variants(variants) do
-    drafts_from(variants)
-    |> Enum.map(fn slot ->
-      label = String.trim(slot["label"] || "")
-      price = parse_price(slot["price"])
-      if label == "" or is_nil(price), do: nil, else: %{"label" => label, "price" => price}
-    end)
-    |> Enum.reject(&is_nil/1)
+  attr :slot, :map, required: true
+  attr :index, :integer, required: true
+  attr :uploads, :map, required: true
+  attr :only, :boolean, required: true
+
+  defp variant_row(assigns) do
+    upload = assigns.uploads[String.to_existing_atom(assigns.slot["upload"])]
+    entry = upload && List.last(upload.entries)
+    has_photo = entry || (assigns.slot["image_url"] || "") != ""
+
+    assigns = assign(assigns, upload: upload, entry: entry, has_photo: has_photo)
+
+    ~H"""
+    <div class="flex items-end gap-2">
+      <input type="hidden" name={"item[variants][#{@index}][slot]"} value={@index} />
+      <input type="hidden" name={"item[variants][#{@index}][upload]"} value={@slot["upload"]} />
+      <input type="hidden" name={"item[variants][#{@index}][image_url]"} value={@slot["image_url"]} />
+      <input
+        :if={@slot["clear_image"] == "true"}
+        type="hidden"
+        name={"item[variants][#{@index}][clear_image]"}
+        value="true"
+      />
+      <div class="soko-variant-photo">
+        <label aria-label={"Photo for variant #{@index + 1}"}>
+          <.live_img_preview :if={@entry} entry={@entry} />
+          <img :if={!@entry && @slot["image_url"] != ""} src={@slot["image_url"]} alt="" />
+          <.icon :if={!@has_photo} name="image" class="h-4 w-4" />
+          <.live_file_input upload={@upload} />
+        </label>
+        <button
+          :if={@has_photo}
+          type="button"
+          class="soko-variant-photo-clear"
+          phx-click="clear_variant_photo"
+          phx-value-index={@index}
+          aria-label="Remove variant photo"
+        >
+          <.icon name="x" class="h-3 w-3" />
+        </button>
+      </div>
+      <.input
+        type="text"
+        id={"variant-#{@index}-label"}
+        name={"item[variants][#{@index}][label]"}
+        value={@slot["label"]}
+        label="Name"
+        placeholder="EU 42"
+        aria-required="true"
+        class="min-w-0 flex-1"
+      />
+      <.input
+        type="number"
+        id={"variant-#{@index}-price"}
+        name={"item[variants][#{@index}][price]"}
+        value={@slot["price"]}
+        label="KES"
+        min="0"
+        step="1"
+        inputmode="numeric"
+        aria-required="true"
+        class="w-32 flex-none"
+      />
+      <.icon_button
+        icon="x"
+        class="mb-[3px]"
+        phx-click="remove_variant"
+        phx-value-index={@index}
+        disabled={@only}
+        aria-label="Remove variant"
+      />
+    </div>
+    """
   end
 
   defp parse_price(value) when is_integer(value), do: value * 1.0
@@ -2572,7 +2755,8 @@ defmodule SokochatWeb.WorkspacesLive.Setup do
   end
 
   defp clear_item_uploads(socket) do
-    Enum.reduce([:cover, :extras], socket, &clear_upload/2)
+    names = [:cover, :extras] ++ Enum.map(0..(@variant_slots - 1), &:"variant_#{&1}")
+    Enum.reduce(names, socket, &clear_upload/2)
   end
 
   defp clear_upload(name, socket) do

@@ -97,7 +97,16 @@ defmodule Sokochat.AI.Retriever do
       |> Enum.map_join("\n", fn variant ->
         label = variant["label"] || variant[:label]
         price = variant["price"] || variant[:price]
-        "Variant #{label}: KES #{price}"
+        photo = variant["image_url"] || variant[:image_url]
+
+        photo =
+          if is_binary(photo) and photo != "" do
+            " Photo: #{photo}"
+          else
+            ""
+          end
+
+        "Variant #{label}: KES #{price}#{photo}"
       end)
     end
   end
