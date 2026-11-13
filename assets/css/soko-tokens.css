@@ -4,16 +4,6 @@
  * Dark applies to Desk and Auth only; marketing stays light.
  */
 
-@font-face {
-  font-family: "OGARANYA";
-  src:
-    url("/fonts/OGARANYA-Regular.woff2") format("woff2"),
-    url("/fonts/OGARANYA-Regular.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --color-soko-ink: #171717;
   --color-soko-ink-2: #5e5e5e;
@@ -51,15 +41,15 @@
   --radius-soko-28: 28px;
 
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "OGARANYA", Georgia, serif;
+  --font-display: var(--font-sans);
   --font-mono: "Geist Mono", ui-monospace, monospace;
-  --font-weight-display: 400;
+  --font-weight-display: 600;
 
   --leading-soko-display: 1.02;
   --leading-soko-heading: 1.15;
   --leading-soko-body: 1.5;
-  --tracking-soko-display: -0.015em;
-  --tracking-soko-heading: -0.01em;
+  --tracking-soko-display: -0.04em;
+  --tracking-soko-heading: -0.03em;
   --tracking-soko-ui: -0.01em;
 
   color-scheme: light;
