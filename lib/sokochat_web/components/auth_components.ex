@@ -16,7 +16,7 @@ defmodule SokochatWeb.AuthComponents do
 
   def site_header(assigns) do
     ~H"""
-    <header class="flex h-14 items-center justify-between px-4 sm:px-8">
+    <header class="soko-site-header flex h-14 items-center justify-between px-4 sm:px-8">
       <.link navigate={~p"/"} aria-label="Sokochat home">
         <img src={~p"/images/logo.png"} alt="Sokochat" class="block h-[34px] w-auto" />
       </.link>
@@ -143,7 +143,7 @@ defmodule SokochatWeb.AuthComponents do
   def stage_page(assigns) do
     ~H"""
     <div class="flex min-h-dvh flex-col gap-2 bg-soko-white p-2 sm:gap-4 sm:p-4">
-      <header class="flex h-14 items-center gap-6 px-4 sm:px-6">
+      <header class="soko-site-header flex h-14 items-center gap-6 px-4 sm:px-6">
         <.link navigate={~p"/workspaces"} aria-label="Sokochat home">
           <img src={~p"/images/logo.png"} alt="Sokochat" class="block h-[34px] w-auto" />
         </.link>

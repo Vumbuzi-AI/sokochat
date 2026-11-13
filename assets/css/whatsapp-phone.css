@@ -98,12 +98,17 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: calc(var(--u) * 12) calc(var(--u) * 14);
-  background: #efeae2 url("/images/whatsapp-chat-pattern.svg") center / calc(var(--u) * 300);
+  background: #efeae2 url("/images/whatsapp-chat-bg.png") center / calc(var(--u) * 420) repeat;
   scrollbar-width: none;
 }
 
 .wa-phone .wa-chat::-webkit-scrollbar {
   display: none;
+}
+
+[data-theme="dark"] .wa-phone .wa-chat {
+  background-color: #0b141a;
+  background-image: url("/images/whatsapp-chat-bg-dark.png");
 }
 
 .wa-phone .wa-messages {

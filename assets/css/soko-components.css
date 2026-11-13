@@ -36,21 +36,6 @@
   text-underline-offset: 3px;
 }
 
-/* Sample data tag */
-.soko-sample {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: var(--radius-soko-6);
-  background: var(--color-soko-stage);
-  color: var(--color-soko-ink-2);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
 /* Eyebrow pill */
 .soko-eyebrow {
   display: inline-flex;
@@ -1066,6 +1051,14 @@ input[type="file"].soko-control::file-selector-button {
   .soko-dialog[open]::backdrop {
     animation: none;
   }
+}
+
+/* Marketing and setup navbar. Sticks to the viewport once the page scrolls. */
+.soko-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-soko-white);
 }
 
 /* Soko Page Header */

@@ -703,18 +703,6 @@ defmodule SokochatWeb.CoreComponents do
   end
 
   @doc """
-  Renders the mono "Sample data" tag. Every screen that shows invented
-  data carries one.
-  """
-  attr :class, :any, default: nil
-
-  def sample_tag(assigns) do
-    ~H"""
-    <span class={["soko-sample", @class]}>{gettext("Sample data")}</span>
-    """
-  end
-
-  @doc """
   Renders a Soko Order Note, the floating card on marketing photos.
   """
   attr :photo, :string, required: true

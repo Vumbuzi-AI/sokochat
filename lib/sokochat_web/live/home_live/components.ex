@@ -97,7 +97,6 @@ defmodule SokochatWeb.HomeLive.Components do
           </div>
           <p class="text-sm">Arrived the next day. The colour matches the photo.</p>
         </article>
-        <.sample_tag class="absolute left-3 top-3 !bg-soko-white sm:left-7 sm:top-auto sm:bottom-7" />
       </div>
     </section>
     """

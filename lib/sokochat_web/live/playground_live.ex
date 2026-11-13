@@ -256,7 +256,10 @@ defmodule SokochatWeb.PlaygroundLive do
                 <div :if={@pending_user_message} class="wa-turn wa-turn-out wa-pending">
                   <div class="wa-bubble wa-outgoing">
                     <span class="wa-copy">{@pending_user_message.content}</span>
-                    <span class="wa-meta">{message_time(@pending_user_message.inserted_at)}</span>
+                    <span class="wa-meta">
+                      {message_time(@pending_user_message.inserted_at)}
+                      <.wa_glyph name="read" />
+                    </span>
                   </div>
                 </div>
 
