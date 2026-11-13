@@ -23,6 +23,8 @@ defmodule SokochatWeb.Router do
 
     live_session :marketing, on_mount: [{SokochatWeb.UserAuth, :mount_current_user}] do
       live "/", HomeLive.Index, :index
+      live "/privacy", LegalLive, :privacy
+      live "/terms", LegalLive, :terms
     end
   end
 

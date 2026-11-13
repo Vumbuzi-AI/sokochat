@@ -3,6 +3,7 @@
 @import "./soko-components.css";
 @import "./soko-desk.css";
 @import "./soko-inbox.css";
+@import "./soko-public.css";
 @import "./whatsapp-phone.css";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";

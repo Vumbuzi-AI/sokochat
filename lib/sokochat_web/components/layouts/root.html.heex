@@ -40,6 +40,7 @@
       content="AI answers customers from your catalogue on WhatsApp, automatically or after you approve each reply. Orders and questions wait on your desk."
     />
     <meta name="twitter:image" content={~p"/images/logobg.png"} />
+    <meta :if={assigns[:legal_draft]} name="robots" content="noindex, follow" />
     <.live_title default="Sokochat" suffix=" · Sokochat">
       {assigns[:page_title]}
     </.live_title>

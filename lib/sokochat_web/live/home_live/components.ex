@@ -4,21 +4,24 @@ defmodule SokochatWeb.HomeLive.Components do
   """
   use SokochatWeb, :html
 
+  alias SokochatWeb.MarketingComponents
+
   attr :current_user, :map, default: nil
 
   def page(assigns) do
     ~H"""
-    <div class="flex min-h-dvh flex-col gap-2 bg-soko-white p-2 sm:gap-4 sm:p-4">
+    <div id="top" class="flex min-h-dvh flex-col gap-2 bg-soko-white p-2 sm:gap-4 sm:p-4">
       <.nav current_user={@current_user} />
       <.hero current_user={@current_user} />
       <.facts />
+      <MarketingComponents.footer current_user={@current_user} />
     </div>
     """
   end
 
   attr :current_user, :map, default: nil
 
-  defp nav(assigns) do
+  def nav(assigns) do
     ~H"""
     <.site_header>
       <%= if @current_user do %>
