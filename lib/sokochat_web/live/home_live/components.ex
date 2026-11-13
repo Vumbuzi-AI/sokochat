@@ -14,6 +14,7 @@ defmodule SokochatWeb.HomeLive.Components do
       <.nav current_user={@current_user} />
       <.hero current_user={@current_user} />
       <.facts />
+      <SokochatWeb.HomeLive.LandingSections.page current_user={@current_user} />
       <MarketingComponents.footer current_user={@current_user} />
     </div>
     """
