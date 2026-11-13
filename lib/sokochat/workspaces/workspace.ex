@@ -10,7 +10,7 @@ defmodule Sokochat.Workspaces.Workspace do
     belongs_to :shared_line, SharedLine
 
     field :name, :string
-    field :language, :string
+    field :language, :string, default: "both"
     field :slug, :string
     field :ai_instructions, :string
     field :data_source, :string, default: "manual"

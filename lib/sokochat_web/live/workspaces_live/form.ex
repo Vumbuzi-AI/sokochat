@@ -63,23 +63,50 @@ defmodule SokochatWeb.WorkspacesLive.Form do
         %{"workspace" => workspace_params},
         %{assigns: %{live_action: :new}} = socket
       ) do
+    socket = clear_flash(socket, :error)
+
     case Workspaces.create_workspace(workspace_params, socket.assigns.current_user.id) do
       {:ok, workspace} ->
         save_details(socket, workspace, workspace_params["website_url"], :created)
 
       {:error, %Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, changeset)}
+        {:noreply, save_error(socket, changeset)}
     end
   end
 
   def handle_event("save", %{"workspace" => workspace_params}, socket) do
+    socket = clear_flash(socket, :error)
+
     case Workspaces.update_workspace(socket.assigns.workspace, workspace_params) do
       {:ok, workspace} ->
         save_details(socket, workspace, nil, :updated)
 
       {:error, %Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, changeset)}
+        {:noreply, save_error(socket, changeset)}
     end
+  end
+
+  defp save_error(socket, changeset) do
+    labels = %{
+      name: "Name",
+      language: "Languages",
+      website_url: "Website",
+      logo_url: "Logo",
+      slug: "Shop address",
+      shop_code: "Shop code",
+      shared_line_id: "Shared WhatsApp line"
+    }
+
+    details =
+      changeset.errors
+      |> Enum.take(3)
+      |> Enum.map_join(". ", fn {field, error} ->
+        "#{Map.get(labels, field, "Workspace")} #{translate_error(error)}"
+      end)
+
+    socket
+    |> assign_form(changeset)
+    |> put_flash(:error, "Unable to save workspace. #{details}.")
   end
 
   defp save_details(socket, workspace, website_url, kind) do
@@ -270,7 +297,7 @@ defmodule SokochatWeb.WorkspacesLive.Form do
           </div>
           <div class="flex justify-end gap-2 border-t border-soko-divider px-6 py-4 sm:px-7">
             <.button type="button" tone="secondary" phx-click="cancel">Cancel</.button>
-            <.button phx-disable-with="Saving">
+            <.button type="submit" phx-disable-with="Saving">
               {if @live_action == :new, do: "Create workspace", else: "Save changes"}
             </.button>
           </div>

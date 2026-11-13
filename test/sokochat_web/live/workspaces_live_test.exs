@@ -155,6 +155,24 @@ defmodule SokochatWeb.WorkspacesLiveTest do
     refute html =~ ~s(name="field[label]")
   end
 
+  test "new workspace submits without a language field and recovers after validation", %{
+    conn: conn
+  } do
+    user = user_fixture()
+    {:ok, view, _html} = conn |> log_in_user(user) |> live(~p"/workspaces/new")
+
+    html = view |> form("form", workspace: %{name: "X", website_url: ""}) |> render_submit()
+    assert html =~ "Unable to save workspace"
+    assert html =~ "Name should be at least 2 character"
+    assert Sokochat.Workspaces.get_home_workspace(user.id) == nil
+
+    view |> form("form", workspace: %{name: "New shop", website_url: ""}) |> render_submit()
+    workspace = Sokochat.Workspaces.get_home_workspace(user.id)
+    assert workspace.name == "New shop"
+    assert workspace.language == "both"
+    assert_redirect(view, ~p"/workspaces/#{workspace.id}")
+  end
+
   test "a new workspace reads the website into AI content", %{conn: conn} do
     user = user_fixture()
 

@@ -7,6 +7,24 @@ defmodule Sokochat.WorkspacesTest do
   import Sokochat.WorkspacesFixtures
 
   describe "create_workspace/2" do
+    test "defaults to English and Swahili when the new-shop form omits language" do
+      user = user_fixture()
+
+      assert {:ok, workspace} =
+               Workspaces.create_workspace(%{"name" => "New shop", "website_url" => ""}, user.id)
+
+      assert workspace.language == "both"
+    end
+
+    test "still rejects an explicitly invalid language" do
+      user = user_fixture()
+
+      assert {:error, changeset} =
+               Workspaces.create_workspace(%{name: "New shop", language: "invalid"}, user.id)
+
+      assert errors_on(changeset).language == ["is invalid"]
+    end
+
     test "auto-generates a slug from the workspace name" do
       user = user_fixture()
 
