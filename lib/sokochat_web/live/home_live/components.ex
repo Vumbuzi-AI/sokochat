@@ -32,7 +32,13 @@ defmodule SokochatWeb.HomeLive.Components do
         >
           {@current_user.email}
         </.link>
-        <.link href={~p"/users/log_out"} method="delete" class="text-sm font-medium">Log out</.link>
+        <.link
+          href={~p"/users/log_out"}
+          method="delete"
+          class="text-sm font-medium text-soko-danger hover:text-soko-danger-hover"
+        >
+          Log out
+        </.link>
         <.button navigate={~p"/workspaces"} tone="dark" size="sm">Open your desk</.button>
       <% else %>
         <.link navigate={~p"/users/log_in"} class="text-sm font-medium">Sign in</.link>

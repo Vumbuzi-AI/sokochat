@@ -36,16 +36,18 @@ defmodule SokochatWeb.MarketingComponents do
           </div>
         </nav>
       </div>
-      <.link navigate={~p"/"} aria-label="Sokochat home" class="sf-brand">
-        <span class="sf-mark" aria-hidden="true">
-          <img src={~p"/images/logo.png"} alt="" width="1500" height="500" />
-        </span>
-        <span aria-hidden="true">Sokochat</span>
-      </.link>
       <div class="sf-bottom">
         <span>© {@year} Sokochat</span>
         <a href="#top">Back to top <.icon name="arrow-up-right" class="h-3.5 w-3.5" /></a>
       </div>
+      <.link navigate={~p"/"} aria-label="Sokochat home" class="sf-brand">
+        <span class="sf-brand-inner">
+          <span class="sf-mark" aria-hidden="true">
+            <img src={~p"/images/logo.png"} alt="" width="1500" height="500" />
+          </span>
+          <span aria-hidden="true">Sokochat</span>
+        </span>
+      </.link>
     </footer>
     """
   end

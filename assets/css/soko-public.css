@@ -460,3 +460,38 @@
     scroll-behavior: auto;
   }
 }
+
+/* The brand sinks below the footer edge, matching the shared Doop footer. */
+.soko-footer {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.sf-bottom {
+  margin-top: 3rem;
+}
+
+.soko-footer .sf-brand {
+  display: block;
+  height: .55em;
+  overflow: hidden;
+  margin: 3rem 0 0;
+}
+
+.sf-brand-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  height: 1em;
+}
+
+.soko-footer .sf-brand:focus-visible {
+  outline-offset: -3px;
+}
+
+@media(max-width:640px) {
+  .sf-brand-inner {
+    gap: .5rem;
+  }
+}
