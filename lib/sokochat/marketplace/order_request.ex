@@ -7,6 +7,7 @@ defmodule Sokochat.Marketplace.OrderRequest do
     belongs_to :conversation, Sokochat.Conversations.Conversation
     belongs_to :item, Sokochat.Catalogs.Item
     field :phone_number, :string
+    field :reference, :string
     field :source_key, :string
     field :product, :map
     field :fulfillment, :map

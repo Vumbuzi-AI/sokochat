@@ -1,7 +1,7 @@
 defmodule SokochatWeb.WorkspacesLive.Inbox do
   use SokochatWeb, :live_view
   import SokochatWeb.WorkspaceShell
-  alias Sokochat.{Marketplace, Workspaces}
+  alias Sokochat.{Marketplace, PhoneNumber, Workspaces}
   alias Sokochat.Marketplace.{Chat, Orders}
 
   @impl true
@@ -59,6 +59,7 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
     |> assign(:orders, orders)
     |> assign(:pending_count, Enum.count(orders, &(&1.status == "requested")))
     |> assign(:selected, selected)
+    |> assign(:whatsapp_url, selected && PhoneNumber.whatsapp_url(selected.phone_number))
     |> assign(:selected_id, selected && selected.id)
   end
 
@@ -111,7 +112,7 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
             aria-pressed={order.id == @selected_id}
           >
             <.avatar seed={order.id} />
-            <span>{order.phone_number}</span>
+            <.buyer_phone number={order.phone_number} />
             <small>{order.product["title"]} · 1 item</small>
             <.badge tone={if(order.status == "requested", do: "waiting", else: "neutral")}>
               {if(order.status == "requested", do: "New request", else: "Contacted")}
@@ -119,7 +120,8 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
           </button>
         </aside>
         <article :if={@selected} class="soko-inbox-detail" aria-live="polite">
-          <h2>Order request #{@selected.id}</h2>
+          <h2>Order request</h2>
+          <p class="soko-inbox-reference">{@selected.reference}</p>
           <p class="soko-inbox-source">From Sokochat · For {@workspace.name}</p>
           <div class="soko-inbox-product">
             <img
@@ -134,8 +136,7 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
             </div>
           </div>
           <div class="soko-inbox-buyer">
-            <small>Buyer</small>
-            <p>{@selected.phone_number}</p>
+            <.buyer_phone number={@selected.phone_number} />
           </div>
           <div :if={@selected.fulfillment} class="soko-inbox-buyer">
             <small>Collection and delivery</small>
@@ -148,7 +149,17 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
           </.banner>
           <div class="soko-inbox-action">
             <.button
+              :if={@whatsapp_url}
+              href={@whatsapp_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-describedby="whatsapp-contact-help"
+            >
+              <.icon name="whatsapp-logo" class="size-[18px]" /> Chat on WhatsApp
+            </.button>
+            <.button
               :if={@selected.status == "requested"}
+              tone="secondary"
               phx-click="mark_contacted"
               phx-value-id={@selected.id}
               phx-disable-with="Saving…"
@@ -157,10 +168,28 @@ defmodule SokochatWeb.WorkspacesLive.Inbox do
             </.button>
             <.badge :if={@selected.status == "contacted"} tone="neutral">Contacted</.badge>
           </div>
+          <p id="whatsapp-contact-help" class="soko-inbox-contact-help">
+            <%= if @whatsapp_url do %>
+              Opens WhatsApp in a new tab. Mark as contacted after you send a message.
+            <% else %>
+              This request has no usable international number. Use an existing conversation with the buyer to confirm their WhatsApp number.
+            <% end %>
+          </p>
           <p class="soko-inbox-privacy">Only requests for your products appear here.</p>
         </article>
       </div>
     </.shell>
+    """
+  end
+
+  attr :number, :string, default: nil
+
+  defp buyer_phone(assigns) do
+    ~H"""
+    <span class="soko-inbox-phone">
+      <small>Buyer · WhatsApp</small>
+      <span dir="ltr">{PhoneNumber.format(@number)}</span>
+    </span>
     """
   end
 end

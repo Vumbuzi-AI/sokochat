@@ -122,4 +122,98 @@ defmodule SokochatWeb.IntelligenceToolControllerTest do
 
     assert json_response(conn, 401)["error"] == "Unauthorized tool scope"
   end
+
+  test "shop profile reads current fulfilment settings and ignores another seller ID", ctx do
+    {:ok, _} =
+      Sokochat.Workspaces.update_workspace(ctx.shop, %{
+        pickup_enabled: true,
+        location: "Shop 12",
+        opening_hours: "9am to 5pm",
+        map_url: "https://example.com/map",
+        delivery_enabled: true,
+        delivery_quote_outside: false,
+        delivery_rates: [%{area: "CBD", fee: "150.50"}]
+      })
+
+    conn =
+      ctx.conn
+      |> put_req_header("authorization", "Bearer " <> ctx.token)
+      |> put_req_header("x-pi-request-id", "message-#{ctx.message.id}")
+      |> get(
+        "/api/intelligence/workspaces/#{ctx.shop.id}/conversations/#{ctx.conversation.id}/tools/shop_profile",
+        %{seller_id: ctx.other.id}
+      )
+
+    assert %{
+             "name" => "Shoes",
+             "pickup_enabled" => true,
+             "location" => "Shop 12",
+             "opening_hours" => "9am to 5pm",
+             "map_url" => "https://example.com/map",
+             "delivery_enabled" => true,
+             "delivery_quote_outside" => false,
+             "delivery_rates" => [%{"area" => "CBD", "fee" => "150.50", "currency" => "KES"}]
+           } = json_response(conn, 200)
+  end
+
+  test "marketplace profiles are seller-specific and restricted to the shared line", ctx do
+    line = Sokochat.MetaFixtures.shared_line_fixture(user_fixture())
+    {:ok, marketplace} = Sokochat.Marketplace.ensure_workspace(line)
+
+    seller =
+      Sokochat.MetaFixtures.shop_workspace_fixture(user_fixture(), line, %{
+        name: "Delivery shop",
+        shop_code: "delivery-shop",
+        delivery_enabled: true,
+        delivery_quote_outside: true,
+        delivery_rates: [%{area: "CBD", fee: "0"}]
+      })
+
+    {:ok, conversation} =
+      Conversations.get_or_create_conversation(marketplace.id, "buyer", :playground)
+
+    {:ok, message} = Conversations.add_message(conversation, :user, "Delivery fees?")
+
+    Sokochat.Repo.insert!(%Sokochat.Conversations.AiTurn{
+      workspace_id: marketplace.id,
+      conversation_id: conversation.id,
+      user_message_id: message.id,
+      instructions: "Marketplace context"
+    })
+
+    path =
+      "/api/intelligence/workspaces/#{marketplace.id}/conversations/#{conversation.id}/tools/shop_profile"
+
+    for {seller_id, status} <- [
+          {to_string(seller.id), 200},
+          {to_string(ctx.other.id), 404},
+          {to_string(marketplace.id), 404},
+          {"invalid", 404}
+        ] do
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer " <> ctx.token)
+        |> put_req_header("x-pi-request-id", "message-#{message.id}")
+        |> get(path, %{seller_id: seller_id})
+
+      body = json_response(conn, status)
+
+      if status == 200 do
+        assert body["seller_id"] == seller.id
+        assert body["delivery_quote_outside"]
+        assert body["delivery_rates"] == [%{"area" => "CBD", "fee" => "0", "currency" => "KES"}]
+        refute Map.has_key?(body, "account_id")
+      end
+    end
+
+    {:ok, _} = Sokochat.Meta.leave_shared_line(seller)
+
+    conn =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> ctx.token)
+      |> put_req_header("x-pi-request-id", "message-#{message.id}")
+      |> get(path, %{seller_id: seller.id})
+
+    assert json_response(conn, 404)["error"] == "Seller not found"
+  end
 end

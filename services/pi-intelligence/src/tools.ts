@@ -32,8 +32,9 @@ export function businessTools(turn: Turn, claim: (kind: 'tool_calls') => Promise
   return defineExtension({
     name: 'sokochat-business',
     tools: [
-      defineTool({ name: 'shop_profile', description: 'Read this shop’s factual business profile and contact information. Never invent missing policies.',
-        parameters: Type.Object({}), replay: 'safe', execute: () => read('shop_profile') }),
+      defineTool({ name: 'shop_profile', description: 'Read current business facts: delivery availability, area fees in KES, whether unlisted areas need a seller quote, pickup availability, location, opening hours, map and contact information. In a marketplace pass seller_id from product results or seller-link context; omit it only for the platform profile. Never invent missing policies or delivery times.',
+        parameters: Type.Object({ seller_id: Type.Optional(Type.String({ minLength: 1, maxLength: 30 })) }),
+        replay: 'safe', execute: args => read('shop_profile', args.seller_id ? { seller_id: args.seller_id } : {}) }),
       defineTool({ name: 'list_categories', description: 'List the available product categories in the host-authorized shop or marketplace before broad browsing.',
         parameters: Type.Object({}), replay: 'safe', execute: () => read('list_categories') }),
       defineTool({ name: 'search_products', description: 'Search active products in the host-authorized shop or marketplace. Empty query browses. Marketplace results include seller_id and seller_name. Optional seller_id prioritizes a seller-link visit by searching that seller first; omit it to search across shops. Results include IDs, image URLs, price, variants and stock. Use next_offset for more.',

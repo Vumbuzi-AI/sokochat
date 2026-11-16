@@ -67,7 +67,7 @@ defmodule Sokochat.Marketplace.Chat do
 
       {:ok, order} ->
         answer(
-          "Order request ##{order.id} has already been sent.",
+          confirmed_message(order),
           Marketplace.category_cta(workspace)
         )
 
@@ -125,7 +125,7 @@ defmodule Sokochat.Marketplace.Chat do
     case Orders.confirm(workspace, phone, id) do
       {:ok, order} ->
         answer(
-          "Order request ##{order.id} sent to #{order.product["seller_name"]}. They’ll follow up on this WhatsApp number. What else would you like to shop for?",
+          confirmed_message(order),
           Marketplace.category_cta(workspace)
         )
 
@@ -290,6 +290,13 @@ defmodule Sokochat.Marketplace.Chat do
         {"browse:categories", "Keep shopping"}
       ])
     )
+  end
+
+  defp confirmed_message(order) do
+    "Order request confirmed · #{order.reference}.\n\n" <>
+      "Sent to #{order.product["seller_name"]}. They’ll follow up on this WhatsApp number to confirm availability. No payment has been taken.\n\n" <>
+      "Before paying, verify the business and confirm the item, total price, delivery and payment details directly with the seller. " <>
+      "Sokochat connects you with sellers; it does not take payment or guarantee fulfilment."
   end
 
   defp estimated_total(product, %{"fee" => fee}) when is_binary(fee) do

@@ -79,6 +79,17 @@ Browser / signed WhatsApp event
 ```
 
 Start with `src/runtime.ts`, then `src/tools.ts` and `src/server.ts`.
+`shop_profile` reads saved delivery availability, area fees in KES, outside-area
+quote policy, pickup availability, address, opening hours and map/contact details
+from Phoenix. In marketplace chat, pass the product's `seller_id` (or the seller
+link's ID); profiles are restricted to manual-catalog sellers on the same shared
+line. Without a seller ID it returns platform information only. Disabled delivery
+hides retained rates. Fees stay decimal strings, including zero for explicitly
+free areas. Unlisted areas require a seller quote only when configured; no tool
+arranges delivery or supplies an estimated delivery time. The same public facts
+are included outside catalog truncation in single-shop prompts, including the
+API-backed path. New turns receive updated prompts; existing durable turns retain
+their admitted instructions. Restart Pi after updating its tool schema.
 The matching Phoenix files are `conversations/durable_turns.ex`,
 `workers/run_ai_turn.ex`, `ai/pi_client.ex`, and
 `web/controllers/intelligence_tool_controller.ex` beneath their `lib/sokochat*`
