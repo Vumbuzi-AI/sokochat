@@ -57,15 +57,50 @@ defmodule Sokochat.MarketplaceTest do
     assert Orders.list(ctx.a.id) == []
     assert {:ok, replay} = Orders.draft(ctx.marketplace, "254700111222", ctx.shoe.id, "wamid-one")
     assert replay.id == draft.id
+    assert draft.reference =~ ~r/^SC-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/
+    assert replay.reference == draft.reference
     assert {:error, :unavailable} = Orders.confirm(ctx.marketplace, "254700999999", draft.id)
     assert {:ok, confirmed} = Orders.confirm(ctx.marketplace, "254700111222", draft.id)
     assert confirmed.status == "requested"
     assert {:ok, same} = Orders.confirm(ctx.marketplace, "254700111222", draft.id)
     assert same.id == draft.id
+    assert same.reference == draft.reference
     assert length(Orders.list(ctx.a.id)) == 1
     assert Orders.list(ctx.b.id) == []
     assert {:error, :not_found} = Orders.mark_contacted(ctx.b.id, draft.id)
     assert :ok = Orders.mark_contacted(ctx.a.id, draft.id)
+    assert hd(Orders.list(ctx.a.id)).reference == draft.reference
+  end
+
+  test "different requests have unique references enforced by the database", ctx do
+    {:ok, first} = Orders.draft(ctx.marketplace, "254700111222", ctx.shoe.id, "reference-one")
+    {:ok, second} = Orders.draft(ctx.marketplace, "254700111222", ctx.shoe.id, "reference-two")
+    refute first.reference == second.reference
+
+    assert {:error, changeset} =
+             second
+             |> Ecto.Changeset.change(reference: first.reference)
+             |> Ecto.Changeset.unique_constraint(:reference)
+             |> Repo.update()
+
+    assert {"has already been taken", _} = changeset.errors[:reference]
+  end
+
+  test "confirmation and replay keep the reference and payment caution", ctx do
+    alias Sokochat.Marketplace.Chat
+    phone = "254700111222"
+    {:ok, draft} = Orders.draft(ctx.marketplace, phone, ctx.shoe.id, "confirmation-copy")
+
+    for reply_id <- ["confirm:#{draft.id}", "confirm:#{draft.id}", "request:#{ctx.shoe.id}"] do
+      assert {:dispatch, _, _, options} =
+               Chat.route(ctx.line, phone, "Confirm request", reply_id, "confirmation-copy")
+
+      message = options[:marketplace_reply].reply
+      assert message =~ "Order request confirmed · #{draft.reference}"
+      assert message =~ "No payment has been taken."
+      assert message =~ "Before paying, verify the business"
+      assert message =~ "does not take payment or guarantee fulfilment"
+    end
   end
 
   test "leaving the line or changing a product invalidates pending confirmation", ctx do

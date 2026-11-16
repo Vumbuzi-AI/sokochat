@@ -2,43 +2,51 @@ defmodule Sokochat.Marketplace.Orders do
   @moduledoc "Confirmed unpaid requests, scoped to their product owner. No model writes."
   import Ecto.Query
   alias Sokochat.{Marketplace, Repo}
-  alias Sokochat.Marketplace.OrderRequest
+  alias Sokochat.Marketplace.{OrderReference, OrderRequest}
 
   def draft(workspace, phone, item_id, source_key) when is_binary(source_key) do
     with item when not is_nil(item) <- Marketplace.get_product(workspace, item_id) do
       product = Marketplace.product_context(item)
       now = DateTime.utc_now() |> DateTime.truncate(:second)
-      # insert_all ON CONFLICT keeps a repeated webhook tied to its original draft.
-      Repo.insert_all(
-        OrderRequest,
-        [
-          %{
-            workspace_id: product["seller_id"],
-            shared_line_id: workspace.shared_line_id,
-            item_id: item.id,
-            phone_number: phone,
-            source_key: source_key,
-            product: product,
-            status: "draft",
-            inserted_at: now,
-            updated_at: now
-          }
-        ],
-        on_conflict: :nothing,
-        conflict_target: [:shared_line_id, :source_key]
-      )
 
-      {:ok,
-       Repo.get_by!(OrderRequest,
-         shared_line_id: workspace.shared_line_id,
-         source_key: source_key
-       )}
+      insert_draft(
+        %{
+          workspace_id: product["seller_id"],
+          shared_line_id: workspace.shared_line_id,
+          item_id: item.id,
+          phone_number: phone,
+          source_key: source_key,
+          product: product,
+          status: "draft",
+          inserted_at: now,
+          updated_at: now
+        },
+        3
+      )
     else
       _ -> {:error, :unavailable}
     end
   end
 
   def draft(_, _, _, _), do: {:error, :unavailable}
+
+  defp insert_draft(_attrs, 0), do: {:error, :unavailable}
+
+  defp insert_draft(attrs, attempts) do
+    # A repeated webhook returns its original request. A public-reference collision
+    # inserts nothing and retries with fresh randomness, without aborting a transaction.
+    Repo.insert_all(OrderRequest, [Map.put(attrs, :reference, OrderReference.generate())],
+      on_conflict: :nothing
+    )
+
+    case Repo.get_by(OrderRequest,
+           shared_line_id: attrs.shared_line_id,
+           source_key: attrs.source_key
+         ) do
+      nil -> insert_draft(attrs, attempts - 1)
+      order -> {:ok, order}
+    end
+  end
 
   def confirm(workspace, phone, id) do
     Repo.transaction(fn ->

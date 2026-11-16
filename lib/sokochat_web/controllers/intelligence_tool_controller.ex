@@ -25,11 +25,25 @@ defmodule SokochatWeb.IntelligenceToolController do
 
     case tool do
       "shop_profile" ->
-        json(conn, %{
-          name: "Sokochat",
-          scope: "marketplace",
-          orders: "Unpaid requests; merchant follows up"
-        })
+        if params["seller_id"] in [nil, ""] do
+          json(conn, %{
+            name: "Sokochat",
+            scope: "marketplace",
+            orders: "Unpaid requests; merchant follows up",
+            fulfillment: "Seller-specific; call shop_profile with the product's seller_id"
+          })
+        else
+          case Marketplace.get_seller(workspace, params["seller_id"]) do
+            nil ->
+              conn |> put_status(:not_found) |> json(%{error: "Seller not found"})
+
+            seller ->
+              json(
+                conn,
+                Map.put(Sokochat.AI.BusinessProfile.build(seller), :seller_id, seller.id)
+              )
+          end
+        end
 
       "list_categories" ->
         json(conn, %{categories: Marketplace.categories(workspace)})
@@ -60,10 +74,7 @@ defmodule SokochatWeb.IntelligenceToolController do
   defp shop_tool(conn, workspace, tool, params) do
     case tool do
       "shop_profile" ->
-        json(
-          conn,
-          Map.take(workspace, [:name, :company_name, :industry, :location, :phone_number, :about])
-        )
+        json(conn, Sokochat.AI.BusinessProfile.build(workspace))
 
       "list_categories" ->
         json(conn, %{categories: Catalogs.list_item_categories(workspace.id)})

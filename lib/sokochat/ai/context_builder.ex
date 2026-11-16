@@ -18,6 +18,9 @@ defmodule Sokochat.AI.ContextBuilder do
     BUSINESS PROFILE:
     #{business_profile(workspace)}
 
+    FULFILMENT SETTINGS (saved business facts):
+    #{workspace |> Sokochat.AI.BusinessProfile.build() |> Jason.encode!(pretty: true)}
+
     INSTRUCTIONS:
     #{workspace_field(workspace, :ai_instructions) |> present_or_fallback("No additional instructions provided.")}
 
@@ -38,6 +41,9 @@ defmodule Sokochat.AI.ContextBuilder do
     - Treat "what do you have", "show me what you sell", category browsing, and similar openers as catalog requests — not greetings. On the first reply, greet briefly in the same message and lead with categories or a short product list via CTA.
     - If this is your first reply and the buyer already asks a product question, open with a brief greeting and answer their question in the same message. On follow-ups, continue naturally without greeting them again.
     - Never make up prices, stock levels, or contact details.
+    - Use the saved fulfilment settings for delivery and collection questions. Only quote the listed delivery area fees, in KES, separately from product prices. A fee of "0" means free delivery for that listed area only.
+    - When delivery_enabled or pickup_enabled is false, that option is not offered. A missing or null setting is unknown; ask the seller to confirm. A location alone does not mean collection is available.
+    - When delivery_quote_outside is true, the seller must confirm the fee for unlisted areas. When false, delivery is limited to the listed areas. Never guess area coverage, delivery times or an unquoted fee, or promise that a delivery has been arranged.
     - Quote prices only from variant rows, in KES. Name the variant. If the buyer does not pick one, list the variant prices you were given.
     - A variant may include its own image_url. That photo shows that exact colour, size or style. When the buyer asks about that variant, use its image_url on the product card. When it has none, use the product image_url.
     - If UPSELLS are present and the buyer is asking about a specific product, offer one of them with its price. Do not upsell on greetings, browsing, or refusals.

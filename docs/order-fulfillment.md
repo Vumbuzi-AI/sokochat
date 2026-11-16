@@ -16,6 +16,16 @@ Fulfilment details are scoped to a draft's shared line and buyer, then snapshott
 
 Shops with no fulfilment options configured retain the existing request flow, explicitly saying that collection, delivery and charges require merchant confirmation. Checkout actions remain disabled in the playground.
 
+## Buyer contact and order references
+
+Order requests have a stable public reference such as `SC-7D3F-A91C-8E2B`. Internal integer IDs still scope actions and webhook buttons. References are generated from six random bytes, protected by a unique index, and preserved across webhook replays, confirmation and contact status changes. Reference collisions retry up to three times. Migration `20261116070000_add_order_request_references` assigns references to existing requests and provides a database default for older writers during rollout.
+
+The inbox labels the buyer's WhatsApp number and groups Kenyan and UAE numbers with binary pattern matching. Other international numbers retain their digits with a leading `+`; local or malformed values are never assigned a guessed country code. No phone-number dependency is used. **Chat on WhatsApp** opens a digits-only `wa.me` link in a new tab without sending a message or changing contact status. **Mark as contacted** remains a separate action. Missing or malformed numbers show recovery guidance instead of a chat link.
+
+The deterministic WhatsApp confirmation includes the same reference and tells buyers to verify the business and agree on the item, total, delivery and payment details before paying. It confirms the request, not stock, payment or fulfilment. Replayed confirmations retain the caution.
+
+Designs: [desktop inbox](https://doop.design/c/nbdU_ygDzg?frame=MBqG-MW6EV), [mobile inbox](https://doop.design/c/nbdU_ygDzg?frame=b77AOvuZvb), [buyer confirmation](https://doop.design/c/nbdU_ygDzg?frame=zGHJxuBcZ1).
+
 ## Design and release
 
 Doop: https://doop.design/c/nbdU_ygDzg?frame=E7hoDvLPQB

@@ -35,6 +35,27 @@ defmodule Sokochat.AI.ContextBuilderTest do
     assert prompt =~ "Respond in English only."
   end
 
+  test "fulfilment facts survive catalog truncation and retain disabled options" do
+    workspace = %Workspace{
+      name: "Shoes",
+      pickup_enabled: false,
+      delivery_enabled: true,
+      delivery_quote_outside: true,
+      delivery_rates: [
+        %Sokochat.Workspaces.DeliveryRate{area: "CBD", fee: Decimal.new("150.50")}
+      ]
+    }
+
+    prompt = ContextBuilder.build_system_prompt(workspace, %{text: String.duplicate("x", 4000)})
+
+    assert prompt =~ "...[truncated]"
+    assert prompt =~ ~s("pickup_enabled": false)
+    assert prompt =~ ~s("delivery_quote_outside": true)
+    assert prompt =~ ~s("area": "CBD")
+    assert prompt =~ ~s("fee": "150.50")
+    assert prompt =~ "seller must confirm the fee for unlisted areas"
+  end
+
   describe "category awareness" do
     @data %{
       "api_data" => %{
